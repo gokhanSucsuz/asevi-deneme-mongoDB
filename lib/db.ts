@@ -26,6 +26,7 @@ export interface Household {
   headName: string;
   phone: string;
   address: string;
+  noBreakfast?: boolean;
   members: string[];
   memberCount: number;
   otherMemberCount?: number;
@@ -92,6 +93,7 @@ export interface RouteStop {
   deliveredAt?: Date;
   history?: RouteStopHistory[];
   order: number;
+  mealType?: 'standard' | 'breakfast';
 }
 
 export interface RouteTemplate {
@@ -223,6 +225,7 @@ const processData = (data: any): any => {
   if (result.tcNo) result.tcNo = decrypt(result.tcNo);
   if (result.householdNo) result.householdNo = decrypt(result.householdNo);
   if (result.phone) result.phone = decrypt(result.phone);
+  if (result.address) result.address = decrypt(result.address);
 
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
@@ -251,6 +254,7 @@ const prepareData = (data: any) => {
   if (result.tcNo) result.tcNo = encrypt(result.tcNo);
   if (result.householdNo) result.householdNo = encrypt(result.householdNo);
   if (result.phone) result.phone = encrypt(result.phone);
+  if (result.address) result.address = encrypt(result.address);
   if (result.password) result.password = encrypt(result.password);
   return result;
 };

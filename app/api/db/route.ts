@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
               }
 
               // Hassas verileri şifrele
-              const sensitiveFields = ['tcNo', 'householdNo', 'phone', 'password'];
+              const sensitiveFields = ['tcNo', 'householdNo', 'phone', 'address', 'password'];
               for (const field of sensitiveFields) {
                 if (processedItem[field] && !isEncrypted(processedItem[field])) {
                   processedItem[field] = encrypt(processedItem[field]);

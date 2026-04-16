@@ -312,13 +312,27 @@ export default function ReportsPage() {
         try {
           const chartsEl = reportRef.current.querySelector('.charts-container') as HTMLElement;
           if (chartsEl) {
+            // Force standard colors for capture to avoid oklch issues with html2canvas
+            const originalStyle = chartsEl.getAttribute('style') || '';
+            chartsEl.setAttribute('style', originalStyle + '; --color-primary: #4f46e5; --color-success: #10b981; --color-warning: #f59e0b; --color-danger: #ef4444;');
+            
             const canvas = await html2canvas(chartsEl, { 
               scale: 2, 
               useCORS: true, 
               logging: false,
               allowTaint: true,
-              backgroundColor: '#ffffff'
+              backgroundColor: '#ffffff',
+              onclone: (clonedDoc) => {
+                const clonedCharts = clonedDoc.querySelector('.charts-container') as HTMLElement;
+                if (clonedCharts) {
+                  clonedCharts.style.width = '1200px'; // Force a fixed width for consistent capture
+                }
+              }
             });
+            
+            // Restore original style
+            chartsEl.setAttribute('style', originalStyle);
+            
             const imgData = canvas.toDataURL('image/png');
             
             let finalY = (doc as any).lastAutoTable.finalY + 10;

@@ -171,15 +171,33 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     // If it's hard inactive (not paused/deleted), we skip it.
     if (isInactive) continue;
 
+    const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
+
+    // Standard Meal
     stops.push({
       routeId: routeId as string,
       householdId: tStop.householdId,
       householdSnapshotName: h.headName,
       householdSnapshotMemberCount: h.memberCount,
       householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
-      order: tStop.order,
-      status: 'pending'
+      order: tStop.order * 2 - 1,
+      status: 'pending',
+      mealType: 'standard'
     });
+
+    // Breakfast Meal (only on last working day and if not opted out)
+    if (isLastWorkingDay && !h.noBreakfast) {
+      stops.push({
+        routeId: routeId as string,
+        householdId: tStop.householdId,
+        householdSnapshotName: `${h.headName} (Kahvaltı)`,
+        householdSnapshotMemberCount: h.memberCount,
+        householdSnapshotBreadCount: 0, // Breakfast has no bread
+        order: tStop.order * 2,
+        status: 'pending',
+        mealType: 'breakfast'
+      });
+    }
   }
 
   if (stops.length > 0) {
@@ -234,15 +252,37 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
           history: [{ action: 'created', date: new Date(), note: 'Otomatik oluşturuldu' }]
         });
 
-        const stops: RouteStop[] = pickupHouseholds.map((h, idx) => ({
-          routeId: routeId as string,
-          householdId: h.id!,
-          householdSnapshotName: h.headName,
-          householdSnapshotMemberCount: h.memberCount,
-          householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
-          order: idx + 1,
-          status: 'pending'
-        }));
+        const stops: RouteStop[] = [];
+        let order = 1;
+        const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(nextDayStr));
+
+        for (const h of pickupHouseholds) {
+          // Standard
+          stops.push({
+            routeId: routeId as string,
+            householdId: h.id!,
+            householdSnapshotName: h.headName,
+            householdSnapshotMemberCount: h.memberCount,
+            householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+            order: order++,
+            status: 'pending',
+            mealType: 'standard'
+          });
+
+          // Breakfast
+          if (isLastWorkingDay && !h.noBreakfast) {
+            stops.push({
+              routeId: routeId as string,
+              householdId: h.id!,
+              householdSnapshotName: `${h.headName} (Kahvaltı)`,
+              householdSnapshotMemberCount: h.memberCount,
+              householdSnapshotBreadCount: 0,
+              order: order++,
+              status: 'pending',
+              mealType: 'breakfast'
+            });
+          }
+        }
 
         await db.routeStops.bulkAdd(stops);
       }

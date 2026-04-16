@@ -956,7 +956,16 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{household.address}</td>
+                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                  <div className="flex items-center gap-2">
+                    {showSensitive[household.id!] ? household.address : maskSensitive(household.address, 5)}
+                    {household.address && (
+                      <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
+                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.memberCount}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.breadCount ?? household.memberCount}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -972,6 +981,11 @@ export default function HouseholdsPage() {
                     {household.usesOwnContainer && (
                       <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-teal-100 text-teal-800 uppercase">
                         Kendi Kabı
+                      </span>
+                    )}
+                    {household.noBreakfast && (
+                      <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-orange-100 text-orange-800 uppercase">
+                        Kahvaltı Almıyor
                       </span>
                     )}
                   </div>
@@ -1331,6 +1345,22 @@ export default function HouseholdsPage() {
                   </div>
                   <p className="text-xs text-blue-700">
                     Bu seçenek işaretlendiğinde, kullanılan toplam kap sayısından bu {householdType === 'institution' ? 'kurum' : 'hane'} için olan miktar düşülür.
+                  </p>
+                </div>
+
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100 space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      {...register('noBreakfast')}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm font-bold text-orange-900">
+                      Kahvaltı Almıyor
+                    </label>
+                  </div>
+                  <p className="text-xs text-orange-700">
+                    Bu seçenek işaretlendiğinde, haftanın son iş günü dağıtılan ek öğün (kahvaltı) hesaplamasına bu hane dahil edilmez.
                   </p>
                 </div>
 

@@ -279,12 +279,14 @@ export default function RoutesPage() {
           householdSnapshotMemberCount: h?.memberCount,
           householdSnapshotBreadCount: h?.breadCount ?? h?.memberCount,
           order: sh.order,
-          status: 'pending'
+          status: 'pending',
+          isManual: true,
+          mealType: 'standard'
         };
       });
 
       await db.routeStops.bulkAdd(stops);
-      await addLog('Günlük Rota Oluşturuldu', `${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için ${driver?.name} şoförüne rota oluşturuldu.`);
+      await addLog('Günlük Rota Oluşturuldu', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için ${driver?.name} şoförüne rota oluşturuldu.`);
       toast.success('Rota başarıyla oluşturuldu', { id: loadingToast });
       closeModal();
     } catch (error) {
@@ -379,7 +381,7 @@ export default function RoutesPage() {
         const driverName = getDriverName(route!.driverId);
         await db.routes.delete(id);
         await db.routeStops.where('routeId').equals(id).delete();
-        await addLog('Günlük Rota Silindi', `${format(new Date(route!.date), 'dd.MM.yyyy')} tarihli ${driverName} rotası silindi.`);
+        await addLog('Günlük Rota Silindi', `${safeFormat(route!.date, 'dd.MM.yyyy')} tarihli ${driverName} rotası silindi.`);
         toast.success('Rota başarıyla silindi', { id: loadingToast });
       } catch (error) {
         console.error(error);
@@ -410,7 +412,7 @@ export default function RoutesPage() {
       await db.routes.update(routeForLeftover.id!, updateData);
       
       // 1. Update bread tracking for the CURRENT route date
-      const currentRouteDate = format(new Date(routeForLeftover.date), 'yyyy-MM-dd');
+      const currentRouteDate = safeFormat(routeForLeftover.date, 'yyyy-MM-dd');
       const currentBreadData = await calculateBreadForNextDay(currentRouteDate);
       const existingCurrentTracking = await db.breadTracking.where('date').equals(currentRouteDate).first();
       
@@ -474,7 +476,7 @@ export default function RoutesPage() {
         });
       }
       
-      await addLog(isManualCompletion ? 'Rota Manuel Tamamlandı' : 'Rota Tamamlandı', `${format(new Date(routeForLeftover.date), 'dd.MM.yyyy')} tarihli ${getDriverName(routeForLeftover.driverId)} rotası ${isManualCompletion ? 'manuel tamamlandı' : 'tamamlandı'}.`);
+      await addLog(isManualCompletion ? 'Rota Manuel Tamamlandı' : 'Rota Tamamlandı', `${safeFormat(routeForLeftover.date, 'dd.MM.yyyy')} tarihli ${getDriverName(routeForLeftover.driverId)} rotası ${isManualCompletion ? 'manuel tamamlandı' : 'tamamlandı'}.`);
 
       toast.success('Rota başarıyla tamamlandı.', { id: loadingToast });
       setIsLeftoverModalOpen(false);
@@ -506,7 +508,7 @@ export default function RoutesPage() {
           personnelCompletionTime: undefined
         });
 
-        await addLog('Personel Rota Tamamlama Geri Alındı', `${getDriverName(route.driverId)} şoförünün ${format(new Date(route.date), 'dd.MM.yyyy')} tarihli rotası için yapılan işlem geri alındı.`);
+        await addLog('Personel Rota Tamamlama Geri Alındı', `${getDriverName(route.driverId)} şoförünün ${safeFormat(route.date, 'dd.MM.yyyy')} tarihli rotası için yapılan işlem geri alındı.`);
         
         toast.success('İşlem başarıyla geri alındı.', { id: loadingToast });
       } catch (error) {
@@ -594,7 +596,7 @@ export default function RoutesPage() {
       return;
     }
 
-    if (confirm(`${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için tüm aktif şoförlerin rotalarını otomatik oluşturmak istediğinize emin misiniz?`)) {
+    if (confirm(`${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için tüm aktif şoförlerin rotalarını otomatik oluşturmak istediğinize emin misiniz?`)) {
       const loadingToast = toast.loading('Rotalar oluşturuluyor...');
       try {
         const drivers = await db.drivers.toArray();
@@ -607,7 +609,7 @@ export default function RoutesPage() {
         }
         
         if (generatedCount > 0) {
-          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için ${generatedCount} adet rota otomatik oluşturuldu.`);
+          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için ${generatedCount} adet rota otomatik oluşturuldu.`);
           toast.success(`${generatedCount} adet rota başarıyla oluşturuldu.`, { id: loadingToast });
         } else {
           toast.info('Oluşturulacak yeni rota bulunamadı (Zaten mevcut olabilir veya şoförlerin ana rotası yok).', { id: loadingToast });
@@ -759,7 +761,7 @@ export default function RoutesPage() {
           });
         }
       }
-      await addLog('Rota Düzenlendi', `${format(new Date(viewRouteDetails.date), 'dd.MM.yyyy')} tarihli ${getDriverName(viewRouteDetails.driverId)} rotası düzenlendi.`);
+      await addLog('Rota Düzenlendi', `${safeFormat(viewRouteDetails.date, 'dd.MM.yyyy')} tarihli ${getDriverName(viewRouteDetails.driverId)} rotası düzenlendi.`);
       toast.success('Değişiklikler başarıyla kaydedildi', { id: loadingToast });
       setIsEditingRouteDetails(false);
       // Refresh details
@@ -787,7 +789,7 @@ export default function RoutesPage() {
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Tarih: ${format(new Date(route.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 45, { align: 'right' });
+    doc.text(`Tarih: ${safeFormat(route.date, 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 45, { align: 'right' });
     doc.text(`Şoför: ${driverName}`, 14, 45);
 
     const stops = await db.routeStops.where('routeId').equals(route.id!).sortBy('order');
@@ -853,7 +855,7 @@ export default function RoutesPage() {
     doc.text('İmza', doc.internal.pageSize.width - 40, finalY + 10, { align: 'center' });
 
     addReportFooter(doc, personnelName);
-    doc.save(`Dagitim_Listesi_${format(new Date(route.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Dagitim_Listesi_${safeFormat(route.date, 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
   };
 
   const generateRouteTutanakPDF = async (route: Route, stops: RouteStop[]) => {
@@ -872,7 +874,7 @@ export default function RoutesPage() {
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Tarih: ${format(new Date(route.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+    doc.text(`Tarih: ${safeFormat(route.date, 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
     doc.text(`Şoför Adı Soyadı: ${driverName}`, 14, 45);
     
     let startY = 50;
@@ -895,7 +897,9 @@ export default function RoutesPage() {
       const household = households?.find(h => h.id === stop.householdId);
       const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
       const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
-      const multiplier = isLastWorkingDay ? 2 : 1;
+      
+      // Multiplier is now 1 because breakfast is a separate record
+      const multiplier = 1;
       
       totalPeople += memberCount;
       totalFood += memberCount * multiplier;
@@ -904,15 +908,17 @@ export default function RoutesPage() {
         totalDeliveredFood += memberCount * multiplier;
       }
       
+      const name = stop.isManual ? `* ${stop.householdSnapshotName || household?.headName || ''}` : (stop.householdSnapshotName || household?.headName || '');
+
       return [
         (i + 1).toString(),
-        stop.householdSnapshotName || household?.headName || '',
+        name,
         household?.address || '',
         memberCount.toString(),
         (memberCount * multiplier).toString(),
         (breadCount * multiplier).toString(),
         stop.status === 'delivered' ? 'Teslim Edildi' : stop.status === 'failed' ? 'Edilemedi' : 'Bekliyor',
-        stop.deliveredAt ? format(new Date(stop.deliveredAt), 'HH:mm') : '-',
+        stop.deliveredAt ? safeFormat(stop.deliveredAt, 'HH:mm') : '-',
         stop.issueReport || ''
       ];
     });
@@ -939,7 +945,7 @@ export default function RoutesPage() {
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    const text = "Yukarıda listelenen adreslere günlük sıcak yemek dağıtımı tarafımca eksiksiz ve hijyen kurallarına uygun olarak yapılmıştır. İşbu tutanak tarafımızca imza altına alınmıştır.";
+    const text = "Yukarıda listelenen adreslere günlük sıcak yemek dağıtımı tarafımca eksiksiz ve hijyen kurallarına uygun olarak yapılmıştır. İşbu tutanak tarafımızca imza altına alınmıştır. (* ile işaretli olanlar rotaya sonradan eklenen hanelerdir.)";
     doc.text(text, 14, finalY, { maxWidth: doc.internal.pageSize.width - 28 });
 
     const signatureY = finalY + 20;
@@ -956,12 +962,97 @@ export default function RoutesPage() {
     doc.text("İmza", doc.internal.pageSize.width - 60, signatureY + 12, { align: 'center' });
 
     addReportFooter(doc, personnelName);
-    doc.save(`Gunluk_Yemek_Dagitim_Tutanagi_${format(new Date(route.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Gunluk_Yemek_Dagitim_Tutanagi_${safeFormat(route.date, 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
   };
 
   const exportRouteDetailsPDF = async () => {
     if (!viewRouteDetails) return;
     await generateRouteTutanakPDF(viewRouteDetails, routeDetailsStops);
+  };
+
+  const safeFormat = (date: any, formatStr: string) => {
+    try {
+      if (!date) return '-';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '-';
+      return format(d, formatStr);
+    } catch (e) {
+      return '-';
+    }
+  };
+
+  const exportWeeklyChecklistPDF = async (driverId: string, startDateStr: string) => {
+    const driver = drivers?.find(d => d.id === driverId);
+    if (!driver) return;
+
+    const doc = await getTurkishPdf('landscape');
+    await addVakifLogo(doc, 14, 10, 15);
+    
+    doc.setFontSize(14);
+    doc.setFont('Roboto', 'bold');
+    doc.text('HAFTALIK YEMEK DAĞITIM VE KONTROL LİSTESİ', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+    
+    const start = new Date(startDateStr);
+    const weekDays = [];
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      weekDays.push(d);
+    }
+
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Şoför: ${driver.name}`, 14, 25);
+    doc.text(`Hafta: ${safeFormat(weekDays[0], 'dd.MM.yyyy')} - ${safeFormat(weekDays[4], 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 25, { align: 'right' });
+
+    // Get all routes for this driver in this week
+    const weekDates = weekDays.map(d => format(d, 'yyyy-MM-dd'));
+    const weekRoutes = routes?.filter(r => r.driverId === driverId && weekDates.includes(r.date)) || [];
+    const weekRouteIds = weekRoutes.map(r => r.id);
+    const weekStops = routeStops?.filter(rs => weekRouteIds.includes(rs.routeId)) || [];
+
+    // Get unique households in these routes
+    const householdIds = Array.from(new Set(weekStops.map(rs => rs.householdId)));
+    
+    const tableColumn = ["Sıra", "Hane Adı", "Adres", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3))];
+    const tableRows = householdIds.map((hId, index) => {
+      const h = households?.find(hh => hh.id === hId);
+      const row = [
+        (index + 1).toString(),
+        h?.headName || 'Bilinmeyen',
+        h?.address || '',
+      ];
+
+      weekDates.forEach(dateStr => {
+        const route = weekRoutes.find(r => r.date === dateStr);
+        if (!route) {
+          row.push('-');
+        } else {
+          const stop = weekStops.find(rs => rs.routeId === route.id && rs.householdId === hId && rs.mealType !== 'breakfast');
+          if (!stop) row.push('-');
+          else row.push(stop.status === 'delivered' ? 'OK' : stop.status === 'failed' ? 'X' : '.');
+        }
+      });
+
+      return row;
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 30,
+      theme: 'grid',
+      styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 60 },
+      }
+    });
+
+    addReportFooter(doc, personnelName);
+    doc.save(`Haftalik_Cizelge_${driver.name.replace(/\s+/g, '_')}_${startDateStr}.pdf`);
   };
 
   const exportHistoryPDF = async (months: number) => {
@@ -1037,7 +1128,7 @@ export default function RoutesPage() {
       });
 
       // Sync with daily routes (if pending)
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
       const nextDay = await getNextWorkingDay(new Date());
       const nextDayStr = format(nextDay, 'yyyy-MM-dd');
       
@@ -1155,7 +1246,7 @@ export default function RoutesPage() {
                 {routesOnDate.map((route) => (
                   <tr key={route.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {format(new Date(route.date), 'dd.MM.yyyy')}
+                      {safeFormat(route.date, 'dd.MM.yyyy')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {route.driverSnapshotName || getDriverName(route.driverId)}
@@ -1291,18 +1382,25 @@ export default function RoutesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {tStops.length} Hane
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {!isDemo && (
-                          <>
-                            <button onClick={() => openTemplateModal(template)} className="text-blue-600 hover:text-blue-900 mr-3">
-                              <Edit2 size={18} />
-                            </button>
-                            <button onClick={() => deleteTemplate(template.id!)} className="text-red-600 hover:text-red-900">
-                              <Trash2 size={18} />
-                            </button>
-                          </>
-                        )}
-                      </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button 
+                        onClick={() => exportWeeklyChecklistPDF(template.driverId, format(startOfDay(new Date()), 'yyyy-MM-dd'))} 
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
+                        title="Haftalık Çizelge Al"
+                      >
+                        <FileText size={18} />
+                      </button>
+                      {!isDemo && (
+                        <>
+                          <button onClick={() => openTemplateModal(template)} className="text-blue-600 hover:text-blue-900 mr-3">
+                            <Edit2 size={18} />
+                          </button>
+                          <button onClick={() => deleteTemplate(template.id!)} className="text-red-600 hover:text-red-900">
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
+                    </td>
                     </tr>
                   );
                 })}
@@ -1356,7 +1454,7 @@ export default function RoutesPage() {
               {systemLogs?.slice(0, 10).map((log) => (
                 <tr key={log.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                    {format(new Date(log.timestamp), 'dd.MM.yyyy HH:mm')}
+                    {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {log.action}
@@ -1393,7 +1491,7 @@ export default function RoutesPage() {
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <p className="text-sm text-blue-900 font-medium mb-1">Rota Bilgisi:</p>
                 <p className="text-sm text-blue-700">
-                  {getDriverName(routeForLeftover.driverId)} - {format(new Date(routeForLeftover.date), 'dd.MM.yyyy')}
+                  {getDriverName(routeForLeftover.driverId)} - {safeFormat(routeForLeftover.date, 'dd.MM.yyyy')}
                 </p>
               </div>
 
@@ -1733,7 +1831,7 @@ export default function RoutesPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? format(new Date(stop.deliveredAt), 'HH:mm') : '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? safeFormat(stop.deliveredAt, 'HH:mm') : '-'}</td>
                         <td className="px-4 py-2 text-sm text-gray-500">
                           {isEditingRouteDetails && stop.status === 'failed' ? (
                             <input

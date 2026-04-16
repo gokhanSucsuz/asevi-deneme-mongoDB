@@ -57,12 +57,31 @@ export async function calculateBreadForNextDay(dateStr: string) {
 
     // Calculate containerCount (Vakıf Kabı)
     // Formula: Total Meals (People) - Own Container (People)
-    const containerCount = totalPeople - ownContainerCount;
+    let containerCount = totalPeople - ownContainerCount;
 
     // Check if it's the last working day of the week (e.g., Friday)
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
     if (isLastWorkingDay) {
-      totalNeeded *= 2;
+      // Food is doubled (Standard + Breakfast), but bread stays 1x
+      // Breakfast count excludes households with noBreakfast: true
+      const breakfastPeople = activeHouseholds
+        .filter(h => !h.noBreakfast)
+        .reduce((sum, h) => sum + (h.memberCount || 0), 0);
+      
+      // We don't double totalNeeded (bread) anymore because "kahvaltı için ekmek verilmeyecek"
+      // totalNeeded = totalNeeded; // stays same
+
+      // But container count for the extra meal needs to be added?
+      // If they use containers for both meals, we need more containers.
+      // "biri yemek ve ekmek, diğeri de kahvaltı şeklinde ayrı kayıt olarak yer alsın"
+      // This implies two separate deliveries or two containers.
+      const breakfastOwnContainerCount = activeHouseholds
+        .filter(h => !h.noBreakfast && h.usesOwnContainer)
+        .reduce((sum, h) => sum + (h.memberCount || 0), 0);
+      
+      const breakfastVakifContainerCount = breakfastPeople - breakfastOwnContainerCount;
+      
+      containerCount += breakfastVakifContainerCount;
     }
 
     // Formula: Total Needed - Today's Leftover = Ordered Bread
