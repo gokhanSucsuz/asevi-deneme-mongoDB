@@ -11,7 +11,15 @@ export async function GET(req: Request) {
     // }
 
     console.log('Migration started via API...');
-    const mongoDb = await getDb();
+    let mongoDb;
+    try {
+      console.log('Connecting to MongoDB...');
+      mongoDb = await getDb();
+      console.log('MongoDB connected successfully.');
+    } catch (mongoError: any) {
+      console.error('MongoDB connection error:', mongoError);
+      return NextResponse.json({ error: 'MongoDB connection failed', details: mongoError.message }, { status: 500 });
+    }
 
     const collections = [
       'households',
@@ -32,38 +40,42 @@ export async function GET(req: Request) {
     const results: any = {};
 
     for (const collectionName of collections) {
-      console.log(`Migrating collection: ${collectionName}...`);
-      const snapshot = await adminDb.collection(collectionName).get();
-      
-      if (snapshot.empty) {
-        results[collectionName] = 0;
-        continue;
-      }
+      try {
+        console.log(`Migrating collection: ${collectionName}...`);
+        const snapshot = await adminDb.collection(collectionName).get();
+        
+        if (snapshot.empty) {
+          results[collectionName] = 0;
+          continue;
+        }
 
-      const docs = snapshot.docs.map(doc => {
-        const data = doc.data();
-        // Firestore Timestamp'leri MongoDB için Date nesnelerine dönüştür
-        for (const key in data) {
-          if (data[key] && typeof data[key].toDate === 'function') {
-            data[key] = data[key].toDate();
+        const docs = snapshot.docs.map(doc => {
+          const data = doc.data();
+          for (const key in data) {
+            if (data[key] && typeof data[key].toDate === 'function') {
+              data[key] = data[key].toDate();
+            }
           }
-        }
-        return { _id: doc.id, ...data };
-      });
+          return { _id: doc.id, ...data };
+        });
 
-      const mongoCollection = mongoDb.collection(collectionName);
-      
-      const operations: any[] = docs.map(doc => ({
-        replaceOne: {
-          filter: { _id: doc._id },
-          replacement: doc,
-          upsert: true
-        }
-      }));
+        const mongoCollection = mongoDb.collection(collectionName);
+        
+        const operations: any[] = docs.map(doc => ({
+          replaceOne: {
+            filter: { _id: doc._id },
+            replacement: doc,
+            upsert: true
+          }
+        }));
 
-      await mongoCollection.bulkWrite(operations);
-      results[collectionName] = docs.length;
-      console.log(`Migrated ${docs.length} documents for ${collectionName}.`);
+        await mongoCollection.bulkWrite(operations);
+        results[collectionName] = docs.length;
+        console.log(`Migrated ${docs.length} documents for ${collectionName}.`);
+      } catch (colError: any) {
+        console.error(`Error migrating ${collectionName}:`, colError);
+        results[collectionName] = { error: colError.message };
+      }
     }
 
     return NextResponse.json({ 
