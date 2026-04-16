@@ -80,7 +80,8 @@ export default function AdminLoginPage() {
       }));
 
       toast.success('Başarıyla giriş yapıldı.');
-      router.push('/admin');
+      // Force reload to trigger AdminLayout auth check reliably
+      window.location.href = '/admin';
     } catch (error) {
       console.error(error);
       toast.error('Giriş yapılırken bir hata oluştu.');
