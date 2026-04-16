@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { Download, Database, Clock, AlertTriangle, ShieldCheck, Lock } from 'lucide-react';
+import { Download, Database, Clock, AlertTriangle, ShieldCheck, Lock, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInDays } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -15,6 +15,7 @@ export default function SystemSettingsPage() {
   const [lastBackup, setLastBackup] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isDistributionPanelActive, setIsDistributionPanelActive] = useState(true);
 
@@ -67,6 +68,55 @@ export default function SystemSettingsPage() {
     } catch (error) {
       console.error('Toggle error:', error);
       toast.error('Ayarlar güncellenirken bir hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('Bu işlem mevcut verilerin üzerine yazabilir veya yeni veriler ekleyebilir. Devam etmek istiyor musunuz?')) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsImporting(true);
+    const loadingToast = toast.loading('Veriler içe aktarılıyor...');
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          await db.restore(json);
+          
+          const session = localStorage.getItem('personnel-session');
+          const sessionUser = session ? JSON.parse(session) : null;
+          if (sessionUser) {
+            await db.system_logs.add({
+              action: 'Veritabanı Geri Yüklendi',
+              details: `JSON dosyasından toplu veri aktarımı yapıldı.`,
+              category: 'system',
+              personnelEmail: user?.email || 'Bilinmeyen Email',
+              personnelName: sessionUser.name || 'Bilinmeyen Personel',
+              timestamp: new Date()
+            });
+          }
+
+          toast.success('Veriler başarıyla geri yüklendi.', { id: loadingToast });
+          setTimeout(() => window.location.reload(), 1500);
+        } catch (err) {
+          console.error('JSON parse error:', err);
+          toast.error('Geçersiz yedekleme dosyası.', { id: loadingToast });
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      console.error('Restore error:', error);
+      toast.error('İçe aktarma sırasında bir hata oluştu.', { id: loadingToast });
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
     }
   };
 
@@ -360,6 +410,22 @@ export default function SystemSettingsPage() {
               <Download size={20} />
               JSON Olarak Yedekle (.json)
             </button>
+
+            {!isDemo && (
+              <div className="pt-4 border-t border-gray-100">
+                <label className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50">
+                  <Upload size={20} />
+                  {isImporting ? 'Yükleniyor...' : 'Yedekten Geri Yükle (.json)'}
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleRestore}
+                    disabled={isImporting}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
 
             <p className="text-xs text-gray-500 text-center mt-4">
               Yedekleme işlemi tüm haneleri, şoförleri, rotaları ve sistem günlüklerini kapsar.

@@ -593,6 +593,9 @@ export const db = {
       return data.length;
     },
   },
+  restore: async (data: any) => {
+    return await callApi('all', 'restore', { data });
+  },
   system_logs: {
     toArray: async () => {
       const data = await callApi('system_logs', 'list', { sort: { timestamp: -1 } });

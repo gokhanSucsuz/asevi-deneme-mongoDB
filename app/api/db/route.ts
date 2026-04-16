@@ -81,6 +81,40 @@ export async function POST(req: NextRequest) {
         }
         return NextResponse.json({ success: true });
       }
+      case 'restore': {
+        const backupData = data;
+        const mapping: any = {
+          households: 'households',
+          drivers: 'drivers',
+          routes: 'routes',
+          routeStops: 'route_stops',
+          personnel: 'personnel',
+          logs: 'system_logs'
+        };
+
+        const results: any = {};
+
+        for (const [jsonKey, mongoCollection] of Object.entries(mapping)) {
+          const items = backupData[jsonKey];
+          if (Array.isArray(items) && items.length > 0) {
+            const collection = db.collection(mongoCollection as string);
+            const operations = items.map((item: any) => {
+              const { id, _id, ...rest } = item;
+              const docId = id || _id;
+              return {
+                replaceOne: {
+                  filter: { _id: getQueryId(docId) } as any,
+                  replacement: { ...rest, _id: getQueryId(docId) },
+                  upsert: true
+                }
+              };
+            });
+            await collection.bulkWrite(operations);
+            results[mongoCollection as string] = items.length;
+          }
+        }
+        return NextResponse.json({ success: true, results });
+      }
       default:
         return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
     }
