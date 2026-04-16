@@ -94,6 +94,7 @@ export interface RouteStop {
   history?: RouteStopHistory[];
   order: number;
   mealType?: 'standard' | 'breakfast';
+  isManual?: boolean;
 }
 
 export interface RouteTemplate {
