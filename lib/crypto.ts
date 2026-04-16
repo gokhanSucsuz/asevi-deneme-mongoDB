@@ -24,10 +24,11 @@ export const encrypt = (text: string | undefined): string => {
  * Decrypts an AES-256 encrypted string.
  */
 export const decrypt = (ciphertext: string | undefined): string => {
-  if (!ciphertext) return '';
+  if (!ciphertext || typeof ciphertext !== 'string') return ciphertext || '';
   
-  // If it doesn't look like Base64 or is too short, it's probably not encrypted
-  if (ciphertext.length < 16 || !/^[A-Za-z0-9+/=]+$/.test(ciphertext)) {
+  // If it doesn't look like our encrypted format (Base64 and specific length), return as is
+  // AES block size is 16 bytes, so Base64 length will be 24, 44, 64 etc.
+  if (ciphertext.length < 20 || !/^[a-zA-Z0-9+/=]+$/.test(ciphertext)) {
     return ciphertext;
   }
 
@@ -41,13 +42,9 @@ export const decrypt = (ciphertext: string | undefined): string => {
     
     const originalText = decrypted.toString(CryptoJS.enc.Utf8);
     
-    // If decryption fails, originalText will be empty or gibberish.
-    // Utf8 conversion usually fails or returns empty if the key is wrong.
-    if (!originalText && ciphertext) {
-      return ciphertext;
-    }
-    
-    return originalText;
+    // If originalText is empty, it might be because the key is wrong 
+    // or the data wasn't actually encrypted but looked like it.
+    return originalText || ciphertext;
   } catch (error) {
     console.error('Decryption error:', error);
     return ciphertext;
@@ -56,9 +53,17 @@ export const decrypt = (ciphertext: string | undefined): string => {
 
 /**
  * Helper to check if a string is likely encrypted.
- * CryptoJS AES encrypted strings in Base64 usually start with 'U2FsdGVkX1' (Salted__)
  */
 export const isEncrypted = (text: string | undefined): boolean => {
-  if (!text) return false;
-  return typeof text === 'string' && text.startsWith('U2FsdGVkX1');
+  if (!text || typeof text !== 'string') return false;
+  
+  // Basic heuristic: Encrypted strings in our system are Base64 and usually 24+ chars
+  // and contain non-numeric characters.
+  if (text.length < 20) return false;
+  if (!/^[a-zA-Z0-9+/=]+$/.test(text)) return false;
+  
+  // If it's all numbers, it's definitely not our encrypted string
+  if (/^\d+$/.test(text)) return false;
+
+  return true;
 };

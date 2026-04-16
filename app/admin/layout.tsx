@@ -280,16 +280,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         "fixed inset-0 z-50 lg:sticky lg:top-0 lg:h-screen lg:z-0 lg:flex lg:w-64 bg-white border-r border-gray-200 flex-col transition-transform duration-300 ease-in-out",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="h-24 hidden lg:flex flex-col items-center justify-center px-6 border-b border-gray-200 py-4">
+        <div className="h-20 hidden lg:flex flex-col items-center justify-center px-6 border-b border-gray-200 py-2">
           <Image 
             src="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" 
             alt="Vakıf Logosu" 
-            width={48} 
-            height={48} 
-            className="rounded-full mb-2"
+            width={40} 
+            height={40} 
+            className="rounded-full mb-1"
             referrerPolicy="no-referrer"
           />
-          <h1 className="text-sm font-bold text-gray-900">Yönetim Paneli</h1>
+          <h1 className="text-xs font-bold text-gray-900">Yönetim Paneli</h1>
         </div>
         
         {/* Mobile Close Overlay */}
@@ -300,7 +300,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           />
         )}
 
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto bg-white relative z-50">
+        <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-hidden bg-white relative z-50">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -312,13 +312,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   isActive
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900',
-                  'group flex items-center px-2 py-2 text-sm font-medium rounded-md'
+                  'group flex items-center px-2 py-1.5 text-xs font-medium rounded-md'
                 )}
               >
                 <item.icon
                   className={clsx(
                     isActive ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-500',
-                    'mr-3 flex-shrink-0 h-5 w-5'
+                    'mr-2.5 flex-shrink-0 h-4 w-4'
                   )}
                   aria-hidden="true"
                 />
@@ -327,33 +327,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             );
           })}
         </nav>
-        <div className="p-4 border-t border-gray-200 space-y-2 bg-white relative z-50">
-          <div className="px-2 py-1 text-sm font-semibold text-gray-900 truncate">
+        <div className="p-3 border-t border-gray-200 space-y-1 bg-white relative z-50">
+          <div className="px-2 py-0.5 text-xs font-semibold text-gray-900 truncate">
             {currentPersonnel?.name || user?.displayName}
           </div>
-          <div className="px-2 py-0.5 text-xs text-gray-500 truncate">
+          <div className="px-2 py-0 text-[10px] text-gray-500 truncate">
             {user?.email}
           </div>
           <Link
             href="/"
-            className="group flex items-center px-2 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900"
+            className="group flex items-center px-2 py-1.5 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-50 hover:text-gray-900"
           >
-            <Home className="text-gray-400 group-hover:text-gray-500 mr-3 flex-shrink-0 h-5 w-5" />
+            <Home className="text-gray-400 group-hover:text-gray-500 mr-2.5 flex-shrink-0 h-4 w-4" />
             Ana Sayfaya Dön
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full group flex items-center px-2 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors"
+            className="w-full group flex items-center px-2 py-1.5 text-xs font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors"
           >
-            <LogOut className="text-red-400 group-hover:text-red-500 mr-3 flex-shrink-0 h-5 w-5" />
+            <LogOut className="text-red-400 group-hover:text-red-500 mr-2.5 flex-shrink-0 h-4 w-4" />
             Çıkış Yap
           </button>
           
-          <div className="mt-6 pt-4 border-t border-gray-100 text-center opacity-50 hover:opacity-100 transition-opacity">
-            <p className="text-[9px] text-gray-400 uppercase tracking-widest mb-1">
+          <div className="mt-2 pt-2 border-t border-gray-100 text-center opacity-50 hover:opacity-100 transition-opacity">
+            <p className="text-[8px] text-gray-400 uppercase tracking-widest mb-0.5">
               Tasarlayan ve Yöneten
             </p>
-            <p className="text-[10px] font-bold text-gray-600">
+            <p className="text-[9px] font-bold text-gray-600">
               Gökhan SUÇSUZ
             </p>
           </div>
