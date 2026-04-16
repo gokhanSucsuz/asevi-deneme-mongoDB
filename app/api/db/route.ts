@@ -83,13 +83,30 @@ export async function POST(req: NextRequest) {
       }
       case 'restore': {
         const backupData = data;
+        // Tüm olası koleksiyon eşleşmeleri
         const mapping: any = {
           households: 'households',
           drivers: 'drivers',
           routes: 'routes',
           routeStops: 'route_stops',
+          route_stops: 'route_stops',
           personnel: 'personnel',
-          logs: 'system_logs'
+          logs: 'system_logs',
+          system_logs: 'system_logs',
+          routeTemplates: 'route_templates',
+          route_templates: 'route_templates',
+          surveys: 'surveys',
+          survey_responses: 'survey_responses',
+          surveyResponses: 'survey_responses',
+          working_days: 'working_days',
+          workingDays: 'working_days',
+          bread_tracking: 'bread_tracking',
+          breadTracking: 'bread_tracking',
+          leftover_food: 'leftover_food',
+          leftoverFood: 'leftover_food',
+          system_settings: 'system_settings',
+          systemSettings: 'system_settings',
+          tenders: 'tenders'
         };
 
         const results: any = {};
@@ -101,16 +118,28 @@ export async function POST(req: NextRequest) {
             const operations = items.map((item: any) => {
               const { id, _id, ...rest } = item;
               const docId = id || _id;
+              
+              // Tarih alanlarını MongoDB Date objesine çevir (Sıralama ve filtreleme için kritik)
+              const processedItem: any = { ...rest };
+              for (const key in processedItem) {
+                if (typeof processedItem[key] === 'string' && 
+                   (key.endsWith('At') || key === 'timestamp' || key === 'submittedAt' || key === 'lastBackupDate')) {
+                  const d = new Date(processedItem[key]);
+                  if (!isNaN(d.getTime())) processedItem[key] = d;
+                }
+              }
+
               return {
                 replaceOne: {
                   filter: { _id: getQueryId(docId) } as any,
-                  replacement: { ...rest, _id: getQueryId(docId) },
+                  replacement: { ...processedItem, _id: getQueryId(docId) },
                   upsert: true
                 }
               };
             });
+            
             await collection.bulkWrite(operations);
-            results[mongoCollection as string] = items.length;
+            results[mongoCollection as string] = (results[mongoCollection as string] || 0) + items.length;
           }
         }
         return NextResponse.json({ success: true, results });
