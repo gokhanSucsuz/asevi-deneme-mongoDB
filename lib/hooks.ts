@@ -10,7 +10,9 @@ import {
   demoSurveys,
   demoSurveyResponses,
   demoBreadTracking,
-  demoLeftoverFood
+  demoLeftoverFood,
+  demoRouteTemplates,
+  demoRouteTemplateStops
 } from './demoData';
 
 type Listener = () => void;
@@ -60,8 +62,8 @@ export function useAppQuery<T>(action: () => Promise<T>, deps: any[] = [], tag?:
       else if (tag === 'bread_tracking') demoData = demoBreadTracking;
       else if (tag === 'leftover_food') demoData = demoLeftoverFood;
       else if (tag === 'system_settings') demoData = null;
-      else if (tag === 'route_templates') demoData = [];
-      else if (tag === 'route_template_stops') demoData = [];
+      else if (tag === 'route_templates') demoData = demoRouteTemplates;
+      else if (tag === 'route_template_stops') demoData = demoRouteTemplateStops;
       
       setData(demoData as T);
       setLoading(false);

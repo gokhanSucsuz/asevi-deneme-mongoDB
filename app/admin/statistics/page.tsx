@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { safeFormat } from '@/lib/date-utils';
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, value }: any) => {
@@ -156,7 +157,7 @@ export default function StatisticsPage() {
       
       doc.setFontSize(10);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
       
       const summaryData = [
         ['Toplam Yemek (Porsiyon)', `${totalDeliveredFood}`],
@@ -179,7 +180,7 @@ export default function StatisticsPage() {
       });
 
       addReportFooter(doc, personnelName);
-      doc.save(`Asevi_Genel_Istatistikler_${format(new Date(), 'dd_MM_yyyy')}.pdf`);
+      doc.save(`Asevi_Genel_Istatistikler_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
     } catch (error) {
       console.error(error);

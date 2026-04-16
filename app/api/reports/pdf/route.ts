@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getCachedReportData } from '@/lib/server-data';
-import { format } from 'date-fns';
+import { safeFormat } from '@/lib/date-utils';
 
 /**
  * API Route Handler for generating PDF reports using cached data.
@@ -11,8 +11,8 @@ import { format } from 'date-fns';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const startDate = searchParams.get('startDate') || format(new Date(), 'yyyy-MM-dd');
-    const endDate = searchParams.get('endDate') || format(new Date(), 'yyyy-MM-dd');
+    const startDate = searchParams.get('startDate') || safeFormat(new Date(), 'yyyy-MM-dd');
+    const endDate = searchParams.get('endDate') || safeFormat(new Date(), 'yyyy-MM-dd');
 
     // 1. Fetch data from CACHE (or Firestore if cache miss)
     // This uses unstable_cache internally with tags ['reports', 'routes', 'route_stops']
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       const routeStopsForRoute = stops.filter(rs => rs.routeId === route.id);
       const delivered = routeStopsForRoute.filter(rs => rs.status === 'delivered').length;
       return [
-        format(new Date(route.date), 'dd.MM.yyyy'),
+        safeFormat(new Date(route.date), 'dd.MM.yyyy'),
         route.driverSnapshotName || 'Bilinmeyen Şoför',
         route.status === 'approved' ? 'Onaylandı' : 
         route.status === 'completed' ? 'Tamamlandı' : 

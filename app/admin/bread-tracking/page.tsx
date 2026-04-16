@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Tender, BreadTracking } from '@/lib/db';
 import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAfter } from 'date-fns';
+import { safeFormat } from '@/lib/date-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,7 +15,7 @@ import { useAuth } from '@/components/AuthProvider';
 export default function BreadTrackingPage() {
   const { user } = useAuth();
   const [startDate, setStartDate] = useState('2026-04-14');
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [reportData, setReportData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -26,9 +27,9 @@ export default function BreadTrackingPage() {
   // Tender form state
   const [tenderForm, setTenderForm] = useState({
     name: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
+    date: safeFormat(new Date(), 'yyyy-MM-dd'),
     tenderNo: '',
-    endDate: format(addDays(new Date(), 365), 'yyyy-MM-dd'),
+    endDate: safeFormat(addDays(new Date(), 365), 'yyyy-MM-dd'),
     maxBreadCount: 0
   });
 
@@ -71,7 +72,7 @@ export default function BreadTrackingPage() {
     const getNextDay = async () => {
       const { getNextWorkingDay } = await import('@/lib/route-utils');
       const nextDay = await getNextWorkingDay(new Date());
-      setNextWorkingDayStr(format(nextDay, 'yyyy-MM-dd'));
+      setNextWorkingDayStr(safeFormat(nextDay, 'yyyy-MM-dd'));
     };
     getNextDay();
   }, []);
@@ -87,7 +88,7 @@ export default function BreadTrackingPage() {
         const dates = [];
         let curr = new Date(start);
         while (curr <= end) {
-          dates.push(format(curr, 'yyyy-MM-dd'));
+          dates.push(safeFormat(curr, 'yyyy-MM-dd'));
           curr.setDate(curr.getDate() + 1);
         }
 
@@ -132,7 +133,7 @@ export default function BreadTrackingPage() {
   useEffect(() => {
     const lockPastDates = async () => {
       if (!reportData.length || isLoading) return;
-      const today = format(new Date(), 'yyyy-MM-dd');
+      const today = safeFormat(new Date(), 'yyyy-MM-dd');
       
       for (const item of reportData) {
         if (item.date < today && item.date >= '2026-04-14') {
@@ -219,9 +220,9 @@ export default function BreadTrackingPage() {
       setIsTenderModalOpen(false);
       setTenderForm({
         name: '',
-        date: format(new Date(), 'yyyy-MM-dd'),
+        date: safeFormat(new Date(), 'yyyy-MM-dd'),
         tenderNo: '',
-        endDate: format(addDays(new Date(), 365), 'yyyy-MM-dd'),
+        endDate: safeFormat(addDays(new Date(), 365), 'yyyy-MM-dd'),
         maxBreadCount: 0
       });
     } catch (error) {
@@ -231,7 +232,7 @@ export default function BreadTrackingPage() {
   };
 
   const handleOrderBread = async (item: any) => {
-    if (confirm(`${format(new Date(item.date), 'dd.MM.yyyy')} tarihi için ${item.finalOrderAmount} adet ekmek siparişi verilecek. Onaylıyor musunuz?`)) {
+    if (confirm(`${safeFormat(new Date(item.date), 'dd.MM.yyyy')} tarihi için ${item.finalOrderAmount} adet ekmek siparişi verilecek. Onaylıyor musunuz?`)) {
       const loadingToast = toast.loading('Sipariş işleniyor...');
       try {
         // Find active tender (oldest with remaining count > 0)
@@ -291,10 +292,10 @@ export default function BreadTrackingPage() {
       
       doc.setFontSize(10);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Aralığı: ${format(new Date(startDate), 'dd.MM.yyyy')} - ${format(new Date(endDate), 'dd.MM.yyyy')}`, 14, startY + 18);
+      doc.text(`Rapor Aralığı: ${safeFormat(new Date(startDate), 'dd.MM.yyyy')} - ${safeFormat(new Date(endDate), 'dd.MM.yyyy')}`, 14, startY + 18);
 
       const tableData = reportData.map(b => [
-        format(new Date(b.date), 'dd.MM.yyyy'),
+        safeFormat(new Date(b.date), 'dd.MM.yyyy'),
         b.totalNeeded.toString(),
         b.leftoverAmount.toString(),
         b.finalOrderAmount.toString(),
@@ -374,7 +375,7 @@ export default function BreadTrackingPage() {
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">Bitiş Tarihi:</span>
                   <span className={`font-bold ${isBefore(new Date(activeTender.endDate), addDays(new Date(), 7)) ? 'text-red-600' : ''}`}>
-                    {format(new Date(activeTender.endDate), 'dd.MM.yyyy')}
+                    {safeFormat(new Date(activeTender.endDate), 'dd.MM.yyyy')}
                   </span>
                 </div>
               </div>
@@ -472,8 +473,8 @@ export default function BreadTrackingPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {reportData.map((b) => (
-                  <tr key={b.id} className={b.date === format(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{format(new Date(b.date), 'dd.MM.yyyy')}</td>
+                  <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.totalNeeded}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex flex-col">
@@ -498,7 +499,7 @@ export default function BreadTrackingPage() {
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={b.note}>{b.note || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
-                        {b.date === format(new Date(), 'yyyy-MM-dd') && b.status !== 'ordered' && (
+                        {b.date === safeFormat(new Date(), 'yyyy-MM-dd') && b.status !== 'ordered' && (
                           <button
                             onClick={() => handleOrderBread(b)}
                             className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
@@ -508,7 +509,7 @@ export default function BreadTrackingPage() {
                             <span>Sipariş Ver</span>
                           </button>
                         )}
-                        {b.date === format(new Date(), 'yyyy-MM-dd') && (
+                        {b.date === safeFormat(new Date(), 'yyyy-MM-dd') && (
                           <button
                             onClick={() => {
                               setSelectedDate(b.date);
@@ -558,8 +559,8 @@ export default function BreadTrackingPage() {
                 <tr key={t.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{t.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.tenderNo || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(t.date), 'dd.MM.yyyy')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(t.endDate), 'dd.MM.yyyy')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeFormat(new Date(t.date), 'dd.MM.yyyy')}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeFormat(new Date(t.endDate), 'dd.MM.yyyy')}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.maxBreadCount}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{t.remainingMaxBreadCount}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">

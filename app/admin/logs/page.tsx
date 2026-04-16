@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { format } from 'date-fns';
 import { Search, Filter, Clock, User, Tag, Info } from 'lucide-react';
 import { useAppQuery } from '@/lib/hooks';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function SystemLogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -96,7 +97,7 @@ export default function SystemLogsPage() {
                   <td className="p-4 whitespace-nowrap">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Clock size={14} />
-                      {format(new Date(log.timestamp), 'dd.MM.yyyy HH:mm:ss')}
+                      {safeFormat(new Date(log.timestamp), 'dd.MM.yyyy HH:mm:ss')}
                     </div>
                   </td>
                   <td className="p-4">

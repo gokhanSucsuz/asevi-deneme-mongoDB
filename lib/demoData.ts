@@ -90,6 +90,8 @@ export const demoRouteStops: RouteStop[] = [
     status: 'delivered',
     deliveredAt: new Date(),
     order: 1,
+    mealType: 'standard',
+    isManual: false
   },
   {
     id: 'demo-rs-3',
@@ -98,6 +100,31 @@ export const demoRouteStops: RouteStop[] = [
     householdSnapshotName: 'Mehmet Kaya',
     householdSnapshotMemberCount: 5,
     status: 'failed',
+    order: 2,
+    mealType: 'standard',
+    isManual: false
+  }
+];
+
+export const demoRouteTemplates: RouteTemplate[] = [
+  {
+    id: 'demo-rt-1',
+    driverId: 'demo-d-1',
+    createdAt: new Date(),
+  }
+];
+
+export const demoRouteTemplateStops: RouteTemplateStop[] = [
+  {
+    id: 'demo-rts-1',
+    templateId: 'demo-rt-1',
+    householdId: 'demo-h-1',
+    order: 1,
+  },
+  {
+    id: 'demo-rts-2',
+    templateId: 'demo-rt-1',
+    householdId: 'demo-h-3',
     order: 2,
   }
 ];

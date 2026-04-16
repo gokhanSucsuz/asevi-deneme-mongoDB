@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { useAuth } from '@/components/AuthProvider';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function PersonnelPage() {
   const { user, role } = useAuth();
@@ -278,7 +279,7 @@ export default function PersonnelPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {format(new Date(personnel.createdAt), 'dd.MM.yyyy HH:mm')}
+                  {safeFormat(new Date(personnel.createdAt), 'dd.MM.yyyy HH:mm')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   {!isDemo && (

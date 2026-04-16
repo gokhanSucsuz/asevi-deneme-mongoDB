@@ -14,6 +14,7 @@ import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
+import { safeFormat } from '@/lib/date-utils';
 
 const navigation = [
   { name: 'Kontrol Paneli', href: '/admin', icon: Home },
@@ -128,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const runBackgroundTasks = async () => {
       const now = new Date();
-      const todayStr = format(now, 'yyyy-MM-dd');
+      const todayStr = safeFormat(now, 'yyyy-MM-dd');
 
       // 1. Check for expired pauses
       const allHouseholds = await db.households.toArray();
@@ -169,7 +170,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           
           await db.system_logs.add({
             action: 'Otomatik Rota Tamamlama',
-            details: `${format(new Date(route.date), 'dd.MM.yyyy')} tarihli rota süresi geçtiği için otomatik olarak tamamlandı.`,
+            details: `${safeFormat(new Date(route.date), 'dd.MM.yyyy')} tarihli rota süresi geçtiği için otomatik olarak tamamlandı.`,
             category: 'route',
             personnelEmail: 'system',
             personnelName: 'Sistem',

@@ -7,6 +7,7 @@ import { Plus, Trash2, Edit2, Save, X, ClipboardList, BarChart3, CheckCircle2, A
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/AuthProvider';
+import { safeFormat } from '@/lib/date-utils';
 import { 
   BarChart, 
   Bar, 
@@ -260,7 +261,7 @@ export default function SurveysPage() {
                 </div>
                 <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
                   <span className="text-[10px] text-gray-400 font-medium">
-                    {format(new Date(survey.createdAt), 'dd.MM.yyyy')}
+                    {safeFormat(new Date(survey.createdAt), 'dd.MM.yyyy')}
                   </span>
                   <button 
                     onClick={() => {

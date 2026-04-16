@@ -9,11 +9,12 @@ import { Save, FileText, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function LeftoverFoodPage() {
   const { user, role } = useAuth();
   const isDemo = role === 'demo';
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [quantity, setQuantity] = useState<number>(0);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -85,18 +86,18 @@ export default function LeftoverFoodPage() {
     let title = 'Artan Yemek Raporu';
 
     if (reportType === 'daily') {
-      filteredRecords = records.filter(r => r.date === format(today, 'yyyy-MM-dd'));
-      title = `Günlük Artan Yemek Raporu (${format(today, 'dd.MM.yyyy')})`;
+      filteredRecords = records.filter(r => r.date === safeFormat(today, 'yyyy-MM-dd'));
+      title = `Günlük Artan Yemek Raporu (${safeFormat(today, 'dd.MM.yyyy')})`;
     } else if (reportType === 'weekly') {
       const start = startOfWeek(today, { weekStartsOn: 1 });
       const end = endOfWeek(today, { weekStartsOn: 1 });
       filteredRecords = records.filter(r => isWithinInterval(parseISO(r.date), { start, end }));
-      title = `Haftalık Artan Yemek Raporu (${format(start, 'dd.MM.yyyy')} - ${format(end, 'dd.MM.yyyy')})`;
+      title = `Haftalık Artan Yemek Raporu (${safeFormat(start, 'dd.MM.yyyy')} - ${safeFormat(end, 'dd.MM.yyyy')})`;
     } else if (reportType === 'monthly') {
       const start = startOfMonth(today);
       const end = endOfMonth(today);
       filteredRecords = records.filter(r => isWithinInterval(parseISO(r.date), { start, end }));
-      title = `Aylık Artan Yemek Raporu (${format(today, 'MMMM yyyy', { locale: tr })})`;
+      title = `Aylık Artan Yemek Raporu (${safeFormat(today, 'MMMM yyyy')})`;
     }
 
     doc.setFont('helvetica', 'bold');
@@ -104,7 +105,7 @@ export default function LeftoverFoodPage() {
     doc.text(title, 14, 20);
 
     const tableData = filteredRecords.map(r => [
-      format(parseISO(r.date), 'dd.MM.yyyy'),
+      safeFormat(parseISO(r.date), 'dd.MM.yyyy'),
       r.quantity.toString(),
       r.notes || '-',
       r.updatedBy
@@ -125,7 +126,7 @@ export default function LeftoverFoodPage() {
     doc.setFont('helvetica', 'bold');
     doc.text(`Toplam Artan Yemek: ${totalQuantity} Porsiyon`, 14, finalY + 10);
 
-    doc.save(`artan_yemek_raporu_${format(today, 'yyyy-MM-dd')}.pdf`);
+    doc.save(`artan_yemek_raporu_${safeFormat(today, 'yyyy-MM-dd')}.pdf`);
   };
 
   return (
@@ -229,7 +230,7 @@ export default function LeftoverFoodPage() {
               ) : (
                 records.slice(0, 10).map((record, index) => (
                   <tr key={record.id || index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-4">{format(parseISO(record.date), 'dd.MM.yyyy')}</td>
+                    <td className="p-4">{safeFormat(parseISO(record.date), 'dd.MM.yyyy')}</td>
                     <td className="p-4 font-medium">{record.quantity}</td>
                     <td className="p-4 text-gray-600">{record.notes || '-'}</td>
                     <td className="p-4 text-gray-600 text-sm">{record.updatedBy}</td>

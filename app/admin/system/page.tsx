@@ -8,6 +8,7 @@ import { format, differenceInDays } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { encrypt, isEncrypted } from '@/lib/crypto';
 import { useAuth } from '@/components/AuthProvider';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function SystemSettingsPage() {
   const { user, role } = useAuth();
@@ -165,7 +166,7 @@ export default function SystemSettingsPage() {
       if (formatType === 'json') {
         const dataStr = JSON.stringify(allData, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-        const exportFileDefaultName = `Asevi_Yedek_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+        const exportFileDefaultName = `Asevi_Yedek_${safeFormat(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
 
         const linkElement = document.createElement('a');
         linkElement.setAttribute('href', dataUri);
@@ -181,7 +182,7 @@ export default function SystemSettingsPage() {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(personnel), 'Personel');
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logs), 'Sistem Günlüğü');
 
-        XLSX.writeFile(wb, `Asevi_Yedek_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.xlsx`);
+        XLSX.writeFile(wb, `Asevi_Yedek_${safeFormat(new Date(), 'yyyy-MM-dd_HH-mm')}.xlsx`);
       }
 
       // Update last backup date
@@ -230,7 +231,7 @@ export default function SystemSettingsPage() {
       let rCount = 0;
       for (const r of routes) {
         if (typeof r.date !== 'string' || r.date.includes('T')) {
-          const dateStr = format(new Date(r.date), 'yyyy-MM-dd');
+          const dateStr = safeFormat(new Date(r.date), 'yyyy-MM-dd');
           await db.routes.update(r.id!, { date: dateStr });
           rCount++;
         }
@@ -243,11 +244,11 @@ export default function SystemSettingsPage() {
         let needsUpdate = false;
         const updates: any = {};
         if (typeof wd.date !== 'string' || wd.date.includes('T')) {
-          updates.date = format(new Date(wd.date), 'yyyy-MM-dd');
+          updates.date = safeFormat(new Date(wd.date), 'yyyy-MM-dd');
           needsUpdate = true;
         }
         if (typeof wd.month !== 'string' || wd.month.includes('T')) {
-          updates.month = format(new Date(wd.month), 'yyyy-MM');
+          updates.month = safeFormat(new Date(wd.month), 'yyyy-MM');
           needsUpdate = true;
         }
         if (needsUpdate) {
@@ -261,7 +262,7 @@ export default function SystemSettingsPage() {
       let btCount = 0;
       for (const bt of breadTracking) {
         if (typeof bt.date !== 'string' || bt.date.includes('T')) {
-          const dateStr = format(new Date(bt.date), 'yyyy-MM-dd');
+          const dateStr = safeFormat(new Date(bt.date), 'yyyy-MM-dd');
           await db.breadTracking.update(bt.id!, { date: dateStr });
           btCount++;
         }
@@ -272,7 +273,7 @@ export default function SystemSettingsPage() {
       let hCount = 0;
       for (const h of households) {
         if (h.pausedUntil && (typeof h.pausedUntil !== 'string' || h.pausedUntil.includes('T'))) {
-          const dateStr = format(new Date(h.pausedUntil), 'yyyy-MM-dd');
+          const dateStr = safeFormat(new Date(h.pausedUntil), 'yyyy-MM-dd');
           await db.households.update(h.id!, { pausedUntil: dateStr });
           hCount++;
         }
@@ -283,7 +284,7 @@ export default function SystemSettingsPage() {
       let lfCount = 0;
       for (const lf of leftoverFood) {
         if (typeof lf.date !== 'string' || lf.date.includes('T')) {
-          const dateStr = format(new Date(lf.date), 'yyyy-MM-dd');
+          const dateStr = safeFormat(new Date(lf.date), 'yyyy-MM-dd');
           await db.leftover_food.update(lf.id!, { date: dateStr });
           lfCount++;
         }
@@ -296,11 +297,11 @@ export default function SystemSettingsPage() {
         let needsUpdate = false;
         const updates: any = {};
         if (typeof t.date !== 'string' || t.date.includes('T')) {
-          updates.date = format(new Date(t.date), 'yyyy-MM-dd');
+          updates.date = safeFormat(new Date(t.date), 'yyyy-MM-dd');
           needsUpdate = true;
         }
         if (typeof t.endDate !== 'string' || t.endDate.includes('T')) {
-          updates.endDate = format(new Date(t.endDate), 'yyyy-MM-dd');
+          updates.endDate = safeFormat(new Date(t.endDate), 'yyyy-MM-dd');
           needsUpdate = true;
         }
         if (needsUpdate) {
@@ -508,7 +509,7 @@ export default function SystemSettingsPage() {
             <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-100">
               <span className="text-gray-600">Son Yedekleme:</span>
               <span className="font-medium text-gray-900">
-                {lastBackup ? format(lastBackup, 'dd.MM.yyyy HH:mm') : 'Hiç yedekleme yapılmadı'}
+                {lastBackup ? safeFormat(lastBackup, 'dd.MM.yyyy HH:mm') : 'Hiç yedekleme yapılmadı'}
               </span>
             </div>
 

@@ -7,6 +7,7 @@ import { db, WorkingDay } from '@/lib/db';
 import { toast } from 'sonner';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, History, Info } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function WorkingDaysPage() {
   const { user, role } = useAuth();
@@ -16,7 +17,7 @@ export default function WorkingDaysPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const monthStr = format(currentMonth, 'yyyy-MM');
+  const monthStr = safeFormat(currentMonth, 'yyyy-MM');
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentMonth),
     end: endOfMonth(currentMonth)
@@ -39,7 +40,7 @@ export default function WorkingDaysPage() {
   }, [monthStr]);
 
   const toggleDay = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    const dateStr = safeFormat(date, 'yyyy-MM-dd');
     const today = startOfDay(new Date());
     
     if (isBefore(date, today)) {
@@ -71,7 +72,7 @@ export default function WorkingDaysPage() {
       // Let's save all days that were interacted with.
       
       const daysToSave = daysInMonth.map(day => {
-        const dateStr = format(day, 'yyyy-MM-dd');
+        const dateStr = safeFormat(day, 'yyyy-MM-dd');
         const existing = workingDays.find(d => d.date === dateStr);
         if (existing) return existing;
         
@@ -95,7 +96,7 @@ export default function WorkingDaysPage() {
       const sessionUser = session ? JSON.parse(session) : null;
       await db.system_logs.add({
         action: 'Çalışma Günleri Güncellendi',
-        details: `${format(currentMonth, 'MMMM yyyy', { locale: tr })} ayı çalışma günleri güncellendi.`,
+        details: `${safeFormat(currentMonth, 'MMMM yyyy')} ayı çalışma günleri güncellendi.`,
         personnelName: sessionUser?.name || 'Sistem',
         personnelEmail: user?.email || 'Bilinmeyen Email',
         timestamp: new Date(),
@@ -144,7 +145,7 @@ export default function WorkingDaysPage() {
               <ChevronLeft size={24} />
             </button>
             <h3 className="text-xl font-bold text-gray-900 capitalize">
-              {format(currentMonth, 'MMMM yyyy', { locale: tr })}
+              {safeFormat(currentMonth, 'MMMM yyyy')}
             </h3>
             <button onClick={nextMonth} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
               <ChevronRight size={24} />
@@ -170,7 +171,7 @@ export default function WorkingDaysPage() {
             ))}
 
             {daysInMonth.map(day => {
-              const dateStr = format(day, 'yyyy-MM-dd');
+              const dateStr = safeFormat(day, 'yyyy-MM-dd');
               const wd = workingDays.find(d => d.date === dateStr);
               
               // Default logic if not in DB: Weekdays are working days
@@ -192,7 +193,7 @@ export default function WorkingDaysPage() {
                 >
                   <div className="flex justify-between items-start">
                     <span className={`text-sm font-bold ${isWorking ? 'text-blue-700' : 'text-gray-400'}`}>
-                      {format(day, 'd')}
+                      {safeFormat(day, 'd')}
                     </span>
                     {isWorking && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
                   </div>

@@ -8,6 +8,7 @@ import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
+import { safeFormat } from '@/lib/date-utils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
@@ -36,7 +37,7 @@ export default function RoutesPage() {
     while (defaultDate.getDay() === 0 || defaultDate.getDay() === 6) {
       defaultDate.setDate(defaultDate.getDate() + 1);
     }
-    return format(defaultDate, 'yyyy-MM-dd');
+    return safeFormat(defaultDate, 'yyyy-MM-dd');
   };
 
   const [selectedDate, setSelectedDate] = useState(getDefaultRouteDate());
@@ -63,7 +64,8 @@ export default function RoutesPage() {
   const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
-  const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
+  const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
+  const activeDrivers = drivers?.filter(d => !!d.isActive) || [];
   const households = useAppQuery(() => db.households.toArray(), [], 'households');
   const systemLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
@@ -336,7 +338,7 @@ export default function RoutesPage() {
       
       // Auto-generate or update route for the next working day
       const nextDay = await getNextWorkingDay(new Date());
-      const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+      const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
       
       // If a route already exists for this driver on nextDay, we should update it
       const existingRoute = await db.routes.where('driverId').equals(selectedDriverId).toArray();
@@ -439,7 +441,7 @@ export default function RoutesPage() {
 
       // 2. Calculate bread for the NEXT working day
       const nextWorkingDay = await getNextWorkingDay(new Date(routeForLeftover.date));
-      const nextDateStr = format(nextWorkingDay, 'yyyy-MM-dd');
+      const nextDateStr = safeFormat(nextWorkingDay, 'yyyy-MM-dd');
       const { totalNeeded, leftoverAmount, finalOrderAmount, containerCount, ownContainerCount, note } = await calculateBreadForNextDay(nextDateStr);
       
       // Check if tracking already exists for that date
@@ -644,7 +646,7 @@ export default function RoutesPage() {
           history: [...(route.history || []), { action: 'approved', date: new Date(), note: 'Yönetici tarafından onaylandı' }]
         });
 
-        await addLog('Rota Onaylandı', `${format(new Date(route.date), 'dd.MM.yyyy')} tarihli ${getDriverName(route.driverId)} rotası onaylandı.`);
+        await addLog('Rota Onaylandı', `${safeFormat(route.date, 'dd.MM.yyyy')} tarihli ${getDriverName(route.driverId)} rotası onaylandı.`);
         
         // Automatically download PDF
         await generateRouteTutanakPDF(route, stops);
@@ -652,7 +654,7 @@ export default function RoutesPage() {
         // Trigger bread calculation for current and next day
         try {
           // 1. Current Day
-          const currentRouteDate = format(new Date(route.date), 'yyyy-MM-dd');
+          const currentRouteDate = safeFormat(route.date, 'yyyy-MM-dd');
           const currentBreadData = await calculateBreadForNextDay(currentRouteDate);
           const existingCurrentTracking = await db.breadTracking.where('date').equals(currentRouteDate).first();
           
@@ -679,7 +681,7 @@ export default function RoutesPage() {
 
           // 2. Next Day
           const nextWorkingDay = await getNextWorkingDay(new Date(route.date));
-          const nextDateStr = format(nextWorkingDay, 'yyyy-MM-dd');
+          const nextDateStr = safeFormat(nextWorkingDay, 'yyyy-MM-dd');
           const { totalNeeded, leftoverAmount, finalOrderAmount, containerCount, ownContainerCount, note } = await calculateBreadForNextDay(nextDateStr);
           
           const existingNextTracking = await db.breadTracking.where('date').equals(nextDateStr).first();
@@ -970,17 +972,6 @@ export default function RoutesPage() {
     await generateRouteTutanakPDF(viewRouteDetails, routeDetailsStops);
   };
 
-  const safeFormat = (date: any, formatStr: string) => {
-    try {
-      if (!date) return '-';
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return '-';
-      return format(d, formatStr);
-    } catch (e) {
-      return '-';
-    }
-  };
-
   const exportWeeklyChecklistPDF = async (driverId: string, startDateStr: string) => {
     const driver = drivers?.find(d => d.id === driverId);
     if (!driver) return;
@@ -1006,7 +997,7 @@ export default function RoutesPage() {
     doc.text(`Hafta: ${safeFormat(weekDays[0], 'dd.MM.yyyy')} - ${safeFormat(weekDays[4], 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 25, { align: 'right' });
 
     // Get all routes for this driver in this week
-    const weekDates = weekDays.map(d => format(d, 'yyyy-MM-dd'));
+    const weekDates = weekDays.map(d => safeFormat(d, 'yyyy-MM-dd'));
     const weekRoutes = routes?.filter(r => r.driverId === driverId && weekDates.includes(r.date)) || [];
     const weekRouteIds = weekRoutes.map(r => r.id);
     const weekStops = routeStops?.filter(rs => weekRouteIds.includes(rs.routeId)) || [];
@@ -1072,11 +1063,11 @@ export default function RoutesPage() {
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+    doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
 
     const tableColumn = ["Tarih", "İşlem", "Detay", "Personel", "Kategori"];
     const tableRows = filteredLogs.map(log => [
-      format(new Date(log.timestamp), 'dd.MM.yyyy HH:mm'),
+      safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm'),
       log.action,
       log.details || '-',
       log.personnelName,
@@ -1130,7 +1121,7 @@ export default function RoutesPage() {
       // Sync with daily routes (if pending)
       const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
       const nextDay = await getNextWorkingDay(new Date());
-      const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+      const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
       
       const syncDates = [todayStr, nextDayStr];
       for (const dateStr of syncDates) {
@@ -1372,42 +1363,47 @@ export default function RoutesPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {routeTemplates?.map((template) => {
-                  const tStops = routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || [];
+                {activeDrivers?.map((driver) => {
+                  const template = routeTemplates?.find(rt => rt.driverId === driver.id);
+                  const tStops = template ? (routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || []) : [];
                   return (
-                    <tr key={template.id}>
+                    <tr key={driver.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {getDriverName(template.driverId)}
+                        {driver.name} ({driver.vehiclePlate})
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {tStops.length} Hane
+                        {template ? `${tStops.length} Hane` : 'Şablon Oluşturulmamış'}
                       </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button 
-                        onClick={() => exportWeeklyChecklistPDF(template.driverId, format(startOfDay(new Date()), 'yyyy-MM-dd'))} 
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                        title="Haftalık Çizelge Al"
-                      >
-                        <FileText size={18} />
-                      </button>
+                      {template && (
+                        <button 
+                          onClick={() => exportWeeklyChecklistPDF(driver.id!, safeFormat(startOfDay(new Date()), 'yyyy-MM-dd'))} 
+                          className="text-indigo-600 hover:text-indigo-900 mr-3"
+                          title="Haftalık Çizelge Al"
+                        >
+                          <FileText size={18} />
+                        </button>
+                      )}
                       {!isDemo && (
                         <>
-                          <button onClick={() => openTemplateModal(template)} className="text-blue-600 hover:text-blue-900 mr-3">
-                            <Edit2 size={18} />
+                          <button onClick={() => openTemplateModal(template || { driverId: driver.id!, createdAt: new Date() } as RouteTemplate)} className="text-blue-600 hover:text-blue-900 mr-3">
+                            {template ? <Edit2 size={18} /> : <Plus size={18} />}
                           </button>
-                          <button onClick={() => deleteTemplate(template.id!)} className="text-red-600 hover:text-red-900">
-                            <Trash2 size={18} />
-                          </button>
+                          {template && (
+                            <button onClick={() => deleteTemplate(template.id!)} className="text-red-600 hover:text-red-900">
+                              <Trash2 size={18} />
+                            </button>
+                          )}
                         </>
                       )}
                     </td>
                     </tr>
                   );
                 })}
-                {routeTemplates?.length === 0 && (
+                {(!activeDrivers || activeDrivers.length === 0) && (
                   <tr>
                     <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
-                      Henüz ana rota oluşturulmamış.
+                      Henüz aktif şoför bulunmuyor.
                     </td>
                   </tr>
                 )}
@@ -1609,7 +1605,7 @@ export default function RoutesPage() {
                       required
                     >
                       <option value="">Şoför Seçin</option>
-                      {drivers?.map(d => (
+                      {activeDrivers?.map(d => (
                         <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
                       ))}
                     </select>
@@ -1743,7 +1739,7 @@ export default function RoutesPage() {
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
-                Rota Detayları - {viewRouteDetails.driverSnapshotName || getDriverName(viewRouteDetails.driverId)} ({format(new Date(viewRouteDetails.date), 'dd.MM.yyyy')})
+                Rota Detayları - {viewRouteDetails.driverSnapshotName || getDriverName(viewRouteDetails.driverId)} ({safeFormat(viewRouteDetails.date, 'dd.MM.yyyy')})
               </h3>
               <button onClick={() => setViewRouteDetails(null)} className="text-gray-400 hover:text-gray-500">
                 <X size={24} />
@@ -1943,7 +1939,7 @@ export default function RoutesPage() {
                       required
                     >
                       <option value="">Şoför Seçin</option>
-                      {drivers?.map(d => (
+                      {activeDrivers?.map(d => (
                         <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
                       ))}
                     </select>

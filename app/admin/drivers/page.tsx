@@ -11,6 +11,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function DriversPage() {
   const { user, role } = useAuth();
@@ -163,8 +164,8 @@ export default function DriversPage() {
       doc.text(`${driverToReport.name} - Şoför Performans Raporu`, 40, 25);
       doc.setFontSize(10);
       doc.text(`Araç Plakası: ${driverToReport.vehiclePlate}`, 40, 31);
-      doc.text(`Dönem: ${format(startDate, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')} (${months} Ay)`, 40, 37);
-      doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 43);
+      doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${months} Ay)`, 40, 37);
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 43);
 
       // Summary Table
       autoTable(doc, {
@@ -182,7 +183,7 @@ export default function DriversPage() {
         const delivered = routeStops.filter((s: RouteStop) => s.status === 'delivered').length;
         const failed = routeStops.filter((s: RouteStop) => s.status === 'failed').length;
         return [
-          format(new Date(route.date), 'dd.MM.yyyy'),
+          safeFormat(new Date(route.date), 'dd.MM.yyyy'),
           (route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-',
           delivered,
           failed,
@@ -210,7 +211,7 @@ export default function DriversPage() {
         const failedTableRows = failedStops.map((stop: RouteStop) => {
           const route = driverRoutes.find((r: Route) => r.id === stop.routeId);
           return [
-            route ? format(new Date(route.date), 'dd.MM.yyyy') : '-',
+            route ? safeFormat(new Date(route.date), 'dd.MM.yyyy') : '-',
             stop.householdSnapshotName || '-',
             stop.issueReport || '-'
           ];
@@ -364,7 +365,7 @@ export default function DriversPage() {
                     {getDriverRoutes(driverToReport.id!).map((route) => (
                       <tr key={route.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {format(new Date(route.date), 'dd.MM.yyyy')}
+                          {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.startKm || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.endKm || '-'}</td>

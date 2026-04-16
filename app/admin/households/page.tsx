@@ -12,6 +12,7 @@ import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import * as XLSX from 'xlsx';
+import { safeFormat } from '@/lib/date-utils';
 
 export default function HouseholdsPage() {
   const { user, role } = useAuth();
@@ -346,7 +347,7 @@ export default function HouseholdsPage() {
       }
 
       // Update today's and future vakif_pickup routes
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
       const futureRoutes = await db.routes.where('driverId').equals('vakif_pickup').toArray();
       const relevantRoutes = futureRoutes.filter(r => r.date >= todayStr && r.status !== 'completed');
 
@@ -481,18 +482,18 @@ export default function HouseholdsPage() {
       
       doc.setFontSize(10);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
       
       doc.text(`Hane Sorumlusu: ${householdToReport.headName}`, 14, 45);
       doc.text(`Adres: ${householdToReport.address}`, 14, 50);
-      doc.text(`Dönem: ${format(startDate, 'dd.MM.yyyy')} - ${format(endDate, 'dd.MM.yyyy')} (${months} Ay)`, 14, 55);
+      doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${months} Ay)`, 14, 55);
 
       const tableColumn = ["Tarih", "Şoför", "Durum", "Yemek/Ekmek", "Not/Hata"];
       const tableRows = filteredStops.map((stop: RouteStop) => {
         const route = allRoutes.find((r: Route) => r.id === stop.routeId);
         const breadCount = stop.householdSnapshotBreadCount ?? householdToReport.breadCount ?? householdToReport.memberCount;
         return [
-          route ? format(new Date(route.date), 'dd.MM.yyyy') : '-',
+          route ? safeFormat(new Date(route.date), 'dd.MM.yyyy') : '-',
           route?.driverSnapshotName || '-',
           stop.status === 'delivered' ? 'Teslim Edildi' : stop.status === 'failed' ? 'Teslim Edilemedi' : 'Bekliyor',
           `${householdToReport.memberCount} / ${breadCount}`,
@@ -1074,7 +1075,7 @@ export default function HouseholdsPage() {
                            item.action === 'paused' ? 'Pasife Alındı' : 
                            item.action === 'activated' ? 'Aktifleştirildi' : 'Silindi'}
                         </p>
-                        <p className="text-sm text-gray-500">{format(new Date(item.date), 'dd.MM.yyyy HH:mm')}</p>
+                        <p className="text-sm text-gray-500">{safeFormat(new Date(item.date), 'dd.MM.yyyy HH:mm')}</p>
                         {item.note && <p className="text-sm text-gray-700 mt-1">{item.note}</p>}
                       </div>
                     </div>

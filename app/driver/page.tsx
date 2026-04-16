@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes } from '@/lib/route-utils';
-import { format } from 'date-fns';
+import { safeFormat } from '@/lib/date-utils';
 import { getTurkishPdf, addVakifLogo } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { CheckCircle, XCircle, AlertTriangle, Navigation, MapPin, LogOut, Clock, FileText } from 'lucide-react';
@@ -34,7 +34,7 @@ export default function DriverPage() {
 
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = safeFormat(new Date(), 'yyyy-MM-dd');
 
   // Auth check
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function DriverPage() {
     if (isDemo) return;
     const runBackgroundTasks = async () => {
       const now = new Date();
-      const todayStr = format(now, 'yyyy-MM-dd');
+      const todayStr = safeFormat(now, 'yyyy-MM-dd');
       const currentHour = now.getHours();
 
       try {
@@ -133,7 +133,7 @@ export default function DriverPage() {
         while (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
           targetDate.setDate(targetDate.getDate() + 1);
         }
-        const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+        const targetDateStr = safeFormat(targetDate, 'yyyy-MM-dd');
         
         // Use utility to ensure route exists
         await generateRouteFromTemplate(selectedDriverId, targetDateStr);
@@ -275,7 +275,7 @@ export default function DriverPage() {
     doc.text('GÜNLÜK YEMEK DAĞITIM İŞARETLEME FORMU', doc.internal.pageSize.width / 2, 35, { align: 'center' });
     
     doc.setFontSize(10);
-    doc.text(`Tarih: ${format(new Date(todayRoute.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 40, 22);
+    doc.text(`Tarih: ${safeFormat(new Date(todayRoute.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 40, 22);
     doc.text(`Şoför Adı Soyadı: ${driverName}`, 14, 45);
 
     let totalPeople = 0;
@@ -328,7 +328,7 @@ export default function DriverPage() {
       }
     });
 
-    doc.save(`Isaretleme_Formu_${format(new Date(todayRoute.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Isaretleme_Formu_${safeFormat(new Date(todayRoute.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
   };
 
   const handleLogout = async () => {
@@ -851,7 +851,7 @@ export default function DriverPage() {
                 <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm max-h-40 overflow-y-auto">
                   {stop.history && stop.history.length > 0 ? stop.history.map((h: any, i: number) => (
                     <div key={i} className="border-b border-gray-200 last:border-0 pb-2 last:pb-0">
-                      <span className="text-gray-500">{format(new Date(h.timestamp), 'dd.MM.yyyy HH:mm')}</span> - 
+                      <span className="text-gray-500">{safeFormat(new Date(h.timestamp), 'dd.MM.yyyy HH:mm')}</span> - 
                       <span className={`ml-2 font-medium ${h.status === 'delivered' ? 'text-green-600' : 'text-red-600'}`}>
                         {h.status === 'delivered' ? 'Teslim Edildi' : 'Edilemedi'}
                       </span>
@@ -859,7 +859,7 @@ export default function DriverPage() {
                     </div>
                   )) : (
                     <div className="border-b border-gray-200 pb-2">
-                      <span className="text-gray-500">{stop.deliveredAt ? format(new Date(stop.deliveredAt), 'dd.MM.yyyy HH:mm') : '-'}</span> - 
+                      <span className="text-gray-500">{stop.deliveredAt ? safeFormat(new Date(stop.deliveredAt), 'dd.MM.yyyy HH:mm') : '-'}</span> - 
                       <span className={`ml-2 font-medium ${stop.status === 'delivered' ? 'text-green-600' : 'text-red-600'}`}>
                         {stop.status === 'delivered' ? 'Teslim Edildi' : 'Edilemedi'}
                       </span>

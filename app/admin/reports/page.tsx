@@ -5,6 +5,7 @@ import { useAppQuery } from '@/lib/hooks';
 import { db } from '@/lib/db';
 import { format, parseISO, eachDayOfInterval, isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { safeFormat } from '@/lib/date-utils';
 import { Download, FileSpreadsheet, FileText as FilePdf, BarChart3, PieChart as PieChartIcon, TrendingUp, Users, ShoppingBasket, Truck, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -22,10 +23,10 @@ const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 export default function ReportsPage() {
   const { user } = useAuth();
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | 'failed'>('daily');
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [selectedYear, setSelectedYear] = useState(format(new Date(), 'yyyy'));
+  const [startDate, setStartDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
+  const [selectedMonth, setSelectedMonth] = useState(safeFormat(new Date(), 'yyyy-MM'));
+  const [selectedYear, setSelectedYear] = useState(safeFormat(new Date(), 'yyyy'));
   const reportRef = useRef<HTMLDivElement>(null);
   const isDemo = typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true';
 
@@ -44,21 +45,21 @@ export default function ReportsPage() {
   let effectiveEndDate = endDate;
 
   if (reportType === 'daily') {
-    effectiveStartDate = format(new Date(), 'yyyy-MM-dd');
-    effectiveEndDate = format(new Date(), 'yyyy-MM-dd');
+    effectiveStartDate = safeFormat(new Date(), 'yyyy-MM-dd');
+    effectiveEndDate = safeFormat(new Date(), 'yyyy-MM-dd');
   } else if (reportType === 'weekly') {
     const now = new Date();
-    effectiveStartDate = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-    effectiveEndDate = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    effectiveStartDate = safeFormat(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+    effectiveEndDate = safeFormat(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   } else if (reportType === 'monthly') {
     const [year, month] = selectedMonth.split('-');
     const date = new Date(Number(year), Number(month) - 1, 1);
-    effectiveStartDate = format(startOfMonth(date), 'yyyy-MM-dd');
-    effectiveEndDate = format(endOfMonth(date), 'yyyy-MM-dd');
+    effectiveStartDate = safeFormat(startOfMonth(date), 'yyyy-MM-dd');
+    effectiveEndDate = safeFormat(endOfMonth(date), 'yyyy-MM-dd');
   } else if (reportType === 'yearly') {
     const date = new Date(Number(selectedYear), 0, 1);
-    effectiveStartDate = format(date, 'yyyy-01-01');
-    effectiveEndDate = format(new Date(Number(selectedYear), 11, 31), 'yyyy-12-31');
+    effectiveStartDate = safeFormat(date, 'yyyy-01-01');
+    effectiveEndDate = safeFormat(new Date(Number(selectedYear), 11, 31), 'yyyy-12-31');
   } else if (reportType === 'failed') {
     // For failed deliveries, use the custom date range or default to today
     effectiveStartDate = startDate;
@@ -170,8 +171,8 @@ export default function ReportsPage() {
       // Group by month
       for (let i = 0; i < 12; i++) {
         const monthDate = new Date(Number(selectedYear), i, 1);
-        const monthStart = format(startOfMonth(monthDate), 'yyyy-MM-dd');
-        const monthEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+        const monthStart = safeFormat(startOfMonth(monthDate), 'yyyy-MM-dd');
+        const monthEnd = safeFormat(endOfMonth(monthDate), 'yyyy-MM-dd');
         
         const monthRoutes = filteredRoutes.filter(r => r.date >= monthStart && r.date <= monthEnd);
         const monthRouteIds = monthRoutes.map(r => r.id);
@@ -187,7 +188,7 @@ export default function ReportsPage() {
           .reduce((sum, rs) => sum + (rs.householdSnapshotBreadCount || 0), 0);
 
         trendData.push({
-          date: format(monthDate, 'MMM', { locale: tr }),
+          date: safeFormat(monthDate, 'MMM'),
           'Teslim Edilen Yemek': monthMeals,
           'Artan Yemek': monthLeftoverTotal,
           'Dağıtılan Ekmek': monthBreadDelivered
@@ -197,7 +198,7 @@ export default function ReportsPage() {
       // Daily trend
       const days = eachDayOfInterval({ start: parseISO(effectiveStartDate), end: parseISO(effectiveEndDate) });
       days.forEach(day => {
-        const dateStr = format(day, 'yyyy-MM-dd');
+        const dateStr = safeFormat(day, 'yyyy-MM-dd');
         const dayRoutes = filteredRoutes.filter(r => r.date === dateStr);
         const dayRouteIds = dayRoutes.map(r => r.id);
         const dayApprovedRouteIds = dayRoutes.filter(r => r.status === 'approved').map(r => r.id);
@@ -210,7 +211,7 @@ export default function ReportsPage() {
           .reduce((sum, rs) => sum + (rs.householdSnapshotBreadCount || 0), 0);
 
         trendData.push({
-          date: format(day, 'dd MMM', { locale: tr }),
+          date: safeFormat(day, 'dd MMM'),
           'Teslim Edilen Yemek': dayMeals,
           'Artan Yemek': dayLeftover,
           'Dağıtılan Ekmek': dayBreadDelivered
@@ -224,9 +225,8 @@ export default function ReportsPage() {
       const data = filteredRoutes.map(route => {
         const routeStopsForRoute = filteredStops.filter(rs => rs.routeId === route.id);
         const delivered = routeStopsForRoute.filter(rs => rs.status === 'delivered').length;
-        const routeDate = route.date && !isNaN(new Date(route.date).getTime()) ? format(new Date(route.date), 'dd.MM.yyyy') : '-';
         return {
-          'Tarih': routeDate,
+          'Tarih': safeFormat(route.date, 'dd.MM.yyyy'),
           'Şoför': route.driverSnapshotName,
           'Durum': route.status === 'completed' ? 'Tamamlandı' : route.status === 'in_progress' ? 'Devam Ediyor' : 'Bekliyor',
           'Teslimat': `${delivered} / ${routeStopsForRoute.length}`
@@ -274,10 +274,10 @@ export default function ReportsPage() {
       
       doc.setFontSize(10);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
       
-      const startStr = effectiveStartDate && !isNaN(new Date(effectiveStartDate).getTime()) ? format(new Date(effectiveStartDate), 'dd.MM.yyyy') : '-';
-      const endStr = effectiveEndDate && !isNaN(new Date(effectiveEndDate).getTime()) ? format(new Date(effectiveEndDate), 'dd.MM.yyyy') : '-';
+      const startStr = safeFormat(effectiveStartDate, 'dd.MM.yyyy');
+      const endStr = safeFormat(effectiveEndDate, 'dd.MM.yyyy');
       doc.text(`Rapor Tarih Aralığı: ${startStr} - ${endStr}`, 14, 45);
 
       // Add Summary Stats
@@ -499,7 +499,7 @@ export default function ReportsPage() {
                     return (
                       <tr key={stop.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {route ? format(parseISO(route.date), 'dd.MM.yyyy') : '-'}
+                          {route ? safeFormat(route.date, 'dd.MM.yyyy') : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {stop.householdSnapshotName}
