@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(results.map(doc => ({ ...doc, id: doc._id.toString(), _id: undefined })));
       }
       case 'get': {
-        const doc = await col.findOne({ _id: getQueryId(id) });
+        const doc = await col.findOne({ _id: getQueryId(id) } as any);
         if (!doc) return NextResponse.json(null);
         return NextResponse.json({ ...doc, id: doc._id.toString(), _id: undefined });
       }
@@ -60,16 +60,16 @@ export async function POST(req: NextRequest) {
       }
       case 'put': {
         const { id: docId, ...rest } = data;
-        await col.replaceOne({ _id: getQueryId(docId) }, rest, { upsert: true });
+        await col.replaceOne({ _id: getQueryId(docId) } as any, rest, { upsert: true });
         return NextResponse.json({ success: true });
       }
       case 'update': {
-        await col.updateOne({ _id: getQueryId(id) }, { $set: data });
+        await col.updateOne({ _id: getQueryId(id) } as any, { $set: data });
         return NextResponse.json({ success: true });
       }
       case 'delete': {
         if (id) {
-          await col.deleteOne({ _id: getQueryId(id) });
+          await col.deleteOne({ _id: getQueryId(id) } as any);
         } else if (queryObj) {
           await col.deleteMany(queryObj);
         }
