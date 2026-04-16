@@ -3,29 +3,28 @@ import jsPDF from 'jspdf';
 export async function getTurkishPdf(orientation: 'portrait' | 'landscape' = 'portrait'): Promise<jsPDF> {
   const doc = new jsPDF(orientation);
   try {
-    const [regRes, medRes] = await Promise.all([
-      fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf'),
-      fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf')
+    // Use a more reliable font source or local if possible, but for now we stick to CDN with better error handling
+    const fontUrls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf',
+      'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf'
+    ];
+
+    const fetchFont = async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to fetch font: ${url}`);
+      const blob = await res.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    const [regBase64, medBase64] = await Promise.all([
+      fetchFont(fontUrls[0]),
+      fetchFont(fontUrls[1])
     ]);
-
-    if (!regRes.ok || !medRes.ok) {
-      throw new Error('Failed to fetch fonts');
-    }
-
-    const regBlob = await regRes.blob();
-    const medBlob = await medRes.blob();
-
-    const regBase64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-      reader.readAsDataURL(regBlob);
-    });
-
-    const medBase64 = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-      reader.readAsDataURL(medBlob);
-    });
 
     doc.addFileToVFS('Roboto-Regular.ttf', regBase64);
     doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
@@ -34,11 +33,10 @@ export async function getTurkishPdf(orientation: 'portrait' | 'landscape' = 'por
     doc.addFont('Roboto-Medium.ttf', 'Roboto', 'bold');
 
     doc.setFont('Roboto', 'normal');
-    
-    // Set default font for autoTable globally if possible, 
-    // but usually it needs to be set in styles.
   } catch (e) {
     console.error('Error loading fonts for PDF, falling back to default', e);
+    // Fallback to a standard font that supports some Turkish characters if possible
+    doc.setFont('helvetica', 'normal');
   }
   return doc;
 }

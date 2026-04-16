@@ -309,26 +309,40 @@ export default function ReportsPage() {
 
       // Capture Charts if reportRef is available
       if (reportRef.current) {
-        const chartsEl = reportRef.current.querySelector('.charts-container') as HTMLElement;
-        if (chartsEl) {
-          const canvas = await html2canvas(chartsEl, { scale: 2, useCORS: true, logging: false });
-          const imgData = canvas.toDataURL('image/png');
-          
-          let finalY = (doc as any).lastAutoTable.finalY + 10;
-          
-          // Check if we need a new page
-          if (finalY + 100 > doc.internal.pageSize.height) {
-            doc.addPage();
-            finalY = 20;
+        try {
+          const chartsEl = reportRef.current.querySelector('.charts-container') as HTMLElement;
+          if (chartsEl) {
+            const canvas = await html2canvas(chartsEl, { 
+              scale: 2, 
+              useCORS: true, 
+              logging: false,
+              allowTaint: true,
+              backgroundColor: '#ffffff'
+            });
+            const imgData = canvas.toDataURL('image/png');
+            
+            let finalY = (doc as any).lastAutoTable.finalY + 10;
+            
+            // Check if we need a new page
+            if (finalY + 100 > doc.internal.pageSize.height) {
+              doc.addPage();
+              finalY = 20;
+            }
+            
+            doc.setFont('Roboto', 'bold');
+            doc.text('GRAFİKSEL ANALİZ', 14, finalY);
+            
+            const imgWidth = doc.internal.pageSize.width - 28;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            doc.addImage(imgData, 'PNG', 14, finalY + 5, imgWidth, imgHeight);
           }
-          
+        } catch (chartError) {
+          console.error('Error capturing charts for PDF:', chartError);
+          // Continue without charts if they fail
+          doc.addPage();
           doc.setFont('Roboto', 'bold');
-          doc.text('GRAFİKSEL ANALİZ', 14, finalY);
-          
-          const imgWidth = doc.internal.pageSize.width - 28;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          
-          doc.addImage(imgData, 'PNG', 14, finalY + 5, imgWidth, imgHeight);
+          doc.text('GRAFİKSEL ANALİZ (Grafikler yüklenemedi)', 14, 20);
         }
       }
 

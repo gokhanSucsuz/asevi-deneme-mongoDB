@@ -25,6 +25,12 @@ export const encrypt = (text: string | undefined): string => {
  */
 export const decrypt = (ciphertext: string | undefined): string => {
   if (!ciphertext) return '';
+  
+  // If it doesn't look like Base64 or is too short, it's probably not encrypted
+  if (ciphertext.length < 16 || !/^[A-Za-z0-9+/=]+$/.test(ciphertext)) {
+    return ciphertext;
+  }
+
   try {
     const key = CryptoJS.SHA256(SECRET_KEY);
     const decrypted = CryptoJS.AES.decrypt(ciphertext, key, {
@@ -32,25 +38,27 @@ export const decrypt = (ciphertext: string | undefined): string => {
       mode: CryptoJS.mode.CBC,
       padding: CryptoJS.pad.Pkcs7
     });
+    
     const originalText = decrypted.toString(CryptoJS.enc.Utf8);
-    return originalText || ciphertext; // Fallback to ciphertext if decryption results in empty (might be unencrypted)
+    
+    // If decryption fails, originalText will be empty or gibberish.
+    // Utf8 conversion usually fails or returns empty if the key is wrong.
+    if (!originalText && ciphertext) {
+      return ciphertext;
+    }
+    
+    return originalText;
   } catch (error) {
-    return ciphertext; // Return original if decryption fails
+    console.error('Decryption error:', error);
+    return ciphertext;
   }
 };
 
 /**
  * Helper to check if a string is likely encrypted.
+ * CryptoJS AES encrypted strings in Base64 usually start with 'U2FsdGVkX1' (Salted__)
  */
 export const isEncrypted = (text: string | undefined): boolean => {
   if (!text) return false;
-  // Simple check: if it's a valid Base64 and can be decrypted, it's encrypted.
-  // For our purposes, we'll try to decrypt it in the UI or just assume if it looks like Base64.
-  // But a better way is to just try decrypting and see if it works.
-  try {
-    const d = decrypt(text);
-    return d !== text;
-  } catch {
-    return false;
-  }
+  return typeof text === 'string' && text.startsWith('U2FsdGVkX1');
 };

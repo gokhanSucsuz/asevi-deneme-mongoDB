@@ -918,7 +918,16 @@ export default function HouseholdsPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.householdNo || '-'}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    {showSensitive[household.id!] ? household.householdNo : maskSensitive(household.householdNo, 2)}
+                    {household.householdNo && (
+                      <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
+                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[household.id!] ? household.tcNo : maskSensitive(household.tcNo)}

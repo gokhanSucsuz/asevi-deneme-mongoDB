@@ -141,7 +141,50 @@ export default function StatisticsPage() {
   const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
   const exportToPDF = async () => {
-    toast.info('PDF dışa aktarma henüz güncellenmedi.');
+    const loadingToast = toast.loading('İstatistik raporu hazırlanıyor...');
+    try {
+      const doc = await getTurkishPdf('portrait');
+      await addVakifLogo(doc, 14, 10, 20);
+
+      doc.setFontSize(12);
+      doc.setFont('Roboto', 'bold');
+      doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+      doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+      
+      doc.setFontSize(14);
+      doc.text('AŞEVİ GENEL İSTATİSTİK RAPORU', doc.internal.pageSize.width / 2, 35, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+      
+      const summaryData = [
+        ['Toplam Yemek (Porsiyon)', `${totalDeliveredFood}`],
+        ['Toplam Ekmek', `${totalDeliveredBread}`],
+        ['Artan Yemek (Porsiyon)', `${totalLeftoverFood}`],
+        ['Artan Ekmek', `${totalLeftoverBread}`],
+        ['Vakıftan Alanlar (Kişi)', `${selfServiceHouseholdsCount}`],
+        ['Kendi Kabını Kullananlar', `${ownContainerHouseholdsCount}`],
+        ['Aktif Kurum Sayısı', `${activeInstitutionsCount}`],
+        ['Aktif Hane Sayısı', `${activeHouseholdsCount}`]
+      ];
+
+      autoTable(doc, {
+        head: [['Kategori', 'Değer']],
+        body: summaryData,
+        startY: 45,
+        theme: 'grid',
+        styles: { font: 'Roboto', fontSize: 10 },
+        headStyles: { fillColor: [79, 70, 229] }
+      });
+
+      addReportFooter(doc, personnelName);
+      doc.save(`Asevi_Genel_Istatistikler_${format(new Date(), 'dd_MM_yyyy')}.pdf`);
+      toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('Rapor oluşturulurken bir hata oluştu', { id: loadingToast });
+    }
   };
 
   return (
