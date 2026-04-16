@@ -211,10 +211,15 @@ export interface SystemSettings {
 }
 
 // Helper to convert date strings back to Dates and decrypt sensitive fields
-const processData = (data: any) => {
-  if (!data) return data;
-  const result = { ...data };
+const processData = (data: any): any => {
+  if (!data || typeof data !== 'object') return data;
   
+  // If it's a Date or other non-plain object, don't process further
+  if (data instanceof Date) return data;
+  
+  const result = Array.isArray(data) ? [...data] : { ...data };
+  
+  // Decrypt sensitive fields if they exist at this level
   if (result.tcNo) result.tcNo = decrypt(result.tcNo);
   if (result.householdNo) result.householdNo = decrypt(result.householdNo);
   if (result.phone) result.phone = decrypt(result.phone);
@@ -225,16 +230,15 @@ const processData = (data: any) => {
   ];
 
   for (const key in result) {
-    if (typeof result[key] === 'string' && (key.endsWith('At') || dateFields.includes(key))) {
+    const value = result[key];
+    if (typeof value === 'string' && (key.endsWith('At') || dateFields.includes(key))) {
       // Try to parse date if it looks like one
-      if (result[key].includes('T') || result[key].includes('-')) {
-        const d = new Date(result[key]);
+      if (value.includes('T') || value.includes('-')) {
+        const d = new Date(value);
         if (!isNaN(d.getTime())) result[key] = d;
       }
-    } else if (Array.isArray(result[key])) {
-      result[key] = result[key].map(item => typeof item === 'object' ? processData(item) : item);
-    } else if (typeof result[key] === 'object' && result[key] !== null) {
-      result[key] = processData(result[key]);
+    } else if (typeof value === 'object' && value !== null) {
+      result[key] = processData(value);
     }
   }
   return result;

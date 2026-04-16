@@ -89,13 +89,13 @@ export default function RoutesPage() {
       const fixOrders = async () => {
         let changed = false;
         for (const template of routeTemplates) {
-          const tStops = routeTemplateStops.filter(ts => ts.templateId === template.id);
+          const tStops = routeTemplateStops.filter(ts => String(ts.templateId) === String(template.id));
           // Check if any order is missing or if there are duplicates
           const orders = tStops.map(ts => ts.order);
           const hasMissingOrDuplicates = orders.some(o => o === undefined || o === null || o === 0) || 
                                         new Set(orders).size !== orders.length;
           
-          if (hasMissingOrDuplicates) {
+          if (hasMissingOrDuplicates && tStops.length > 0) {
             console.log(`Fixing orders for template ${template.id}`);
             const sorted = [...tStops].sort((a, b) => (a.order || 0) - (b.order || 0));
             for (let i = 0; i < sorted.length; i++) {
@@ -190,7 +190,7 @@ export default function RoutesPage() {
     if (template) {
       setEditingTemplate(template);
       setSelectedDriverId(template.driverId);
-      const tStops = routeTemplateStops?.filter(ts => ts.templateId === template.id) || [];
+      const tStops = routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || [];
       const sortedStops = [...tStops].sort((a, b) => a.order - b.order);
       setSelectedHouseholds(sortedStops.map(ts => ({ householdId: ts.householdId, order: ts.order })));
     } else {
@@ -1282,7 +1282,7 @@ export default function RoutesPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {routeTemplates?.map((template) => {
-                  const tStops = routeTemplateStops?.filter(ts => ts.templateId === template.id) || [];
+                  const tStops = routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || [];
                   return (
                     <tr key={template.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">

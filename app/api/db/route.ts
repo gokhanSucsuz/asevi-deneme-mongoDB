@@ -42,18 +42,38 @@ export async function POST(req: NextRequest) {
       }
     };
 
+    const convertObjectIds = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(convertObjectIds);
+      if (obj instanceof ObjectId) return obj.toString();
+      
+      const newObj: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (key === '_id' && value instanceof ObjectId) {
+          newObj.id = value.toString();
+        } else if (value instanceof ObjectId) {
+          newObj[key] = value.toString();
+        } else if (typeof value === 'object' && value !== null) {
+          newObj[key] = convertObjectIds(value);
+        } else {
+          newObj[key] = value;
+        }
+      }
+      return newObj;
+    };
+
     switch (operation) {
       case 'list': {
         let cursor = col.find(queryObj || {});
         if (sort) cursor = cursor.sort(sort);
         if (limitVal) cursor = cursor.limit(limitVal);
         const results = await cursor.toArray();
-        return NextResponse.json(results.map(doc => ({ ...doc, id: doc._id.toString(), _id: undefined })));
+        return NextResponse.json(results.map(doc => convertObjectIds(doc)));
       }
       case 'get': {
         const doc = await col.findOne({ _id: getQueryId(id) } as any);
         if (!doc) return NextResponse.json(null);
-        return NextResponse.json({ ...doc, id: doc._id.toString(), _id: undefined });
+        return NextResponse.json(convertObjectIds(doc));
       }
       case 'add': {
         const result = await col.insertOne(data);
