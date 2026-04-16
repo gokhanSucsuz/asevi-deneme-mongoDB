@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 
         const mongoCollection = mongoDb.collection(collectionName);
         
-        const operations: any[] = docs.map(doc => ({
+        const operations: any[] = docs.map((doc: any) => ({
           replaceOne: {
             filter: { _id: doc._id },
             replacement: doc,
