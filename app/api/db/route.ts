@@ -10,6 +10,10 @@ async function verifyAuth(req: NextRequest) {
   }
   const token = authHeader.split('Bearer ')[1];
   try {
+    if (!adminAuth) {
+      console.error('Firebase Admin not initialized');
+      return null;
+    }
     const decodedToken = await adminAuth.verifyIdToken(token);
     return decodedToken;
   } catch (error) {

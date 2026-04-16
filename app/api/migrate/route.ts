@@ -11,6 +11,9 @@ export async function GET(req: Request) {
     // }
 
     console.log('Migration started via API...');
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Firebase Admin not initialized. Please check your environment variables.' }, { status: 500 });
+    }
     let mongoDb;
     try {
       console.log('Connecting to MongoDB...');
