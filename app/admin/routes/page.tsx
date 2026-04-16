@@ -1,0 +1,2030 @@
+'use client';
+
+import { useState, useEffect, FormEvent } from 'react';
+import { useAppQuery, notifyDbChange } from '@/lib/hooks';
+import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
+import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes } from '@/lib/route-utils';
+import { calculateBreadForNextDay } from '@/lib/breadUtils';
+import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { format, subMonths, startOfDay, differenceInDays } from 'date-fns';
+import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
+import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
+import { useAuth } from '@/components/AuthProvider';
+
+export default function RoutesPage() {
+  const { user, role } = useAuth();
+  const isDemo = role === 'demo';
+  const [activeTab, setActiveTab] = useState<'daily' | 'templates'>('daily');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<RouteTemplate | null>(null);
+  const [viewRouteDetails, setViewRouteDetails] = useState<Route | null>(null);
+  const [isEditingRouteDetails, setIsEditingRouteDetails] = useState(false);
+  const [editRouteData, setEditRouteData] = useState<Partial<Route>>({});
+  const [editRouteStopsData, setEditRouteStopsData] = useState<RouteStop[]>([]);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | ''>('');
+  const getDefaultRouteDate = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    let defaultDate = new Date();
+    if (hours > 9 || (hours === 9 && minutes >= 30)) {
+      defaultDate.setDate(defaultDate.getDate() + 1);
+    }
+    // Skip weekends (0 = Sunday, 6 = Saturday)
+    while (defaultDate.getDay() === 0 || defaultDate.getDay() === 6) {
+      defaultDate.setDate(defaultDate.getDate() + 1);
+    }
+    return format(defaultDate, 'yyyy-MM-dd');
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getDefaultRouteDate());
+  const [selectedHouseholds, setSelectedHouseholds] = useState<{ householdId: string, order: number }[]>([]);
+  const [routeDetailsStops, setRouteDetailsStops] = useState<RouteStop[]>([]);
+  
+  // Template modal search and sort state
+  const [templateSearchTerm, setTemplateSearchTerm] = useState('');
+  const [templateSortField, setTemplateSortField] = useState<'headName' | 'address'>('headName');
+  const [templateSortOrder, setTemplateSortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  // Daily modal search and sort state
+  const [dailySearchTerm, setDailySearchTerm] = useState('');
+  const [dailySortField, setDailySortField] = useState<'headName' | 'address'>('headName');
+  const [dailySortOrder, setDailySortOrder] = useState<'asc' | 'desc'>('asc');
+  
+  const [isLeftoverModalOpen, setIsLeftoverModalOpen] = useState(false);
+  const [routeForLeftover, setRouteForLeftover] = useState<Route | null>(null);
+  const [manualLeftoverBread, setManualLeftoverBread] = useState<number>(0);
+  const [leftoverStops, setLeftoverStops] = useState<RouteStop[]>([]);
+  const [isManualCompletion, setIsManualCompletion] = useState(true);
+  
+  const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
+  const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
+  const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
+  const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
+  const households = useAppQuery(() => db.households.toArray(), [], 'households');
+  const systemLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
+  const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
+  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
+  const sessionUser = session ? JSON.parse(session) : null;
+  const personnelName = sessionUser?.name || 'Bilinmeyen Personel';
+
+  const addLog = async (action: string, details?: string, category: string = 'route') => {
+    if (!sessionUser) return;
+    await db.system_logs.add({
+      action,
+      details: details || '',
+      category,
+      personnelEmail: user?.email || 'Bilinmeyen Email',
+      personnelName: sessionUser.name || 'Bilinmeyen Personel',
+      timestamp: new Date()
+    });
+  };
+
+  // Auto-fix template orders if they are missing or inconsistent
+  useEffect(() => {
+    if (routeTemplates && routeTemplateStops) {
+      const fixOrders = async () => {
+        let changed = false;
+        for (const template of routeTemplates) {
+          const tStops = routeTemplateStops.filter(ts => ts.templateId === template.id);
+          // Check if any order is missing or if there are duplicates
+          const orders = tStops.map(ts => ts.order);
+          const hasMissingOrDuplicates = orders.some(o => o === undefined || o === null || o === 0) || 
+                                        new Set(orders).size !== orders.length;
+          
+          if (hasMissingOrDuplicates) {
+            console.log(`Fixing orders for template ${template.id}`);
+            const sorted = [...tStops].sort((a, b) => (a.order || 0) - (b.order || 0));
+            for (let i = 0; i < sorted.length; i++) {
+              if (sorted[i].order !== i + 1) {
+                await db.routeTemplateStops.update(sorted[i].id!, { order: i + 1 });
+                changed = true;
+              }
+            }
+          }
+        }
+        if (changed) notifyDbChange();
+      };
+      fixOrders();
+    }
+  }, [routeTemplates, routeTemplateStops]);
+  const routesOnDate = routes?.filter((r: Route) => r.date === selectedDate) || [];
+  const routeIdsOnDate = routesOnDate.map((r: Route) => r.id);
+  const stopsOnDate = routeStops?.filter((rs: RouteStop) => routeIdsOnDate.includes(rs.routeId)) || [];
+  const assignedHouseholdIds = stopsOnDate.map((rs: RouteStop) => rs.householdId);
+
+  const assignedTemplateHouseholdIds = routeTemplateStops?.map((rts: RouteTemplateStop) => rts.householdId) || [];
+
+  const availableHouseholds = households?.filter((h: Household) => {
+    if (h.pausedUntil === '9999-12-31') return false; // Deleted
+    if (h.pausedUntil && h.pausedUntil >= selectedDate) return false; // Paused for this date
+    if (!h.isActive && !h.pausedUntil) return false; // Hard inactive
+    if (h.isSelfService) return false; // Self service households are not in routes
+    
+    if (activeTab === 'daily') {
+      if (assignedHouseholdIds.includes(h.id!)) return false; // Already assigned today
+    } else {
+      if (assignedTemplateHouseholdIds.includes(h.id!)) return false; // Already assigned to a template
+    }
+    
+    return true;
+  });
+
+  const filteredAvailableHouseholds = availableHouseholds?.filter(h => {
+    if (!templateSearchTerm) return true;
+    const search = templateSearchTerm.toLowerCase();
+    return (
+      h.headName.toLowerCase().includes(search) ||
+      h.address.toLowerCase().includes(search) ||
+      (h.tcNo || '').includes(search) ||
+      (h.householdNo || '').includes(search)
+    );
+  }).sort((a, b) => {
+    const fieldA = (a[templateSortField] || '').toString().toLowerCase();
+    const fieldB = (b[templateSortField] || '').toString().toLowerCase();
+    
+    if (templateSortOrder === 'asc') {
+      return fieldA.localeCompare(fieldB);
+    } else {
+      return fieldB.localeCompare(fieldA);
+    }
+  });
+
+  const filteredDailyHouseholds = availableHouseholds?.filter(h => {
+    if (!dailySearchTerm) return true;
+    const search = dailySearchTerm.toLowerCase();
+    return (
+      h.headName.toLowerCase().includes(search) ||
+      h.address.toLowerCase().includes(search) ||
+      (h.tcNo || '').includes(search) ||
+      (h.householdNo || '').includes(search)
+    );
+  }).sort((a, b) => {
+    const fieldA = (a[dailySortField] || '').toString().toLowerCase();
+    const fieldB = (b[dailySortField] || '').toString().toLowerCase();
+    
+    if (dailySortOrder === 'asc') {
+      return fieldA.localeCompare(fieldB);
+    } else {
+      return fieldB.localeCompare(fieldA);
+    }
+  });
+
+  const openModal = () => {
+    setDailySearchTerm('');
+    setDailySortField('headName');
+    setDailySortOrder('asc');
+    setSelectedDriverId('');
+    setSelectedDate(getDefaultRouteDate());
+    setSelectedHouseholds([]);
+    setIsModalOpen(true);
+  };
+
+  const openTemplateModal = (template?: RouteTemplate) => {
+    setTemplateSearchTerm('');
+    setTemplateSortField('headName');
+    setTemplateSortOrder('asc');
+    if (template) {
+      setEditingTemplate(template);
+      setSelectedDriverId(template.driverId);
+      const tStops = routeTemplateStops?.filter(ts => ts.templateId === template.id) || [];
+      const sortedStops = [...tStops].sort((a, b) => a.order - b.order);
+      setSelectedHouseholds(sortedStops.map(ts => ({ householdId: ts.householdId, order: ts.order })));
+    } else {
+      setEditingTemplate(null);
+      setSelectedDriverId('');
+      setSelectedHouseholds([]);
+    }
+    setIsTemplateModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setIsTemplateModalOpen(false);
+    setEditingTemplate(null);
+  };
+
+  const toggleHousehold = (id: string) => {
+    setSelectedHouseholds(prev => {
+      const exists = prev.find(h => h.householdId === id);
+      if (exists) {
+        const filtered = prev.filter(h => h.householdId !== id);
+        // Re-order remaining
+        return filtered.map((h, i) => ({ ...h, order: i + 1 }));
+      } else {
+        return [...prev, { householdId: id, order: prev.length + 1 }];
+      }
+    });
+  };
+
+  const handleOrderChange = (householdId: string, newOrder: number) => {
+    setSelectedHouseholds(prev => {
+      const oldStop = prev.find(h => h.householdId === householdId);
+      if (!oldStop) return prev;
+
+      const oldOrder = oldStop.order;
+      const maxOrder = prev.length;
+      const targetOrder = Math.max(1, Math.min(newOrder, maxOrder));
+
+      if (oldOrder === targetOrder) return prev;
+
+      return prev.map(h => {
+        if (h.householdId === householdId) {
+          return { ...h, order: targetOrder };
+        }
+        if (oldOrder < targetOrder) {
+          // Moving down: shift items between old and new up
+          if (h.order > oldOrder && h.order <= targetOrder) {
+            return { ...h, order: h.order - 1 };
+          }
+        } else {
+          // Moving up: shift items between new and old down
+          if (h.order >= targetOrder && h.order < oldOrder) {
+            return { ...h, order: h.order + 1 };
+          }
+        }
+        return h;
+      }).sort((a, b) => a.order - b.order);
+    });
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedDriverId || selectedHouseholds.length === 0) {
+      toast.error('Lütfen şoför seçin ve en az bir hane ekleyin.');
+      return;
+    }
+
+    const loadingToast = toast.loading('Rota oluşturuluyor...');
+    try {
+      const driver = drivers?.find(d => d.id === selectedDriverId);
+      const routeId = await db.routes.add({
+        driverId: selectedDriverId,
+        driverSnapshotName: driver?.name,
+        date: selectedDate,
+        status: 'pending',
+        createdAt: new Date(),
+        history: [{ action: 'created', date: new Date(), note: 'Sistem yöneticisi tarafından oluşturuldu' }]
+      });
+
+      const stops: RouteStop[] = selectedHouseholds.map((sh) => {
+        const h = households?.find(hh => hh.id === sh.householdId);
+        return {
+          routeId: routeId as string,
+          householdId: sh.householdId,
+          householdSnapshotName: h?.headName,
+          householdSnapshotMemberCount: h?.memberCount,
+          householdSnapshotBreadCount: h?.breadCount ?? h?.memberCount,
+          order: sh.order,
+          status: 'pending'
+        };
+      });
+
+      await db.routeStops.bulkAdd(stops);
+      await addLog('Günlük Rota Oluşturuldu', `${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için ${driver?.name} şoförüne rota oluşturuldu.`);
+      toast.success('Rota başarıyla oluşturuldu', { id: loadingToast });
+      closeModal();
+    } catch (error) {
+      console.error(error);
+      toast.error('Rota oluşturulurken bir hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const onTemplateSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedDriverId || selectedHouseholds.length === 0) {
+      toast.error('Lütfen şoför seçin ve en az bir hane ekleyin.');
+      return;
+    }
+
+    // Check if driver already has a template (if not editing the same one)
+    const existingTemplate = routeTemplates?.find(t => t.driverId === selectedDriverId && t.id !== editingTemplate?.id);
+    if (existingTemplate) {
+      toast.error('Bu şoför için zaten bir ana rota tanımlanmış. Mevcut olanı düzenleyebilirsiniz.');
+      return;
+    }
+
+    const loadingToast = toast.loading(editingTemplate ? 'Ana rota güncelleniyor...' : 'Ana rota oluşturuluyor...');
+    try {
+      let templateId = editingTemplate?.id;
+      const driver = drivers?.find(d => d.id === selectedDriverId);
+
+      if (editingTemplate) {
+        await db.routeTemplates.delete(editingTemplate.id!);
+        await db.routeTemplateStops.where('templateId').equals(editingTemplate.id!).delete();
+      }
+      
+      templateId = await db.routeTemplates.add({
+        driverId: selectedDriverId,
+        createdAt: new Date()
+      }) as string;
+
+      const stops = selectedHouseholds.map((h) => {
+        return {
+          templateId: templateId as string,
+          householdId: h.householdId,
+          order: h.order
+        };
+      });
+
+      await db.routeTemplateStops.bulkAdd(stops);
+      
+      // Auto-generate or update route for the next working day
+      const nextDay = await getNextWorkingDay(new Date());
+      const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+      
+      // If a route already exists for this driver on nextDay, we should update it
+      const existingRoute = await db.routes.where('driverId').equals(selectedDriverId).toArray();
+      const routeForNextDay = existingRoute.find(r => r.date === nextDayStr);
+      
+      if (routeForNextDay && routeForNextDay.status === 'pending') {
+        // Update existing pending route
+        await db.routeStops.where('routeId').equals(routeForNextDay.id!).delete();
+        const routeStops = stops.map(s => ({
+          routeId: routeForNextDay.id!,
+          householdId: s.householdId,
+          status: 'pending' as const,
+          order: s.order
+        }));
+        // We need to fetch household snapshots too for better consistency, 
+        // but generateRouteFromTemplate handles that. Let's just re-run it if possible or mimic it.
+        // For simplicity, let's just delete and re-generate if it was pending.
+        await db.routes.delete(routeForNextDay.id!);
+        await generateRouteFromTemplate(selectedDriverId, nextDayStr);
+      } else if (!routeForNextDay) {
+        await generateRouteFromTemplate(selectedDriverId, nextDayStr);
+      }
+
+      await addLog(editingTemplate ? 'Ana Rota Güncellendi' : 'Ana Rota Oluşturuldu', `${driver?.name} şoförü için ana rota ${editingTemplate ? 'güncellendi' : 'oluşturuldu'}.`);
+      toast.success(editingTemplate ? 'Ana rota başarıyla güncellendi' : 'Ana rota başarıyla oluşturuldu', { id: loadingToast });
+      closeModal();
+    } catch (error) {
+      console.error(error);
+      toast.error('İşlem sırasında bir hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const deleteRoute = async (id: string) => {
+    const route = await db.routes.get(id);
+    if (route?.status === 'completed' || route?.status === 'approved') {
+      toast.error('Tamamlanmış veya onaylanmış rotalar silinemez.');
+      return;
+    }
+    if (confirm('Bu rotayı silmek istediğinize emin misiniz?')) {
+      const loadingToast = toast.loading('Rota siliniyor...');
+      try {
+        const driverName = getDriverName(route!.driverId);
+        await db.routes.delete(id);
+        await db.routeStops.where('routeId').equals(id).delete();
+        await addLog('Günlük Rota Silindi', `${format(new Date(route!.date), 'dd.MM.yyyy')} tarihli ${driverName} rotası silindi.`);
+        toast.success('Rota başarıyla silindi', { id: loadingToast });
+      } catch (error) {
+        console.error(error);
+        toast.error('Rota silinirken bir hata oluştu', { id: loadingToast });
+      }
+    }
+  };
+
+  const handleManualLeftoverEntry = async () => {
+    if (!routeForLeftover) return;
+    const loadingToast = toast.loading('İşlem yapılıyor...');
+    try {
+      const updateData: Partial<Route> = {
+        status: 'completed',
+        remainingBread: manualLeftoverBread,
+        history: [...(routeForLeftover.history || []), { 
+          action: isManualCompletion ? 'manual_completion' : 'completed', 
+          date: new Date(), 
+          note: isManualCompletion ? 'Yönetici tarafından manuel tamamlandı' : 'Yönetici tarafından tamamlandı' 
+        }]
+      };
+
+      if (isManualCompletion) {
+        updateData.completedByPersonnel = true;
+        updateData.personnelCompletionTime = new Date();
+      }
+
+      await db.routes.update(routeForLeftover.id!, updateData);
+      
+      // 1. Update bread tracking for the CURRENT route date
+      const currentRouteDate = format(new Date(routeForLeftover.date), 'yyyy-MM-dd');
+      const currentBreadData = await calculateBreadForNextDay(currentRouteDate);
+      const existingCurrentTracking = await db.breadTracking.where('date').equals(currentRouteDate).first();
+      
+      if (existingCurrentTracking) {
+        await db.breadTracking.update(existingCurrentTracking.id!, {
+          totalNeeded: currentBreadData.totalNeeded,
+          leftoverAmount: currentBreadData.leftoverAmount,
+          finalOrderAmount: currentBreadData.finalOrderAmount,
+          containerCount: currentBreadData.containerCount,
+          ownContainerCount: currentBreadData.ownContainerCount
+        });
+      } else {
+        await db.breadTracking.add({
+          date: currentRouteDate,
+          totalNeeded: currentBreadData.totalNeeded,
+          delivered: 0,
+          leftoverAmount: currentBreadData.leftoverAmount,
+          finalOrderAmount: currentBreadData.finalOrderAmount,
+          containerCount: currentBreadData.containerCount,
+          ownContainerCount: currentBreadData.ownContainerCount,
+          status: 'pending'
+        });
+      }
+
+      // 2. Calculate bread for the NEXT working day
+      const nextWorkingDay = await getNextWorkingDay(new Date(routeForLeftover.date));
+      const nextDateStr = format(nextWorkingDay, 'yyyy-MM-dd');
+      const { totalNeeded, leftoverAmount, finalOrderAmount, containerCount, ownContainerCount, note } = await calculateBreadForNextDay(nextDateStr);
+      
+      // Check if tracking already exists for that date
+      const existingNextTracking = await db.breadTracking.where('date').equals(nextDateStr).first();
+      if (existingNextTracking) {
+        await db.breadTracking.update(existingNextTracking.id!, {
+          totalNeeded,
+          leftoverAmount,
+          finalOrderAmount,
+          containerCount,
+          ownContainerCount,
+          note
+        });
+      } else {
+        await db.breadTracking.add({
+          date: nextDateStr,
+          totalNeeded,
+          delivered: 0,
+          leftoverAmount,
+          finalOrderAmount,
+          containerCount,
+          ownContainerCount,
+          status: 'pending',
+          note
+        });
+      }
+      
+      // Update stop statuses
+      for (const stop of leftoverStops) {
+        await db.routeStops.update(stop.id!, { 
+          status: stop.status, 
+          deliveredAt: stop.status === 'delivered' ? new Date() : undefined,
+          issueReport: stop.issueReport
+        });
+      }
+      
+      await addLog(isManualCompletion ? 'Rota Manuel Tamamlandı' : 'Rota Tamamlandı', `${format(new Date(routeForLeftover.date), 'dd.MM.yyyy')} tarihli ${getDriverName(routeForLeftover.driverId)} rotası ${isManualCompletion ? 'manuel tamamlandı' : 'tamamlandı'}.`);
+
+      toast.success('Rota başarıyla tamamlandı.', { id: loadingToast });
+      setIsLeftoverModalOpen(false);
+      setRouteForLeftover(null);
+      await checkAndGenerateNextDayRoutes(new Date(routeForLeftover.date));
+    } catch (error) {
+      console.error(error);
+      toast.error('İşlem sırasında bir hata oluştu', { id: loadingToast });
+    }
+  };
+
+  const handleUndoPersonnelCompletion = async (route: Route) => {
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setHours(17, 30, 0, 0);
+
+    if (now > cutoff) {
+      toast.error('Saat 17:30 geçtiği için bu işlem geri alınamaz.');
+      return;
+    }
+
+    if (confirm('Bu işlemi geri almak istediğinize emin misiniz? Rota tekrar bekleme durumuna alınacaktır.')) {
+      const loadingToast = toast.loading('İşlem geri alınıyor...');
+      try {
+        await db.routes.update(route.id!, {
+          status: 'pending',
+          remainingBread: 0,
+          completedByPersonnel: false,
+          personnelCompletionTime: undefined
+        });
+
+        await addLog('Personel Rota Tamamlama Geri Alındı', `${getDriverName(route.driverId)} şoförünün ${format(new Date(route.date), 'dd.MM.yyyy')} tarihli rotası için yapılan işlem geri alındı.`);
+        
+        toast.success('İşlem başarıyla geri alındı.', { id: loadingToast });
+      } catch (error) {
+        console.error(error);
+        toast.error('İşlem geri alınırken bir hata oluştu.', { id: loadingToast });
+      }
+    }
+  };
+
+  const deleteTemplate = async (id: string) => {
+    if (confirm('Bu ana rotayı silmek istediğinize emin misiniz?')) {
+      const loadingToast = toast.loading('Ana rota siliniyor...');
+      try {
+        const template = routeTemplates?.find(t => t.id === id);
+        const driverName = getDriverName(template?.driverId || '');
+        await db.routeTemplates.delete(id);
+        await db.routeTemplateStops.where('templateId').equals(id).delete();
+        await addLog('Ana Rota Silindi', `${driverName} şoförüne ait ana rota silindi.`);
+        toast.success('Ana rota başarıyla silindi', { id: loadingToast });
+      } catch (error) {
+        console.error(error);
+        toast.error('Ana rota silinirken bir hata oluştu', { id: loadingToast });
+      }
+    }
+  };
+
+  const getDriverName = (id: string) => {
+    if (id === 'vakif_pickup') return 'Vakıf\'tan Yemek Alanlar';
+    return drivers?.find(d => d.id === id)?.name || 'Bilinmeyen Şoför';
+  };
+
+  const handleGenerateVakifPickupRoute = async () => {
+    const loadingToast = toast.loading('Vakıf\'tan yemek alanlar listesi oluşturuluyor...');
+    try {
+      const pickupHouseholds = households?.filter(h => {
+        if (!h.isActive || !h.isSelfService) return false;
+        // Skip if paused
+        if (h.pausedUntil && h.pausedUntil >= selectedDate) return false;
+        return true;
+      }) || [];
+
+      if (pickupHouseholds.length === 0) {
+        toast.error('Vakıf\'tan kendi imkanlarıyla yemek alan aktif hane/kurum bulunamadı.', { id: loadingToast });
+        return;
+      }
+
+      // Check if already exists
+      const existing = routesOnDate.find(r => r.driverId === 'vakif_pickup');
+      if (existing) {
+        toast.error('Bu tarih için liste zaten oluşturulmuş.', { id: loadingToast });
+        return;
+      }
+
+      const routeId = await db.routes.add({
+        driverId: 'vakif_pickup',
+        driverSnapshotName: 'Vakıf\'tan Yemek Alanlar',
+        date: selectedDate,
+        status: 'pending',
+        createdAt: new Date(),
+        history: [{ action: 'created', date: new Date(), note: 'Yönetici tarafından oluşturuldu' }]
+      });
+
+      const stops: RouteStop[] = pickupHouseholds.map((h, idx) => ({
+        routeId: routeId as string,
+        householdId: h.id!,
+        householdSnapshotName: h.headName,
+        householdSnapshotMemberCount: h.memberCount,
+        householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+        order: idx + 1,
+        status: 'pending'
+      }));
+
+      await db.routeStops.bulkAdd(stops);
+      await addLog('Vakıf Pickup Listesi Oluşturuldu', `${selectedDate} tarihi için vakıftan yemek alanlar listesi oluşturuldu.`);
+      toast.success('Liste başarıyla oluşturuldu.', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('Liste oluşturulurken bir hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const handleAutoGenerateRoutesForSelectedDate = async () => {
+    if (!selectedDate) {
+      toast.error('Lütfen bir tarih seçin.');
+      return;
+    }
+
+    if (confirm(`${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için tüm aktif şoförlerin rotalarını otomatik oluşturmak istediğinize emin misiniz?`)) {
+      const loadingToast = toast.loading('Rotalar oluşturuluyor...');
+      try {
+        const drivers = await db.drivers.toArray();
+        let generatedCount = 0;
+        for (const driver of drivers) {
+          if (driver.isActive) {
+            const routeId = await generateRouteFromTemplate(driver.id!, selectedDate);
+            if (routeId) generatedCount++;
+          }
+        }
+        
+        if (generatedCount > 0) {
+          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${format(new Date(selectedDate), 'dd.MM.yyyy')} tarihi için ${generatedCount} adet rota otomatik oluşturuldu.`);
+          toast.success(`${generatedCount} adet rota başarıyla oluşturuldu.`, { id: loadingToast });
+        } else {
+          toast.info('Oluşturulacak yeni rota bulunamadı (Zaten mevcut olabilir veya şoförlerin ana rotası yok).', { id: loadingToast });
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error('Rotalar oluşturulurken bir hata oluştu.', { id: loadingToast });
+      }
+    }
+  };
+
+  const handleApproveRoute = async (route: Route) => {
+    if (confirm('Bu rotayı onaylamak ve raporu indirmek istediğinize emin misiniz?')) {
+      const loadingToast = toast.loading('Rota onaylanıyor...');
+      try {
+        const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+        
+        // If it's still pending, mark all as delivered (legacy behavior for quick approval)
+        if (route.status === 'pending') {
+          for (const stop of stops) {
+            if (stop.status === 'pending') {
+              await db.routeStops.update(stop.id!, { status: 'delivered', deliveredAt: new Date() });
+            }
+          }
+        }
+
+        // Mark route as approved
+        await db.routes.update(route.id!, { 
+          status: 'approved',
+          completedByPersonnel: true,
+          personnelCompletionTime: route.personnelCompletionTime || new Date(),
+          history: [...(route.history || []), { action: 'approved', date: new Date(), note: 'Yönetici tarafından onaylandı' }]
+        });
+
+        await addLog('Rota Onaylandı', `${format(new Date(route.date), 'dd.MM.yyyy')} tarihli ${getDriverName(route.driverId)} rotası onaylandı.`);
+        
+        // Automatically download PDF
+        await generateRouteTutanakPDF(route, stops);
+        
+        // Trigger bread calculation for current and next day
+        try {
+          // 1. Current Day
+          const currentRouteDate = format(new Date(route.date), 'yyyy-MM-dd');
+          const currentBreadData = await calculateBreadForNextDay(currentRouteDate);
+          const existingCurrentTracking = await db.breadTracking.where('date').equals(currentRouteDate).first();
+          
+          if (existingCurrentTracking) {
+            await db.breadTracking.update(existingCurrentTracking.id!, {
+              totalNeeded: currentBreadData.totalNeeded,
+              leftoverAmount: currentBreadData.leftoverAmount,
+              finalOrderAmount: currentBreadData.finalOrderAmount,
+              containerCount: currentBreadData.containerCount,
+              ownContainerCount: currentBreadData.ownContainerCount
+            });
+          } else {
+            await db.breadTracking.add({
+              date: currentRouteDate,
+              totalNeeded: currentBreadData.totalNeeded,
+              delivered: 0,
+              leftoverAmount: currentBreadData.leftoverAmount,
+              finalOrderAmount: currentBreadData.finalOrderAmount,
+              containerCount: currentBreadData.containerCount,
+              ownContainerCount: currentBreadData.ownContainerCount,
+              status: 'pending'
+            });
+          }
+
+          // 2. Next Day
+          const nextWorkingDay = await getNextWorkingDay(new Date(route.date));
+          const nextDateStr = format(nextWorkingDay, 'yyyy-MM-dd');
+          const { totalNeeded, leftoverAmount, finalOrderAmount, containerCount, ownContainerCount, note } = await calculateBreadForNextDay(nextDateStr);
+          
+          const existingNextTracking = await db.breadTracking.where('date').equals(nextDateStr).first();
+          if (existingNextTracking) {
+            await db.breadTracking.update(existingNextTracking.id!, {
+              totalNeeded,
+              leftoverAmount,
+              finalOrderAmount,
+              containerCount,
+              ownContainerCount,
+              note
+            });
+          } else {
+            await db.breadTracking.add({
+              date: nextDateStr,
+              totalNeeded,
+              delivered: 0,
+              leftoverAmount,
+              finalOrderAmount,
+              containerCount,
+              ownContainerCount,
+              status: 'pending',
+              note
+            });
+          }
+        } catch (breadErr) {
+          console.error('Bread calculation error:', breadErr);
+        }
+
+        toast.success('Rota onaylandı ve rapor indirildi.', { id: loadingToast });
+        await checkAndGenerateNextDayRoutes(new Date(route.date));
+      } catch (error) {
+        console.error(error);
+        toast.error('Onaylama sırasında bir hata oluştu', { id: loadingToast });
+      }
+    }
+  };
+
+  const openRouteDetails = async (route: Route) => {
+    const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+    
+    // Fetch households to check status
+    const householdsList = await db.households.toArray();
+    
+    const sortedStops = [...stops].sort((a, b) => {
+      const hA = householdsList.find(h => h.id === a.householdId);
+      const hB = householdsList.find(h => h.id === b.householdId);
+      
+      const isDeletedA = hA?.pausedUntil === '9999-12-31';
+      const isDeletedB = hB?.pausedUntil === '9999-12-31';
+      const isPausedA = hA?.pausedUntil && hA.pausedUntil >= route.date;
+      const isPausedB = hB?.pausedUntil && hB.pausedUntil >= route.date;
+
+      if (isDeletedA && !isDeletedB) return 1;
+      if (!isDeletedA && isDeletedB) return -1;
+      if (isPausedA && !isPausedB && !isDeletedB) return 1;
+      if (!isPausedA && isPausedB && !isDeletedA) return -1;
+
+      return a.order - b.order;
+    });
+
+    setRouteDetailsStops(sortedStops);
+    setEditRouteStopsData(JSON.parse(JSON.stringify(sortedStops))); // Deep copy for editing
+    setIsEditingRouteDetails(false);
+    setViewRouteDetails(route);
+  };
+
+  const handleSaveRouteEdits = async () => {
+    if (!viewRouteDetails) return;
+    const loadingToast = toast.loading('Değişiklikler kaydediliyor...');
+    try {
+      for (const stop of editRouteStopsData) {
+        const originalStop = routeDetailsStops.find(s => s.id === stop.id);
+        if (originalStop && (originalStop.status !== stop.status || originalStop.issueReport !== stop.issueReport)) {
+          await db.routeStops.update(stop.id!, {
+            status: stop.status,
+            issueReport: stop.issueReport,
+            history: [...(stop.history || []), { status: stop.status, timestamp: new Date(), note: 'Yönetici tarafından düzenlendi' }]
+          });
+        }
+      }
+      await addLog('Rota Düzenlendi', `${format(new Date(viewRouteDetails.date), 'dd.MM.yyyy')} tarihli ${getDriverName(viewRouteDetails.driverId)} rotası düzenlendi.`);
+      toast.success('Değişiklikler başarıyla kaydedildi', { id: loadingToast });
+      setIsEditingRouteDetails(false);
+      // Refresh details
+      const updatedRoute = await db.routes.get(viewRouteDetails.id!);
+      if (updatedRoute) openRouteDetails(updatedRoute);
+    } catch (error) {
+      console.error(error);
+      toast.error('Değişiklikler kaydedilirken bir hata oluştu', { id: loadingToast });
+    }
+  };
+
+  const exportDriverManifestPDF = async (route: Route) => {
+    const doc = await getTurkishPdf('portrait');
+    const driverName = route.driverSnapshotName || getDriverName(route.driverId);
+    
+    await addVakifLogo(doc, 14, 10, 20);
+
+    doc.setFontSize(12);
+    doc.setFont('Roboto', 'bold');
+    doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+    doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.text('ŞOFÖR DAĞITIM LİSTESİ', doc.internal.pageSize.width / 2, 35, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Tarih: ${format(new Date(route.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 45, { align: 'right' });
+    doc.text(`Şoför: ${driverName}`, 14, 45);
+
+    const stops = await db.routeStops.where('routeId').equals(route.id!).sortBy('order');
+    
+    const { isLastWorkingDayOfWeek } = await import('@/lib/route-utils');
+    const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(route.date));
+
+    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Yemek", "Ekmek", "İmza/Teslim"];
+    const tableRows: any[] = [];
+    
+    let totalFood = 0;
+    let totalBread = 0;
+
+    for (let i = 0; i < stops.length; i++) {
+      const stop = stops[i];
+      const household = await db.households.get(stop.householdId);
+      const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
+      const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
+      const multiplier = isLastWorkingDay ? 2 : 1;
+      
+      const food = memberCount * multiplier;
+      const bread = breadCount * multiplier;
+      totalFood += food;
+      totalBread += bread;
+
+      tableRows.push([
+        (i + 1).toString(),
+        stop.householdSnapshotName || household?.headName || '',
+        household?.address || '',
+        food.toString(),
+        bread.toString(),
+        "[  ]" // Checkbox placeholder
+      ]);
+    }
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      foot: [['', 'TOPLAM', '', totalFood.toString(), totalBread.toString(), '']],
+      showFoot: 'lastPage',
+      startY: 50,
+      styles: { font: 'Roboto', fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
+      footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 12 },
+        1: { halign: 'left' },
+        2: { halign: 'left' },
+        3: { halign: 'center', cellWidth: 20 },
+        4: { halign: 'center', cellWidth: 20 },
+        5: { halign: 'center', cellWidth: 35 }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFont('Roboto', 'bold');
+    doc.text('Teslim Eden', 40, finalY, { align: 'center' });
+    doc.text('Teslim Alan (Şoför)', doc.internal.pageSize.width - 40, finalY, { align: 'center' });
+    
+    doc.setFont('Roboto', 'normal');
+    doc.text('İmza', 40, finalY + 10, { align: 'center' });
+    doc.text(driverName, doc.internal.pageSize.width - 40, finalY + 5, { align: 'center' });
+    doc.text('İmza', doc.internal.pageSize.width - 40, finalY + 10, { align: 'center' });
+
+    addReportFooter(doc, personnelName);
+    doc.save(`Dagitim_Listesi_${format(new Date(route.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const generateRouteTutanakPDF = async (route: Route, stops: RouteStop[]) => {
+    const doc = await getTurkishPdf('landscape');
+    const driverName = route.driverSnapshotName || getDriverName(route.driverId);
+    
+    await addVakifLogo(doc, 14, 10, 20);
+
+    doc.setFontSize(12);
+    doc.setFont('Roboto', 'bold');
+    doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+    doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.text('GÜNLÜK YEMEK DAĞITIM TUTANAĞI', doc.internal.pageSize.width / 2, 35, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Tarih: ${format(new Date(route.date), 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+    doc.text(`Şoför Adı Soyadı: ${driverName}`, 14, 45);
+    
+    let startY = 50;
+    if (route.status === 'completed' || route.status === 'approved') {
+      doc.text(`Araç Çıkış KM: ${route.startKm || 0}   -   Araç Giriş KM: ${route.endKm || 0}`, 14, 52);
+      doc.text(`Kalan Yemek: ${route.remainingFood || 0}   -   Kalan Ekmek: ${route.remainingBread || 0}`, 14, 57);
+      startY = 65;
+    }
+
+    const { isLastWorkingDayOfWeek } = await import('@/lib/route-utils');
+    const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(route.date));
+
+    let totalPeople = 0;
+    let totalFood = 0;
+    let totalBread = 0;
+    let totalDeliveredFood = 0;
+
+    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Kişi", "Yemek", "Ekmek", "Durum", "Saat", "Açıklama"];
+    const tableRows = stops.map((stop, i) => {
+      const household = households?.find(h => h.id === stop.householdId);
+      const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
+      const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
+      const multiplier = isLastWorkingDay ? 2 : 1;
+      
+      totalPeople += memberCount;
+      totalFood += memberCount * multiplier;
+      totalBread += breadCount * multiplier;
+      if (stop.status === 'delivered') {
+        totalDeliveredFood += memberCount * multiplier;
+      }
+      
+      return [
+        (i + 1).toString(),
+        stop.householdSnapshotName || household?.headName || '',
+        household?.address || '',
+        memberCount.toString(),
+        (memberCount * multiplier).toString(),
+        (breadCount * multiplier).toString(),
+        stop.status === 'delivered' ? 'Teslim Edildi' : stop.status === 'failed' ? 'Edilemedi' : 'Bekliyor',
+        stop.deliveredAt ? format(new Date(stop.deliveredAt), 'HH:mm') : '-',
+        stop.issueReport || ''
+      ];
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      foot: [['', 'TOPLAM', '', totalPeople.toString(), totalFood.toString(), totalBread.toString(), `Teslim Edilen: ${totalDeliveredFood} Yemek`, '', '']],
+      showFoot: 'lastPage',
+      startY: startY,
+      styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
+      footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        3: { halign: 'center', cellWidth: 12 },
+        4: { halign: 'center', cellWidth: 12 },
+        5: { halign: 'center', cellWidth: 12 },
+        7: { halign: 'center', cellWidth: 15 }
+      }
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    const text = "Yukarıda listelenen adreslere günlük sıcak yemek dağıtımı tarafımca eksiksiz ve hijyen kurallarına uygun olarak yapılmıştır. İşbu tutanak tarafımızca imza altına alınmıştır.";
+    doc.text(text, 14, finalY, { maxWidth: doc.internal.pageSize.width - 28 });
+
+    const signatureY = finalY + 20;
+    
+    doc.setFont('Roboto', 'bold');
+    doc.text("Teslim Eden (Şoför)", 60, signatureY, { align: 'center' });
+    doc.setFont('Roboto', 'normal');
+    doc.text(driverName, 60, signatureY + 6, { align: 'center' });
+    doc.text("İmza", 60, signatureY + 12, { align: 'center' });
+
+    doc.setFont('Roboto', 'bold');
+    doc.text("Vakıf Müdürü", doc.internal.pageSize.width - 60, signatureY, { align: 'center' });
+    doc.setFont('Roboto', 'normal');
+    doc.text("İmza", doc.internal.pageSize.width - 60, signatureY + 12, { align: 'center' });
+
+    addReportFooter(doc, personnelName);
+    doc.save(`Gunluk_Yemek_Dagitim_Tutanagi_${format(new Date(route.date), 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const exportRouteDetailsPDF = async () => {
+    if (!viewRouteDetails) return;
+    await generateRouteTutanakPDF(viewRouteDetails, routeDetailsStops);
+  };
+
+  const exportHistoryPDF = async (months: number) => {
+    const doc = await getTurkishPdf('landscape');
+    const startDate = subMonths(new Date(), months);
+    const filteredLogs = systemLogs?.filter(log => new Date(log.timestamp) >= startDate) || [];
+
+    await addVakifLogo(doc, 14, 10, 20);
+
+    doc.setFontSize(12);
+    doc.setFont('Roboto', 'bold');
+    doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+    doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.text(`İŞLEM GEÇMİŞİ RAPORU (SON ${months} AY)`, doc.internal.pageSize.width / 2, 35, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('Roboto', 'normal');
+    doc.text(`Rapor Tarihi: ${format(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+
+    const tableColumn = ["Tarih", "İşlem", "Detay", "Personel", "Kategori"];
+    const tableRows = filteredLogs.map(log => [
+      format(new Date(log.timestamp), 'dd.MM.yyyy HH:mm'),
+      log.action,
+      log.details || '-',
+      log.personnelName,
+      log.category.toUpperCase()
+    ]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 45,
+      styles: { font: 'Roboto', fontSize: 9, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] }
+    });
+
+    addReportFooter(doc, personnelName);
+    doc.save(`Islem_Gecmisi_Son_${months}_Ay.pdf`);
+  };
+
+  const moveHouseholdToTemplate = async (householdId: string, targetDriverId: string) => {
+    if (!targetDriverId) return;
+    const targetTemplate = routeTemplates?.find(t => t.driverId === targetDriverId);
+    if (!targetTemplate) {
+      toast.error('Hedef şoförün henüz bir ana rotası yok. Önce hedef şoför için bir ana rota oluşturun.');
+      return;
+    }
+
+    const loadingToast = toast.loading('Hane taşınıyor...');
+    try {
+      // Remove from current template if editing
+      if (editingTemplate) {
+        const currentStop = routeTemplateStops?.find(ts => ts.templateId === editingTemplate.id && ts.householdId === householdId);
+        if (currentStop) {
+          await db.routeTemplateStops.delete(currentStop.id!);
+        }
+      }
+
+      // Remove from current selected (if in modal)
+      setSelectedHouseholds(prev => {
+        const filtered = prev.filter(h => h.householdId !== householdId);
+        return filtered.map((h, i) => ({ ...h, order: i + 1 }));
+      });
+      
+      // Add to target template in DB
+      const targetStops = routeTemplateStops?.filter(ts => ts.templateId === targetTemplate.id) || [];
+      await db.routeTemplateStops.add({
+        templateId: targetTemplate.id!,
+        householdId: householdId,
+        order: targetStops.length + 1
+      });
+
+      // Sync with daily routes (if pending)
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const nextDay = await getNextWorkingDay(new Date());
+      const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+      
+      const syncDates = [todayStr, nextDayStr];
+      for (const dateStr of syncDates) {
+        const allRoutesOnDate = await db.routes.where('date').equals(dateStr).toArray();
+        const sourceRoute = allRoutesOnDate.find(r => r.driverId === selectedDriverId && r.status === 'pending');
+        const targetRoute = allRoutesOnDate.find(r => r.driverId === targetDriverId && r.status === 'pending');
+
+        if (sourceRoute) {
+          await db.routeStops.where({ routeId: sourceRoute.id!, householdId: householdId }).delete();
+        }
+        if (targetRoute) {
+          const h = await db.households.get(householdId);
+          const tStops = await db.routeStops.where('routeId').equals(targetRoute.id!).toArray();
+          await db.routeStops.add({
+            routeId: targetRoute.id!,
+            householdId: householdId,
+            householdSnapshotName: h?.headName || '',
+            householdSnapshotMemberCount: h?.memberCount || 0,
+            householdSnapshotBreadCount: h?.breadCount ?? h?.memberCount ?? 0,
+            status: 'pending',
+            order: tStops.length + 1
+          });
+        }
+      }
+
+      const h = households?.find(hh => hh.id === householdId);
+      const targetDriver = drivers?.find(d => d.id === targetDriverId);
+      await addLog('Hane Rota Değişikliği', `${h?.headName} hanesi ${targetDriver?.name} şoförünün ana rotasına taşındı.`);
+      
+      toast.success('Hane başarıyla taşındı', { id: loadingToast });
+      notifyDbChange();
+    } catch (error) {
+      console.error(error);
+      toast.error('Hane taşınırken bir hata oluştu', { id: loadingToast });
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold text-gray-900">Rotalar</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveTab('daily')}
+            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'daily' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
+          >
+            Günlük Rotalar
+          </button>
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'templates' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
+          >
+            Ana Rotalar (Sürekli)
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'daily' && (
+        <>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-wrap items-center gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tarih Seçin</label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min="2026-04-14"
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 w-full md:w-auto"
+                />
+              </div>
+            </div>
+            {!isDemo && (
+              <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                <button
+                  onClick={handleAutoGenerateRoutesForSelectedDate}
+                  className="flex-1 lg:flex-none bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center shadow-sm text-sm"
+                >
+                  <Plus size={20} className="mr-2" />
+                  Tüm Şoförler İçin Rota Oluştur
+                </button>
+                <button
+                  onClick={handleGenerateVakifPickupRoute}
+                  className="flex-1 lg:flex-none bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center justify-center shadow-sm text-sm"
+                >
+                  <Plus size={20} className="mr-2" />
+                  Vakıf Listesi
+                </button>
+                <button
+                  onClick={() => openModal()}
+                  className="flex-1 lg:flex-none bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center shadow-sm text-sm"
+                >
+                  <Plus size={20} className="mr-2" />
+                  Yeni Rota
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durum</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {routesOnDate.map((route) => (
+                  <tr key={route.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {format(new Date(route.date), 'dd.MM.yyyy')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {route.driverSnapshotName || getDriverName(route.driverId)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        ${route.status === 'approved' ? 'bg-purple-100 text-purple-800' :
+                          route.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                          route.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
+                          'bg-yellow-100 text-yellow-800'}`}>
+                        {route.status === 'approved' ? 'Onaylandı' :
+                         route.status === 'completed' ? 'Tamamlandı' : 
+                         route.status === 'in_progress' ? 'Devam Ediyor' : 'Bekliyor'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end gap-2">
+                        {route.driverId === 'vakif_pickup' && route.status === 'pending' && (
+                          <button
+                            onClick={async () => {
+                              setRouteForLeftover(route);
+                              setManualLeftoverBread(0);
+                              const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+                              // Initialize all as delivered by default for manual completion
+                              setLeftoverStops(stops.map((s: RouteStop) => ({ ...s, status: s.status === 'pending' ? 'delivered' : s.status })));
+                              setIsManualCompletion(true);
+                              setIsLeftoverModalOpen(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-900 flex items-center gap-1 bg-orange-50 px-2 py-1 rounded border border-orange-200"
+                            title="Teslim Almayanları Gir ve Tamamla"
+                          >
+                            <CheckCircle size={16} />
+                            <span className="text-xs">Tamamla</span>
+                          </button>
+                        )}
+                        {route.status === 'completed' && (
+                          <button
+                            onClick={() => handleApproveRoute(route)}
+                            className="text-purple-600 hover:text-purple-900 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded border border-purple-200"
+                            title="Listeyi Onayla ve Raporu İndir"
+                          >
+                            <CheckCircle size={16} />
+                            <span className="text-xs">Onayla</span>
+                          </button>
+                        )}
+                        {route.status === 'pending' && route.driverId !== 'vakif_pickup' && systemSettings?.isDistributionPanelActive === false && (
+                          <button
+                            onClick={async () => {
+                              setRouteForLeftover(route);
+                              setManualLeftoverBread(0);
+                              const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+                              // Initialize all as delivered by default for manual completion
+                              setLeftoverStops(stops.map((s: RouteStop) => ({ ...s, status: s.status === 'pending' ? 'delivered' : s.status })));
+                              setIsManualCompletion(true);
+                              setIsLeftoverModalOpen(true);
+                            }}
+                            className="text-orange-600 hover:text-orange-900 flex items-center gap-1 bg-orange-50 px-2 py-1 rounded border border-orange-200"
+                            title="Artan Ekmek Gir ve Tamamla"
+                          >
+                            <CheckCircle size={16} />
+                            <span className="text-xs">Tamamla</span>
+                          </button>
+                        )}
+                        {route.status === 'completed' && route.completedByPersonnel && (
+                          <button
+                            onClick={() => handleUndoPersonnelCompletion(route)}
+                            className="text-red-600 hover:text-red-900 flex items-center gap-1 bg-red-50 px-2 py-1 rounded border border-red-200"
+                            title="İşlemi Geri Al (17:30'a kadar)"
+                          >
+                            <History size={16} />
+                            <span className="text-xs">Geri Al</span>
+                          </button>
+                        )}
+                        <button onClick={() => exportDriverManifestPDF(route)} className="text-green-600 hover:text-green-900" title="Şoför Dağıtım Listesi (PDF)">
+                          <FileText size={18} />
+                        </button>
+                        <button onClick={() => openRouteDetails(route)} className="text-blue-600 hover:text-blue-900" title="Detayları Gör">
+                          <Eye size={18} />
+                        </button>
+                        {!isDemo && route.status !== 'completed' && route.status !== 'approved' && (
+                          <button onClick={() => deleteRoute(route.id!)} className="text-red-600 hover:text-red-900" title="Sil">
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {routesOnDate.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                      Bu tarih için henüz rota oluşturulmamış.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'templates' && (
+        <>
+          {!isDemo && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => openTemplateModal()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
+              >
+                <Plus size={20} className="mr-2" />
+                Yeni Şablon Rota
+              </button>
+            </div>
+          )}
+
+          <div className="bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hane Sayısı</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {routeTemplates?.map((template) => {
+                  const tStops = routeTemplateStops?.filter(ts => ts.templateId === template.id) || [];
+                  return (
+                    <tr key={template.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {getDriverName(template.driverId)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {tStops.length} Hane
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        {!isDemo && (
+                          <>
+                            <button onClick={() => openTemplateModal(template)} className="text-blue-600 hover:text-blue-900 mr-3">
+                              <Edit2 size={18} />
+                            </button>
+                            <button onClick={() => deleteTemplate(template.id!)} className="text-red-600 hover:text-red-900">
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {routeTemplates?.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                      Henüz ana rota oluşturulmamış.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Transaction History Section */}
+      <div className="mt-12 bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 min-w-[600px]">
+          <div className="flex items-center gap-2">
+            <History className="text-gray-500" size={20} />
+            <h3 className="text-lg font-bold text-gray-900">Son İşlem Geçmişi</h3>
+          </div>
+          <div className="flex gap-2">
+            <div className="relative group">
+              <button className="flex items-center gap-2 bg-white border border-gray-300 px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <Download size={16} />
+                Rapor Al
+              </button>
+              <div className="absolute right-0 pt-2 w-48 hidden group-hover:block z-10">
+                <div className="bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
+                  <button onClick={() => exportHistoryPDF(1)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-50">Son 1 Ay</button>
+                  <button onClick={() => exportHistoryPDF(3)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-50">Son 3 Ay</button>
+                  <button onClick={() => exportHistoryPDF(6)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Son 6 Ay</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">İşlem</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Personel</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Detay</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {systemLogs?.slice(0, 10).map((log) => (
+                <tr key={log.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                    {format(new Date(log.timestamp), 'dd.MM.yyyy HH:mm')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {log.action}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {log.personnelName}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {log.details}
+                  </td>
+                </tr>
+              ))}
+              {(!systemLogs || systemLogs.length === 0) && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">Henüz işlem kaydı yok.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {isLeftoverModalOpen && routeForLeftover && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Rota Tamamlama</h3>
+              <button onClick={() => setIsLeftoverModalOpen(false)} className="text-gray-400 hover:text-gray-500">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <p className="text-sm text-blue-900 font-medium mb-1">Rota Bilgisi:</p>
+                <p className="text-sm text-blue-700">
+                  {getDriverName(routeForLeftover.driverId)} - {format(new Date(routeForLeftover.date), 'dd.MM.yyyy')}
+                </p>
+              </div>
+
+              <div className="border rounded-xl overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Hane</th>
+                      <th className="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase">Durum</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Açıklama (Hata Varsa)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {leftoverStops.map((stop, idx) => (
+                      <tr key={stop.id}>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {stop.householdSnapshotName}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <select
+                            value={stop.status}
+                            onChange={(e) => {
+                              const newStops = [...leftoverStops];
+                              newStops[idx].status = e.target.value as any;
+                              setLeftoverStops(newStops);
+                            }}
+                            className={`text-xs font-bold rounded-md border-gray-300 p-1 ${
+                              stop.status === 'delivered' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
+                            }`}
+                          >
+                            <option value="delivered">Teslim Edildi</option>
+                            <option value="failed">Edilemedi</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          {stop.status === 'failed' && (
+                            <input
+                              type="text"
+                              value={stop.issueReport || ''}
+                              onChange={(e) => {
+                                const newStops = [...leftoverStops];
+                                newStops[idx].issueReport = e.target.value;
+                                setLeftoverStops(newStops);
+                              }}
+                              className="w-full text-xs border-gray-300 rounded-md p-1"
+                              placeholder="Neden?"
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Artan Ekmek Sayısı</label>
+                <input
+                  type="number"
+                  value={manualLeftoverBread}
+                  onChange={(e) => setManualLeftoverBread(parseInt(e.target.value) || 0)}
+                  className="w-full text-xl font-bold text-center border-2 border-gray-300 rounded-xl p-2 focus:ring-blue-500 focus:border-blue-500"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t mt-6">
+              <button
+                onClick={() => setIsLeftoverModalOpen(false)}
+                className="flex-1 bg-white py-3 px-4 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleManualLeftoverEntry}
+                className="flex-1 bg-blue-600 py-3 px-4 border border-transparent rounded-xl text-sm font-bold text-white hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+              >
+                Tamamla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Yeni Rota Oluştur</h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-500">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={onSubmit} className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tarih</label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      min="2026-04-14"
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Şoför</label>
+                    <select
+                      value={selectedDriverId}
+                      onChange={(e) => setSelectedDriverId(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                      required
+                    >
+                      <option value="">Şoför Seçin</option>
+                      {drivers?.map(d => (
+                        <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+                  <div className="w-full sm:flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Hane Ara</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="İsim, adres, TC veya hane no..."
+                        value={dailySearchTerm}
+                        onChange={(e) => setDailySearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      />
+                      <div className="absolute left-3 top-2.5 text-gray-400">
+                        <Eye size={16} className="opacity-50" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-48">
+                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Sıralama</label>
+                    <select
+                      value={`${dailySortField}-${dailySortOrder}`}
+                      onChange={(e) => {
+                        const [field, order] = e.target.value.split('-');
+                        setDailySortField(field as any);
+                        setDailySortOrder(order as any);
+                      }}
+                      className="w-full text-sm border border-gray-300 rounded-md p-2 bg-white shadow-sm"
+                    >
+                      <option value="headName-asc">İsim (A-Z)</option>
+                      <option value="headName-desc">İsim (Z-A)</option>
+                      <option value="address-asc">Adres (A-Z)</option>
+                      <option value="address-desc">Adres (Z-A)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 flex-1 overflow-y-auto bg-white">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-sm font-bold text-gray-900">Seçilebilir Haneler ({filteredDailyHouseholds?.length || 0})</h4>
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                    {selectedHouseholds.length} Hane Seçildi
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredDailyHouseholds?.map(h => (
+                    <div 
+                      key={h.id} 
+                      onClick={() => toggleHousehold(h.id!)}
+                      className={`p-4 border rounded-xl cursor-pointer transition-all duration-200 shadow-sm flex flex-col justify-between group ${
+                        selectedHouseholds.some(sh => sh.householdId === h.id) 
+                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500 ring-opacity-50' 
+                          : 'border-gray-200 hover:border-blue-400 hover:shadow-md bg-white'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-bold truncate ${selectedHouseholds.some(sh => sh.householdId === h.id) ? 'text-blue-900' : 'text-gray-900'}`}>
+                            {h.headName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate mt-1 flex items-center">
+                            <ArrowRight size={12} className="mr-1 text-gray-300" />
+                            {h.address}
+                          </p>
+                        </div>
+                        <div className={`ml-3 p-1.5 rounded-full transition-colors ${
+                          selectedHouseholds.some(sh => sh.householdId === h.id) 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-100 text-gray-400 group-hover:bg-gray-200'
+                        }`}>
+                          <CheckCircle size={18} />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-auto pt-3 border-t border-gray-100">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-gray-100 text-gray-700 uppercase tracking-wider">
+                          {h.memberCount} Kişi
+                        </span>
+                        {h.householdNo && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wider">
+                            No: {h.householdNo}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredDailyHouseholds?.length === 0 && (
+                    <div className="col-span-2 text-center py-16 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                      <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <Eye className="text-gray-300" size={32} />
+                      </div>
+                      <p className="text-gray-500 font-medium">Aranan kriterlere uygun hane bulunamadı.</p>
+                      <button 
+                        type="button"
+                        onClick={() => setDailySearchTerm('')}
+                        className="mt-4 text-blue-600 text-sm font-bold hover:underline"
+                      >
+                        Aramayı Temizle
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Rotayı Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {viewRouteDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Rota Detayları - {viewRouteDetails.driverSnapshotName || getDriverName(viewRouteDetails.driverId)} ({format(new Date(viewRouteDetails.date), 'dd.MM.yyyy')})
+              </h3>
+              <button onClick={() => setViewRouteDetails(null)} className="text-gray-400 hover:text-gray-500">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6 flex-1 overflow-y-auto">
+              {viewRouteDetails.status === 'completed' && differenceInDays(new Date(), new Date(viewRouteDetails.date)) > 2 && (
+                <div className="mb-4 p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200 flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2" />
+                  <p className="font-medium text-sm">Bu rota tamamlanalı 2 günden fazla olduğu için üzerinde değişiklik yapılamaz.</p>
+                </div>
+              )}
+              {viewRouteDetails.status === 'approved' && (
+                <div className="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <p className="font-medium text-sm">Bu rota yönetici tarafından onaylanmıştır. Onaylanmış rotalar üzerinde değişiklik yapılamaz.</p>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-500">Başlangıç KM</p>
+                  <p className="font-medium">{viewRouteDetails.startKm || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Bitiş KM</p>
+                  <p className="font-medium">{viewRouteDetails.endKm || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kalan Yemek</p>
+                  <p className="font-medium">{viewRouteDetails.remainingFood || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Kalan Ekmek</p>
+                  <p className="font-medium">{viewRouteDetails.remainingBread || 0}</p>
+                </div>
+              </div>
+              
+              <h4 className="font-medium text-gray-900 mb-4">Teslimat Noktaları</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 border">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Hane</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Kişi</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Durum</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Saat</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Açıklama</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                  {(isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).map((stop, idx) => {
+                    const household = households?.find(h => h.id === stop.householdId);
+                    const isDeleted = household?.pausedUntil === '9999-12-31';
+                    const isPaused = household?.pausedUntil && household.pausedUntil >= viewRouteDetails.date;
+
+                    return (
+                      <tr key={idx} className={isDeleted ? 'bg-red-50' : isPaused ? 'bg-orange-50' : ''}>
+                        <td className="px-4 py-2 text-sm text-gray-900">
+                          {stop.householdSnapshotName}
+                          {isDeleted && <span className="ml-2 text-xs text-red-600 font-bold">[SİLİNDİ]</span>}
+                          {isPaused && <span className="ml-2 text-xs text-orange-600 font-bold">[PASİF]</span>}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{stop.householdSnapshotMemberCount}</td>
+                        <td className="px-4 py-2 text-sm">
+                          {isEditingRouteDetails ? (
+                            <select
+                              value={stop.status}
+                              onChange={(e) => {
+                                const newStops = [...editRouteStopsData];
+                                newStops[idx].status = e.target.value as any;
+                                setEditRouteStopsData(newStops);
+                              }}
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-1"
+                            >
+                              <option value="pending">Bekliyor</option>
+                              <option value="delivered">Teslim Edildi</option>
+                              <option value="failed">Edilemedi</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                              ${stop.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                                stop.status === 'failed' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'}`}>
+                              {stop.status === 'delivered' ? 'Teslim Edildi' : stop.status === 'failed' ? 'Edilemedi' : 'Bekliyor'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? format(new Date(stop.deliveredAt), 'HH:mm') : '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">
+                          {isEditingRouteDetails && stop.status === 'failed' ? (
+                            <input
+                              type="text"
+                              value={stop.issueReport || ''}
+                              onChange={(e) => {
+                                const newStops = [...editRouteStopsData];
+                                newStops[idx].issueReport = e.target.value;
+                                setEditRouteStopsData(newStops);
+                              }}
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-1"
+                              placeholder="Açıklama"
+                            />
+                          ) : (
+                            stop.issueReport || '-'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+              {viewRouteDetails.status === 'completed' && differenceInDays(new Date(), new Date(viewRouteDetails.date)) <= 2 && (
+                <>
+                  {!isEditingRouteDetails ? (
+                    <>
+                      <button
+                        onClick={() => setIsEditingRouteDetails(true)}
+                        className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 flex items-center mr-2"
+                      >
+                        <Edit2 size={16} className="mr-2" />
+                        Düzenle
+                      </button>
+                      <button
+                        onClick={() => handleApproveRoute(viewRouteDetails)}
+                        className="bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 flex items-center mr-auto"
+                      >
+                        Rotayı Onayla
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setIsEditingRouteDetails(false);
+                          setEditRouteStopsData(JSON.parse(JSON.stringify(routeDetailsStops)));
+                        }}
+                        className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 mr-2"
+                      >
+                        İptal
+                      </button>
+                      <button
+                        onClick={handleSaveRouteEdits}
+                        className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700 flex items-center mr-auto"
+                      >
+                        Kaydet
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+              {viewRouteDetails.status === 'approved' && (
+                <div className="mr-auto flex items-center text-green-600 font-medium text-sm bg-green-50 px-4 py-2 rounded-md">
+                  Onaylanmış Rota
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setViewRouteDetails(null);
+                  setIsEditingRouteDetails(false);
+                }}
+                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Kapat
+              </button>
+              <button
+                onClick={exportRouteDetailsPDF}
+                className="bg-red-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 flex items-center"
+              >
+                <FileText size={16} className="mr-2" />
+                PDF İndir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTemplateModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Yeni Ana Rota Oluştur</h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-500">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={onTemplateSubmit} className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-200 bg-gray-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Şoför</label>
+                    <select
+                      value={selectedDriverId}
+                      onChange={(e) => setSelectedDriverId(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 bg-white"
+                      required
+                    >
+                      <option value="">Şoför Seçin</option>
+                      {drivers?.map(d => (
+                        <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <div className="bg-blue-50 p-2 rounded-md border border-blue-100 flex items-center justify-between">
+                      <span className="text-xs font-bold text-blue-700 uppercase">Seçili Hane Sayısı:</span>
+                      <span className="text-lg font-black text-blue-800">{selectedHouseholds.length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+                  <div className="w-full sm:flex-1">
+                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Eklenebilir Hane Ara</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="İsim, adres, TC veya hane no..."
+                        value={templateSearchTerm}
+                        onChange={(e) => setTemplateSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                      />
+                      <div className="absolute left-3 top-2.5 text-gray-400">
+                        <Eye size={16} className="opacity-50" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-48">
+                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Sıralama</label>
+                    <select
+                      value={`${templateSortField}-${templateSortOrder}`}
+                      onChange={(e) => {
+                        const [field, order] = e.target.value.split('-');
+                        setTemplateSortField(field as any);
+                        setTemplateSortOrder(order as any);
+                      }}
+                      className="w-full text-sm border border-gray-300 rounded-md p-2 bg-white shadow-sm"
+                    >
+                      <option value="headName-asc">İsim (A-Z)</option>
+                      <option value="headName-desc">İsim (Z-A)</option>
+                      <option value="address-asc">Adres (A-Z)</option>
+                      <option value="address-desc">Adres (Z-A)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 flex-1 overflow-y-auto bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Selected Households */}
+                  <div className="flex flex-col">
+                    <h4 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest border-b pb-2">
+                      <ArrowRight size={18} className="text-blue-600" />
+                      Rotadaki Haneler (Sıralı)
+                    </h4>
+                    <div className="space-y-3">
+                      {selectedHouseholds.map(sh => {
+                        const h = households?.find(hh => hh.id === sh.householdId);
+                        if (!h) return null;
+                        return (
+                          <div key={sh.householdId} className="p-4 border-2 border-blue-100 bg-blue-50 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="flex flex-col items-center">
+                                  <label className="text-[10px] font-bold text-blue-400 uppercase mb-1">Sıra</label>
+                                  <input 
+                                    type="number"
+                                    value={sh.order}
+                                    onChange={(e) => handleOrderChange(sh.householdId, parseInt(e.target.value) || 1)}
+                                    className="w-12 text-center border-blue-200 rounded p-1 text-sm font-bold text-blue-800 focus:ring-blue-500 focus:border-blue-500"
+                                    min="1"
+                                    max={selectedHouseholds.length}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-blue-900 text-sm truncate">{h.headName}</p>
+                                  <p className="text-xs text-blue-600 truncate mt-1 flex items-center">
+                                    <ArrowRight size={12} className="mr-1 opacity-50" />
+                                    {h.address}
+                                  </p>
+                                </div>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => toggleHousehold(sh.householdId)}
+                                className="bg-white text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-full transition-colors shadow-sm border border-red-100"
+                                title="Rotadan Çıkar"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-blue-200">
+                              <span className="text-[10px] text-blue-700 font-black uppercase tracking-tighter">Başka Rotaya Taşı:</span>
+                              <select 
+                                className="text-[10px] border-blue-200 rounded p-1.5 bg-white flex-1 font-medium focus:ring-blue-500 focus:border-blue-500"
+                                onChange={(e) => moveHouseholdToTemplate(sh.householdId, e.target.value)}
+                                value=""
+                              >
+                                <option value="">Şoför Seçin...</option>
+                                {drivers?.filter(d => d.id !== selectedDriverId).map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {selectedHouseholds.length === 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <p className="text-sm text-gray-400 italic">Henüz hane seçilmedi.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Available Households */}
+                  <div className="flex flex-col">
+                    <h4 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest border-b pb-2">
+                      <Plus size={18} className="text-green-600" />
+                      Eklenebilir Haneler
+                    </h4>
+                    <div className="space-y-3">
+                      {filteredAvailableHouseholds?.filter(h => !selectedHouseholds.some(sh => sh.householdId === h.id)).map(h => (
+                        <div 
+                          key={h.id} 
+                          onClick={() => toggleHousehold(h.id!)}
+                          className="p-4 border border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 hover:shadow-md transition-all group bg-white"
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-gray-900 text-sm truncate">{h.headName}</p>
+                              <p className="text-xs text-gray-500 truncate mt-1">{h.address}</p>
+                              <div className="flex gap-2 mt-2">
+                                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                  {h.memberCount} Kişi
+                                </span>
+                                {h.householdNo && (
+                                  <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                                    No: {h.householdNo}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="ml-4 bg-blue-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 shadow-lg">
+                              <Plus size={18} />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {filteredAvailableHouseholds?.filter(h => !selectedHouseholds.some(sh => sh.householdId === h.id)).length === 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <p className="text-sm text-gray-400">Eklenebilir hane bulunamadı.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Ana Rotayı Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

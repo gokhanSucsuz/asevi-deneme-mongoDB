@@ -1,0 +1,85 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from '@/firebase';
+import { useRouter, usePathname } from 'next/navigation';
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  role: 'admin' | 'driver' | 'demo' | null;
+}
+
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, role: null });
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<'admin' | 'driver' | 'demo' | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const isDemo = typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true';
+    if (isDemo) {
+      setUser({
+        uid: 'demo-uid',
+        email: 'demo@sydv.org.tr',
+        displayName: 'Demo Kullanıcısı',
+        emailVerified: true,
+        isAnonymous: false,
+        metadata: {},
+        providerData: [],
+        refreshToken: '',
+        tenantId: null,
+        delete: async () => {},
+        getIdToken: async () => '',
+        getIdTokenResult: async () => ({} as any),
+        reload: async () => {},
+        toJSON: () => ({}),
+        phoneNumber: null,
+        photoURL: null,
+        providerId: 'demo'
+      } as any);
+      setRole('demo');
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      
+      if (user) {
+        if (user.email === 'demo@sydv.org.tr') {
+          setRole('demo');
+        } else if (pathname.startsWith('/admin')) {
+          setRole('admin');
+        } else if (pathname.startsWith('/driver')) {
+          setRole('driver');
+        } else {
+          setRole(null);
+        }
+      } else {
+        setRole(null);
+      }
+      
+      setLoading(false);
+      
+      if (!user && !pathname.startsWith('/admin') && pathname !== '/' && pathname !== '/login') {
+        router.push('/login');
+      }
+    });
+
+    return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  return (
+    <AuthContext.Provider value={{ user, loading, role }}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);

@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "Household": {
+      "title": "Household",
+      "description": "Information about a household receiving food aid",
+      "type": "object",
+      "properties": {
+        "headName": { "type": "string", "description": "Name of the head of household" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "address": { "type": "string", "description": "Delivery address" },
+        "members": { "type": "array", "description": "List of household members" },
+        "memberCount": { "type": "number", "description": "Total number of members" },
+        "isActive": { "type": "boolean", "description": "Whether the household is currently active" },
+        "isSelfService": { "type": "boolean", "description": "Whether the household receives food by their own means" },
+        "isVakifPickup": { "type": "boolean", "description": "Whether an institution picks up food from the foundation" },
+        "pausedUntil": { "type": "string", "format": "date", "description": "Date until which delivery is paused" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the record was created" },
+        "defaultDriverId": { "type": "string", "description": "ID of the default driver assigned" },
+        "history": { "type": "array", "description": "History of changes" }
+      },
+      "required": ["headName", "address", "memberCount", "isActive", "createdAt"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "Information about a delivery driver",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the driver" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "vehiclePlate": { "type": "string", "description": "Vehicle license plate" },
+        "isActive": { "type": "boolean", "description": "Whether the driver is currently active" }
+      },
+      "required": ["name", "vehiclePlate", "isActive"]
+    },
+    "Route": {
+      "title": "Route",
+      "description": "A daily delivery route for a driver",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "ID of the driver" },
+        "driverSnapshotName": { "type": "string", "description": "Name of the driver at the time of creation" },
+        "date": { "type": "string", "format": "date", "description": "Date of the route" },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed"], "description": "Current status of the route" },
+        "startKm": { "type": "number", "description": "Starting kilometer reading" },
+        "endKm": { "type": "number", "description": "Ending kilometer reading" },
+        "remainingFood": { "type": "number", "description": "Amount of food remaining after route" },
+        "remainingBread": { "type": "number", "description": "Amount of bread remaining after route" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the route was created" },
+        "history": { "type": "array", "description": "History of route status changes" }
+      },
+      "required": ["driverId", "date", "status", "createdAt"]
+    },
+    "RouteStop": {
+      "title": "Route Stop",
+      "description": "A specific stop on a route",
+      "type": "object",
+      "properties": {
+        "routeId": { "type": "string", "description": "ID of the route" },
+        "householdId": { "type": "string", "description": "ID of the household" },
+        "householdSnapshotName": { "type": "string", "description": "Name of the household at the time of creation" },
+        "householdSnapshotMemberCount": { "type": "number", "description": "Member count at the time of creation" },
+        "order": { "type": "number", "description": "Order of the stop in the route" },
+        "status": { "type": "string", "enum": ["pending", "delivered", "failed"], "description": "Status of the delivery at this stop" },
+        "issueReport": { "type": "string", "description": "Report if delivery failed" },
+        "deliveredAt": { "type": "string", "format": "date-time", "description": "When the delivery was completed" },
+        "history": { "type": "array", "description": "History of stop status changes" }
+      },
+      "required": ["routeId", "householdId", "order", "status"]
+    },
+    "RouteTemplate": {
+      "title": "Route Template",
+      "description": "A template for recurring routes",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "ID of the driver" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the template was created" }
+      },
+      "required": ["driverId", "createdAt"]
+    },
+    "RouteTemplateStop": {
+      "title": "Route Template Stop",
+      "description": "A stop within a route template",
+      "type": "object",
+      "properties": {
+        "templateId": { "type": "string", "description": "ID of the template" },
+        "householdId": { "type": "string", "description": "ID of the household" },
+        "order": { "type": "number", "description": "Order of the stop" }
+      },
+      "required": ["templateId", "householdId", "order"]
+    },
+    "Personnel": {
+      "title": "Personnel",
+      "description": "Authorized personnel who can manage the system",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "description": "Unique username" },
+        "name": { "type": "string", "description": "Full name" },
+        "role": { "type": "string", "description": "Role (e.g., admin, user)" },
+        "isActive": { "type": "boolean", "description": "Whether the personnel is active" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the record was created" }
+      },
+      "required": ["username", "name", "role", "isActive", "createdAt"]
+    },
+    "SystemLog": {
+      "title": "System Log",
+      "description": "Log of administrative actions performed in the system",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "Description of the action performed" },
+        "details": { "type": "string", "description": "Additional details about the action" },
+        "personnelName": { "type": "string", "description": "Name of the personnel who performed the action" },
+        "personnelEmail": { "type": "string", "description": "Email of the personnel who performed the action" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the action was performed" },
+        "category": { "type": "string", "description": "Category of the action (e.g., household, route, template)" }
+      },
+      "required": ["action", "personnelName", "timestamp"]
+    }
+  },
+  "firestore": {
+    "households": { "schema": "Household", "description": "Collection of households" },
+    "drivers": { "schema": "Driver", "description": "Collection of drivers" },
+    "routes": { "schema": "Route", "description": "Collection of routes" },
+    "route_stops": { "schema": "RouteStop", "description": "Collection of route stops" },
+    "route_templates": { "schema": "RouteTemplate", "description": "Collection of route templates" },
+    "route_template_stops": { "schema": "RouteTemplateStop", "description": "Collection of route template stops" },
+    "personnel": { "schema": "Personnel", "description": "Collection of authorized personnel" },
+    "system_logs": { "schema": "SystemLog", "description": "Collection of system logs" }
+  }
+}

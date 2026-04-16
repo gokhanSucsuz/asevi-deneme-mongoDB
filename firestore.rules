@@ -1,0 +1,203 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: households
+    // Fields: headName (string), phone (string), address (string), members (array), 
+    //         memberCount (number), isActive (boolean), pausedUntil (string), 
+    //         createdAt (timestamp), defaultDriverId (string), history (array)
+    //
+    // Collection: drivers
+    // Fields: name (string), phone (string), vehiclePlate (string), isActive (boolean)
+    //
+    // Collection: routes
+    // Fields: driverId (string), driverSnapshotName (string), date (string), 
+    //         status (string), startKm (number), endKm (number), 
+    //         remainingFood (number), remainingBread (number), 
+    //         createdAt (timestamp), history (array)
+    //
+    // Collection: route_stops
+    // Fields: routeId (string), householdId (string), householdSnapshotName (string), 
+    //         householdSnapshotMemberCount (number), order (number), status (string), 
+    //         issueReport (string), deliveredAt (timestamp), history (array)
+    //
+    // Collection: route_templates
+    // Fields: driverId (string), createdAt (timestamp)
+    //
+    // Collection: route_template_stops
+    // Fields: templateId (string), householdId (string), order (number)
+    //
+    // Collection: personnel
+    // Fields: username (string), name (string), role (string), isActive (boolean), createdAt (timestamp)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAuthorizedPersonnel() {
+      return isAuthenticated() && 
+             (request.auth.token.email == "edirnesydv@gmail.com" ||
+              request.auth.token.email == "edirneysdv@gmail.com" ||
+              request.auth.token.email == "real.lucifer22@gmail.com" ||
+              (exists(/databases/$(database)/documents/personnel/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/personnel/$(request.auth.uid)).data.isActive == true &&
+               get(/databases/$(database)/documents/personnel/$(request.auth.uid)).data.isApproved == true));
+    }
+
+    function isAdmin() {
+      return isAuthorizedPersonnel() && 
+             (request.auth.token.email == "edirnesydv@gmail.com" ||
+              request.auth.token.email == "edirneysdv@gmail.com" ||
+              request.auth.token.email == "real.lucifer22@gmail.com" ||
+              get(/databases/$(database)/documents/personnel/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isValidSystemLog(data) {
+      return data.action is string && data.action.size() > 0 && data.action.size() < 500 &&
+             data.personnelName is string && data.personnelName.size() < 255 &&
+             data.personnelEmail is string && data.personnelEmail.size() < 255 &&
+             data.category is string && data.category.size() < 100;
+    }
+
+    function isValidHousehold(data) {
+      return data.headName is string && data.headName.size() > 0 && data.headName.size() < 255 &&
+             data.address is string && data.address.size() > 0 && data.address.size() < 1000 &&
+             data.phone is string && data.phone.size() < 50 &&
+             data.memberCount is number && data.memberCount >= 0 &&
+             data.isActive is bool &&
+             (!('tcNo' in data) || (data.tcNo is string && data.tcNo.size() < 100)) &&
+             (!('householdNo' in data) || (data.householdNo is string && data.householdNo.size() < 100));
+    }
+
+    function isValidDriver(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 255 &&
+             data.vehiclePlate is string && data.vehiclePlate.size() > 0 && data.vehiclePlate.size() < 50 &&
+             data.isActive is bool &&
+             data.tcNo is string && data.tcNo.size() < 100;
+    }
+
+    function isValidRoute(data) {
+      return data.driverId is string &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.status in ['pending', 'in_progress', 'completed', 'approved'];
+    }
+
+    function isValidRouteStop(data) {
+      return data.routeId is string &&
+             data.householdId is string &&
+             data.order is number &&
+             data.status in ['pending', 'delivered', 'failed'];
+    }
+
+    function isValidPersonnel(data) {
+      return data.username is string && data.username.size() > 0 && data.username.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 255 &&
+             data.role in ['admin', 'user'] &&
+             data.isActive is bool &&
+             data.isApproved is bool &&
+             data.tcNo is string && data.tcNo.size() < 100;
+    }
+
+    function isValidLeftoverFood(data) {
+      return data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.quantity is number && data.quantity >= 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /households/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel() && isValidHousehold(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /drivers/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel() && isValidDriver(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /routes/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel() && isValidRoute(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /route_stops/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel() && isValidRouteStop(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /route_templates/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel();
+      allow delete: if isAdmin();
+    }
+
+    match /route_template_stops/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel();
+      allow delete: if isAdmin();
+    }
+
+    match /personnel/{id} {
+      allow read: if isAuthorizedPersonnel() || (isAuthenticated() && request.auth.uid == id);
+      allow create: if isAuthenticated() && isValidPersonnel(request.resource.data);
+      allow update: if isAuthorizedPersonnel() && (isAdmin() || request.auth.uid == id) && isValidPersonnel(request.resource.data);
+      allow delete: if isAdmin() && request.auth.uid != id;
+    }
+
+    match /system_logs/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create: if isAuthenticated() && isValidSystemLog(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /system_settings/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow write: if isAdmin();
+    }
+
+    match /working_days/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow write: if isAdmin();
+    }
+
+    match /bread_tracking/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel();
+      allow delete: if isAdmin();
+    }
+
+    match /leftover_food/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel() && isValidLeftoverFood(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /surveys/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel();
+      allow delete: if isAdmin();
+    }
+
+    match /survey_responses/{id} {
+      allow read: if isAuthorizedPersonnel();
+      allow create, update: if isAuthorizedPersonnel();
+      allow delete: if isAdmin();
+    }
+  }
+}
