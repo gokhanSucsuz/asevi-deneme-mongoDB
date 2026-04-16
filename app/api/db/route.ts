@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { adminAuth } from '@/lib/firebase-admin';
 import { ObjectId } from 'mongodb';
+import { encrypt, isEncrypted } from '@/lib/crypto';
 
 async function verifyAuth(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
@@ -95,6 +96,8 @@ export async function POST(req: NextRequest) {
           system_logs: 'system_logs',
           routeTemplates: 'route_templates',
           route_templates: 'route_templates',
+          routeTemplateStops: 'route_template_stops',
+          route_template_stops: 'route_template_stops',
           surveys: 'surveys',
           survey_responses: 'survey_responses',
           surveyResponses: 'survey_responses',
@@ -121,11 +124,32 @@ export async function POST(req: NextRequest) {
               
               // Tarih alanlarını MongoDB Date objesine çevir (Sıralama ve filtreleme için kritik)
               const processedItem: any = { ...rest };
+              const dateFields = [
+                'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
+                'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
+              ];
+
+              const stringDateFields = ['date', 'pausedUntil', 'endDate', 'month'];
+
               for (const key in processedItem) {
-                if (typeof processedItem[key] === 'string' && 
-                   (key.endsWith('At') || key === 'timestamp' || key === 'submittedAt' || key === 'lastBackupDate')) {
-                  const d = new Date(processedItem[key]);
-                  if (!isNaN(d.getTime())) processedItem[key] = d;
+                if (typeof processedItem[key] === 'string') {
+                  if (key.endsWith('At') || dateFields.includes(key)) {
+                    const d = new Date(processedItem[key]);
+                    if (!isNaN(d.getTime())) processedItem[key] = d;
+                  } else if (stringDateFields.includes(key)) {
+                    // Ensure it stays as yyyy-MM-dd string
+                    if (processedItem[key].includes('T')) {
+                      processedItem[key] = processedItem[key].split('T')[0];
+                    }
+                  }
+                }
+              }
+
+              // Hassas verileri şifrele
+              const sensitiveFields = ['tcNo', 'householdNo', 'phone', 'password'];
+              for (const field of sensitiveFields) {
+                if (processedItem[field] && !isEncrypted(processedItem[field])) {
+                  processedItem[field] = encrypt(processedItem[field]);
                 }
               }
 

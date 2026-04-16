@@ -217,9 +217,15 @@ const processData = (data: any) => {
   
   if (result.tcNo) result.tcNo = decrypt(result.tcNo);
   if (result.householdNo) result.householdNo = decrypt(result.householdNo);
+  if (result.phone) result.phone = decrypt(result.phone);
+
+  const dateFields = [
+    'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
+    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
+  ];
 
   for (const key in result) {
-    if (typeof result[key] === 'string' && (key.endsWith('At') || key === 'timestamp' || key === 'date' || key === 'submittedAt' || key === 'lastBackupDate')) {
+    if (typeof result[key] === 'string' && (key.endsWith('At') || dateFields.includes(key))) {
       // Try to parse date if it looks like one
       if (result[key].includes('T') || result[key].includes('-')) {
         const d = new Date(result[key]);
@@ -240,6 +246,7 @@ const prepareData = (data: any) => {
   const result = { ...data };
   if (result.tcNo) result.tcNo = encrypt(result.tcNo);
   if (result.householdNo) result.householdNo = encrypt(result.householdNo);
+  if (result.phone) result.phone = encrypt(result.phone);
   if (result.password) result.password = encrypt(result.password);
   return result;
 };
