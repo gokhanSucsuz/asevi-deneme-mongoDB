@@ -52,7 +52,7 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const docs = snapshot.docs.map(doc => {
+        const docs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
           for (const key in data) {
             if (data[key] && typeof data[key].toDate === 'function') {
