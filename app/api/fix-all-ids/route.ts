@@ -54,13 +54,13 @@ export async function GET() {
         if (typeof doc._id === 'string' || idDictionary.has(oldIdStr)) {
           doc._id = newId;
           await collection.insertOne(doc);
-          await collection.deleteOne({ _id: oldIdStr });
+          await collection.deleteOne({ _id: oldIdStr } as any);
           fixedCount++;
         } 
         // _id sağlam ama içindeki foreign key'ler değiştiyse
         else if (needsUpdate) {
           const { _id, ...rest } = doc;
-          await collection.updateOne({ _id: doc._id }, { $set: rest });
+          await collection.updateOne({ _id: doc._id } as any, { $set: rest });
           fixedCount++;
         }
       }
