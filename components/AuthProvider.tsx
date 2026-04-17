@@ -22,9 +22,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Correct database types once per session or on load
-    normalizeDatabaseTypes();
-
     const isDemo = typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true';
     if (isDemo) {
       setUser({
@@ -55,6 +52,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(user);
       
       if (user) {
+        // Only normalize data when we have a real user
+        normalizeDatabaseTypes();
+
         if (user.email === 'demo@sydv.org.tr') {
           setRole('demo');
         } else if (pathname.startsWith('/admin')) {

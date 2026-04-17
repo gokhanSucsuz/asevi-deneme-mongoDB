@@ -287,10 +287,14 @@ const processData = (data: any): any => {
 // Database repair utility to fix wrongly formatted dates in DB
 export const normalizeDatabaseTypes = async () => {
   try {
+    // Check if user is authenticated before attempting normalization
+    if (!auth.currentUser) return;
+
     const routes = await db.routes.toArray();
     for (const r of routes) {
-      if (r.date instanceof Date) {
-        const d = r.date;
+      const rawDate = r.date as any;
+      if (rawDate instanceof Date) {
+        const d = rawDate as Date;
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
