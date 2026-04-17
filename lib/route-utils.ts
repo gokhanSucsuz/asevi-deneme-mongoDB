@@ -173,6 +173,18 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
 
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
 
+    // YENİ EKLENEN: İmza/Açıklama kısmı için otomatik sistem notu
+    let autoNote = undefined;
+    let displayName = h.headName;
+
+    if (isDeleted) {
+      autoNote = 'SİSTEM NOTU: Bu hane silinmiştir, yemek teslim edilmeyecek.';
+      displayName = `${h.headName} (SİLİNDİ)`; // Şoförün gözünden kaçmaması için ismin yanına da ekliyoruz
+    } else if (isPaused) {
+      autoNote = `SİSTEM NOTU: Bu hane dondurulmuştur. Yemek teslim etmeyiniz.`;
+      displayName = `${h.headName} (DONDURULDU)`; 
+    }
+
     // Standard Meal
     stops.push({
       routeId: routeId as string,
