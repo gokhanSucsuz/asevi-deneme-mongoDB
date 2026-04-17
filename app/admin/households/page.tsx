@@ -14,9 +14,10 @@ import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import * as XLSX from 'xlsx';
 import { safeFormat } from '@/lib/date-utils';
 import { normalizeTurkish } from '@/lib/utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function HouseholdsPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState<'search' | 'form'>('search');
@@ -60,9 +61,7 @@ export default function HouseholdsPage() {
     checkLastDay();
   }, []);
 
-  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
-  const sessionUser = session ? JSON.parse(session) : null;
-  const personnelName = sessionUser?.name || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   // Summary Stats
   const stats = React.useMemo(() => {
@@ -176,15 +175,7 @@ export default function HouseholdsPage() {
   };
 
   const addLog = async (action: string, details?: string) => {
-    if (!sessionUser) return;
-    await db.system_logs.add({
-      action,
-      details: details || '',
-      category: 'household',
-      personnelEmail: user?.email || 'Bilinmeyen Email',
-      personnelName: personnelName,
-      timestamp: new Date()
-    });
+    await addSystemLog(user, personnel, action, details, 'household');
   };
 
   const { register, control, handleSubmit, reset, setValue, watch } = useForm<Household>({

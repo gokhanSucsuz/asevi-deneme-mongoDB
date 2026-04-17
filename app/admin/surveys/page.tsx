@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 import { 
   BarChart, 
   Bar, 
@@ -25,7 +26,7 @@ import {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export default function SurveysPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
@@ -47,15 +48,7 @@ export default function SurveysPage() {
   const sessionUser = session ? JSON.parse(session) : null;
 
   const addLog = async (action: string, details?: string) => {
-    if (!sessionUser) return;
-    await db.system_logs.add({
-      action,
-      details: details || '',
-      category: 'survey',
-      personnelEmail: user?.email || 'Bilinmeyen Email',
-      personnelName: sessionUser.name || 'Bilinmeyen Personel',
-      timestamp: new Date()
-    });
+    await addSystemLog(user, personnel, action, details, 'survey');
   };
 
   const handleAddQuestion = () => {

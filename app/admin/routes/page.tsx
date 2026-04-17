@@ -13,9 +13,10 @@ import { normalizeTurkish } from '@/lib/utils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
+import { addSystemLog } from '@/lib/logger';
 
 export default function RoutesPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [activeTab, setActiveTab] = useState<'daily' | 'templates'>('daily');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,20 +71,10 @@ export default function RoutesPage() {
   const households = useAppQuery(() => db.households.toArray(), [], 'households');
   const systemLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
-  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
-  const sessionUser = session ? JSON.parse(session) : null;
-  const personnelName = sessionUser?.name || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   const addLog = async (action: string, details?: string, category: string = 'route') => {
-    if (!sessionUser) return;
-    await db.system_logs.add({
-      action,
-      details: details || '',
-      category,
-      personnelEmail: user?.email || 'Bilinmeyen Email',
-      personnelName: sessionUser.name || 'Bilinmeyen Personel',
-      timestamp: new Date()
-    });
+    await addSystemLog(user, personnel, action, details, category);
   };
 
   // Auto-fix template orders if they are missing or inconsistent

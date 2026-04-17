@@ -10,12 +10,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   role: 'admin' | 'driver' | 'demo' | null;
+  personnel: any | null;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true, role: null });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, role: null, personnel: null });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [personnel, setPersonnel] = useState<any | null>(null);
   const [role, setRole] = useState<'admin' | 'driver' | 'demo' | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -48,12 +50,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       
       if (user) {
         // Only normalize data when we have a real user
         normalizeDatabaseTypes();
+
+        // Try to find personnel record
+        try {
+          const p = await db.personnel.where('email').equals(user.email).first();
+          if (p) {
+            setPersonnel(p);
+            // Update session in localStorage for legacy compatibility
+            localStorage.setItem('personnel-session', JSON.stringify(p));
+          } else {
+            // Check for demo user
+            if (user.email === 'demo@sydv.org.tr') {
+              const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };
+              setPersonnel(demoP);
+              localStorage.setItem('personnel-session', JSON.stringify(demoP));
+            } else {
+              setPersonnel(null);
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching personnel:', e);
+        }
 
         if (user.email === 'demo@sydv.org.tr') {
           setRole('demo');
@@ -80,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [pathname]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, role }}>
+    <AuthContext.Provider value={{ user, loading, role, personnel }}>
       {!loading && children}
     </AuthContext.Provider>
   );

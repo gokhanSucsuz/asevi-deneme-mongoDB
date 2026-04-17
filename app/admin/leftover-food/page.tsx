@@ -10,9 +10,10 @@ import { useAuth } from '@/components/AuthProvider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function LeftoverFoodPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [date, setDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [quantity, setQuantity] = useState<number>(0);
@@ -60,13 +61,15 @@ export default function LeftoverFoodPage() {
         quantity,
         notes,
         updatedAt: new Date(),
-        updatedBy: user?.email || 'Bilinmeyen Kullanıcı'
+        updatedBy: personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Kullanıcı'
       };
 
       if (existingRecord && existingRecord.id) {
         await db.leftover_food.update(existingRecord.id, data);
+        await addSystemLog(user, personnel, 'Artan Yemek Güncellendi', `${date} tarihli artan yemek kaydı güncellendi: ${quantity} porsiyon.`, 'leftover_food');
       } else {
         await db.leftover_food.add(data);
+        await addSystemLog(user, personnel, 'Artan Yemek Eklendi', `${date} tarihi için artan yemek kaydı eklendi: ${quantity} porsiyon.`, 'leftover_food');
       }
 
       toast.success('Kayıt başarıyla kaydedildi');

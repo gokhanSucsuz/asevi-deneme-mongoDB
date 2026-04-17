@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Save, History, Info } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function WorkingDaysPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [workingDays, setWorkingDays] = useState<WorkingDay[]>([]);
@@ -92,16 +93,13 @@ export default function WorkingDaysPage() {
       await db.working_days.bulkPut(daysToSave);
       
       // Log the action
-      const session = localStorage.getItem('personnel-session');
-      const sessionUser = session ? JSON.parse(session) : null;
-      await db.system_logs.add({
-        action: 'Çalışma Günleri Güncellendi',
-        details: `${safeFormat(currentMonth, 'MMMM yyyy')} ayı çalışma günleri güncellendi.`,
-        personnelName: sessionUser?.name || 'Sistem',
-        personnelEmail: user?.email || 'Bilinmeyen Email',
-        timestamp: new Date(),
-        category: 'config'
-      });
+      await addSystemLog(
+        user, 
+        personnel, 
+        'Çalışma Günleri Güncellendi', 
+        `${safeFormat(currentMonth, 'MMMM yyyy')} ayı çalışma günleri güncellendi.`, 
+        'config'
+      );
 
       toast.success('Çalışma günleri başarıyla kaydedildi');
     } catch (error) {

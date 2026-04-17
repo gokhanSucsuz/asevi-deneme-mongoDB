@@ -12,9 +12,10 @@ import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function DriversPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,20 +26,10 @@ export default function DriversPage() {
   
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
-  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
-  const sessionUser = session ? JSON.parse(session) : null;
-  const personnelName = sessionUser?.name || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   const addLog = async (action: string, details?: string) => {
-    if (!sessionUser) return;
-    await db.system_logs.add({
-      action,
-      details: details || '',
-      category: 'driver',
-      personnelEmail: user?.email || 'Bilinmeyen Email',
-      personnelName: sessionUser.name || 'Bilinmeyen Personel',
-      timestamp: new Date()
-    });
+    await addSystemLog(user, personnel, action, details, 'driver');
   };
 
   const { register, handleSubmit, reset } = useForm<Driver>({

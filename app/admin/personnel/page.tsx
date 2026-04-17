@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function PersonnelPage() {
-  const { user, role } = useAuth();
+  const { user, role, personnel } = useAuth();
   const isDemo = role === 'demo';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState<Personnel | null>(null);
@@ -28,20 +29,10 @@ export default function PersonnelPage() {
   });
 
   const personnelList = useAppQuery(() => db.personnel.toArray(), [], 'personnel');
-  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
-  const sessionUser = session ? JSON.parse(session) : null;
-  const currentUserId = sessionUser ? sessionUser.id : null;
+  const currentUserId = personnel?.id;
 
   const addLog = async (action: string, details?: string) => {
-    if (!sessionUser) return;
-    await db.system_logs.add({
-      action,
-      details: details || '',
-      category: 'personnel',
-      personnelEmail: user?.email || 'Bilinmeyen Email',
-      personnelName: sessionUser.name || 'Bilinmeyen Personel',
-      timestamp: new Date()
-    });
+    await addSystemLog(user, personnel, action, details, 'personnel');
   };
 
   const openModal = (personnel?: Personnel) => {

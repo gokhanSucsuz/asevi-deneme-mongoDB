@@ -11,9 +11,10 @@ import { toast } from 'sonner';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/components/AuthProvider';
+import { addSystemLog } from '@/lib/logger';
 
 export default function BreadTrackingPage() {
-  const { user } = useAuth();
+  const { user, role, personnel } = useAuth();
   const [startDate, setStartDate] = useState('2026-04-14');
   const [endDate, setEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [reportData, setReportData] = useState<any[]>([]);
@@ -216,6 +217,7 @@ export default function BreadTrackingPage() {
       }
 
       toast.success('Manuel artan ekmek girişi kaydedildi.');
+      await addSystemLog(user, personnel, 'Ekmek Manuel Giriş', `${selectedDate} tarihi için ${manualAmount} adet manuel artan ekmek girişi yapıldı. Not: ${manualNote}`, 'bread');
       setIsManualModalOpen(false);
       setManualAmount(0);
       setManualNote('');
@@ -238,6 +240,7 @@ export default function BreadTrackingPage() {
         createdAt: new Date()
       });
       toast.success('Yeni ihale başarıyla eklendi.');
+      await addSystemLog(user, personnel, 'Yeni İhale Tanımlandı', `${tenderForm.name} ihalesi ${tenderForm.maxBreadCount} adet kapasite ile tanımlandı.`, 'tender');
       setIsTenderModalOpen(false);
       setTenderForm({
         name: '',
@@ -294,6 +297,7 @@ export default function BreadTrackingPage() {
         }
 
         toast.success('Sipariş verildi ve ihale limitinden düşüldü.', { id: loadingToast });
+        await addSystemLog(user, personnel, 'Ekmek Siparişi Verildi', `${item.date} tarihi için ${item.finalOrderAmount} adet ekmek siparişi verildi.`, 'bread');
       } catch (error) {
         console.error(error);
         toast.error('Sipariş sırasında bir hata oluştu.', { id: loadingToast });
