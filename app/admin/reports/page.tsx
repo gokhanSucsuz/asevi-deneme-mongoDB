@@ -67,11 +67,16 @@ export default function ReportsPage() {
   }
 
   const activeHouseholds = households?.filter(h => h.isActive) || [];
+  const householdsOnlyList = activeHouseholds.filter(h => !h.type || h.type === 'household');
+  const institutionsOnlyList = activeHouseholds.filter(h => h.type === 'institution');
   
   // Current Snapshot Stats
   const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
   const totalBread = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
   
+  const institutionBreadTotal = institutionsOnlyList.reduce((sum, h) => sum + (h.breadCount || 0), 0);
+  const householdBreadTotal = totalBread - institutionBreadTotal;
+
   const selfServicePeople = activeHouseholds.filter(h => h.isSelfService).reduce((sum, h) => sum + (h.memberCount || 0), 0);
   const routePeople = totalPeople - selfServicePeople;
 
@@ -288,6 +293,8 @@ export default function ReportsPage() {
       const summaryData = [
         ['Günlük Hedeflenen Yemek', `${totalPeople} Kişi`],
         ['Günlük Hedeflenen Ekmek', `${totalBread} Adet`],
+        ['   - Kurum Ekmeği', `${institutionBreadTotal} Adet`],
+        ['   - Hane Ekmeği', `${householdBreadTotal} Adet`],
         ['Vakıf Kabı Kullanan', `${vakifContainerPeople} Kişi`],
         ['Kendi Kabını Kullanan', `${ownContainerPeople} Kişi`],
         ['Rota ile Dağıtım', `${routePeople} Kişi`],
@@ -306,6 +313,27 @@ export default function ReportsPage() {
         styles: { font: 'Roboto', fontSize: 9, cellPadding: 3 },
         columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
       });
+
+      // Add Institution Breakdown
+      if (institutionsOnlyList.length > 0) {
+        let finalY = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFont('Roboto', 'bold');
+        doc.text('KURUM EKMEK DAĞILIMI', 14, finalY);
+        
+        const instTableData = institutionsOnlyList.map(inst => [
+          inst.headName,
+          `${inst.memberCount} Kişi`,
+          `${inst.breadCount} Adet`
+        ]);
+        
+        autoTable(doc, {
+          head: [['Kurum Adı', 'Kişi Sayısı', 'Ekmek Sayısı']],
+          body: instTableData,
+          startY: finalY + 5,
+          styles: { font: 'Roboto', fontSize: 9 },
+          headStyles: { fillColor: [79, 70, 229] }
+        });
+      }
 
       // Capture Charts if reportRef is available
       if (reportRef.current) {
@@ -576,6 +604,10 @@ export default function ReportsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Dağıtılan Ekmek</p>
                 <p className="text-2xl font-bold text-gray-900">{totalBreadDelivered}</p>
+                <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                  <p>Hane: {activeHouseholds.filter(h => !h.type || h.type === 'household').reduce((sum, h) => sum + (h.breadCount || 0), 0)}</p>
+                  <p>Kurum: {institutionsOnlyList.reduce((sum, h) => sum + (h.breadCount || 0), 0)}</p>
+                </div>
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
@@ -683,7 +715,25 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-3">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <ShoppingBasket size={20} className="text-rose-500" />
+              Kurum Ekmek Detayları
+            </h3>
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
+              {institutionsOnlyList.map(inst => (
+                <div key={inst.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-100">
+                  <span className="text-sm font-medium text-gray-700">{inst.headName}</span>
+                  <span className="text-sm font-bold text-gray-900">{inst.breadCount} Ekmek</span>
+                </div>
+              ))}
+              {institutionsOnlyList.length === 0 && (
+                <p className="text-sm text-gray-500 italic">Kayıtlı kurum bulunmamaktadır.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 lg:col-span-3">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <BarChart3 size={20} className="text-blue-500" />
                 Günlük Dağıtım ve Artan Yemek Trendi

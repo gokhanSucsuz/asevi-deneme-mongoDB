@@ -851,55 +851,107 @@ export default function RoutesPage() {
     doc.text(`Tarih: ${safeFormat(route.date, 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 45, { align: 'right' });
     doc.text(`Şoför: ${driverName}`, 14, 45);
 
-    const stops = await db.routeStops.where('routeId').equals(route.id!).sortBy('order');
-    
+    const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+    const householdsList = await db.households.toArray();
+    const template = await db.routeTemplates.where('driverId').equals(route.driverId).first();
+    const tStops = template ? await db.routeTemplateStops.where('templateId').equals(template.id!).toArray() : [];
+
+    const sortedStops = [...stops].sort((a, b) => {
+      // Priority: use template order if both are in template
+      const templateStopA = tStops.find(ts => ts.householdId === a.householdId);
+      const templateStopB = tStops.find(ts => ts.householdId === b.householdId);
+      
+      if (templateStopA && templateStopB) return templateStopA.order - templateStopB.order;
+      if (templateStopA && !templateStopB) return -1;
+      if (!templateStopA && templateStopB) return 1;
+      
+      // Fallback to daily order if neither in template (manual additions)
+      return a.order - b.order;
+    });
+
     const { isLastWorkingDayOfWeek } = await import('@/lib/route-utils');
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(route.date));
 
-    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Yemek", "Ekmek", "İmza/Teslim"];
+    // Grouping by household for the manifest to combine standard and breakfast
+    const groupedStops: any[] = [];
+    const processedHouseholdIds = new Set();
+
+    for (const stop of sortedStops) {
+      if (processedHouseholdIds.has(stop.householdId)) continue;
+      
+      const householdStops = sortedStops.filter(s => s.householdId === stop.householdId);
+      const standardStop = householdStops.find(s => s.mealType === 'standard' || !s.mealType);
+      const breakfastStop = householdStops.find(s => s.mealType === 'breakfast');
+      
+      const household = householdsList.find(h => h.id === stop.householdId);
+      
+      if (!standardStop && !breakfastStop) continue;
+
+      const memberCount = standardStop?.householdSnapshotMemberCount || breakfastStop?.householdSnapshotMemberCount || household?.memberCount || 0;
+      const breadCount = standardStop?.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
+      const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount || household?.memberCount || 0) : 0;
+      
+      const multiplier = isLastWorkingDay ? 2 : 1;
+      
+      groupedStops.push({
+        name: stop.householdSnapshotName || household?.headName || '',
+        address: household?.address || '',
+        food: memberCount * multiplier,
+        bread: breadCount * multiplier,
+        breakfast: breakfastCount, // Already 1x usually, or 0
+        isManual: stop.isManual,
+        isPaused: (household?.pausedUntil && household.pausedUntil >= route.date),
+        isDeleted: household?.pausedUntil === '9999-12-31'
+      });
+      processedHouseholdIds.add(stop.householdId);
+    }
+
+    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Yemek", "Ekmek", "K.Yemek", "İmza/Teslim"];
     const tableRows: any[] = [];
     
     let totalFood = 0;
     let totalBread = 0;
+    let totalBreakfast = 0;
 
-    for (let i = 0; i < stops.length; i++) {
-      const stop = stops[i];
-      const household = await db.households.get(stop.householdId);
-      const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
-      const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
-      const multiplier = isLastWorkingDay ? 2 : 1;
-      
-      const food = memberCount * multiplier;
-      const bread = breadCount * multiplier;
-      totalFood += food;
-      totalBread += bread;
+    for (let i = 0; i < groupedStops.length; i++) {
+      const gs = groupedStops[i];
+      totalFood += gs.food;
+      totalBread += gs.bread;
+      totalBreakfast += gs.breakfast;
+
+      let displayName = gs.name;
+      if (gs.isManual) displayName = `* ${displayName}`;
+      if (gs.isDeleted) displayName = `${displayName} (SİLİNDİ)`;
+      else if (gs.isPaused) displayName = `${displayName} (PASİF)`;
 
       tableRows.push([
         (i + 1).toString(),
-        stop.householdSnapshotName || household?.headName || '',
-        household?.address || '',
-        food.toString(),
-        bread.toString(),
-        "[  ]" // Checkbox placeholder
+        displayName,
+        gs.address,
+        gs.food.toString(),
+        gs.bread.toString(),
+        gs.breakfast > 0 ? gs.breakfast.toString() : '-',
+        "[  ]"
       ]);
     }
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      foot: [['', 'TOPLAM', '', totalFood.toString(), totalBread.toString(), '']],
+      foot: [['', 'TOPLAM', '', totalFood.toString(), totalBread.toString(), totalBreakfast.toString(), '']],
       showFoot: 'lastPage',
       startY: 50,
       styles: { font: 'Roboto', fontSize: 9, cellPadding: 3, lineColor: [0, 0, 0], lineWidth: 0.1 },
       headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
       footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 12 },
-        1: { halign: 'left' },
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'left', cellWidth: 45 },
         2: { halign: 'left' },
-        3: { halign: 'center', cellWidth: 20 },
-        4: { halign: 'center', cellWidth: 20 },
-        5: { halign: 'center', cellWidth: 35 }
+        3: { halign: 'center', cellWidth: 15 },
+        4: { halign: 'center', cellWidth: 15 },
+        5: { halign: 'center', cellWidth: 15 },
+        6: { halign: 'center', cellWidth: 30 }
       }
     });
 
@@ -946,46 +998,94 @@ export default function RoutesPage() {
     const { isLastWorkingDayOfWeek } = await import('@/lib/route-utils');
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(route.date));
 
+    // Fetch template to maintain original order
+    const template = await db.routeTemplates.where('driverId').equals(route.driverId).first();
+    const tStops = template ? await db.routeTemplateStops.where('templateId').equals(template.id!).toArray() : [];
+
+    const sortedStops = [...stops].sort((a, b) => {
+      const templateStopA = tStops.find(ts => ts.householdId === a.householdId);
+      const templateStopB = tStops.find(ts => ts.householdId === b.householdId);
+      if (templateStopA && templateStopB) return templateStopA.order - templateStopB.order;
+      if (templateStopA && !templateStopB) return -1;
+      if (!templateStopA && templateStopB) return 1;
+      return a.order - b.order;
+    });
+
+    // Grouping by household for the tutanak
+    const groupedStops: any[] = [];
+    const processedHouseholdIdsForTutanak = new Set();
+
+    for (const stop of sortedStops) {
+      if (processedHouseholdIdsForTutanak.has(stop.householdId)) continue;
+      
+      const householdStops = sortedStops.filter(s => s.householdId === stop.householdId);
+      const standardStop = householdStops.find(s => s.mealType === 'standard' || !s.mealType);
+      const breakfastStop = householdStops.find(s => s.mealType === 'breakfast');
+      const household = households?.find(h => h.id === stop.householdId);
+      
+      const memberCount = standardStop?.householdSnapshotMemberCount || breakfastStop?.householdSnapshotMemberCount || household?.memberCount || 0;
+      const breadCount = standardStop?.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
+      const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount || household?.memberCount || 0) : 0;
+      
+      const multiplier = 1;
+      
+      groupedStops.push({
+        id: stop.id,
+        name: stop.householdSnapshotName || household?.headName || '',
+        address: household?.address || '',
+        memberCount,
+        food: memberCount * multiplier,
+        bread: breadCount * multiplier,
+        breakfast: breakfastCount,
+        status: standardStop?.status || breakfastStop?.status || 'pending',
+        deliveredAt: standardStop?.deliveredAt || breakfastStop?.deliveredAt,
+        issueReport: standardStop?.issueReport || breakfastStop?.issueReport || '',
+        isManual: standardStop?.isManual || breakfastStop?.isManual,
+        isPaused: (household?.pausedUntil && household.pausedUntil >= route.date),
+        isDeleted: household?.pausedUntil === '9999-12-31'
+      });
+      processedHouseholdIdsForTutanak.add(stop.householdId);
+    }
+
     let totalPeople = 0;
     let totalFood = 0;
     let totalBread = 0;
+    let totalBreakfast = 0;
     let totalDeliveredFood = 0;
 
-    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Kişi", "Yemek", "Ekmek", "Durum", "Saat", "Açıklama"];
-    const tableRows = stops.map((stop, i) => {
-      const household = households?.find(h => h.id === stop.householdId);
-      const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
-      const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
-      
-      // Multiplier is now 1 because breakfast is a separate record
-      const multiplier = 1;
-      
-      totalPeople += memberCount;
-      totalFood += memberCount * multiplier;
-      totalBread += breadCount * multiplier;
-      if (stop.status === 'delivered') {
-        totalDeliveredFood += memberCount * multiplier;
+    const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Kişi", "Yemek", "Ekmek", "Kahv.", "Durum", "Saat", "Açıklama"];
+    const tableRows = groupedStops.map((gs, i) => {
+      totalPeople += gs.memberCount;
+      totalFood += gs.food;
+      totalBread += gs.bread;
+      totalBreakfast += gs.breakfast;
+      if (gs.status === 'delivered') {
+        totalDeliveredFood += gs.food;
       }
       
-      const name = stop.isManual ? `* ${stop.householdSnapshotName || household?.headName || ''}` : (stop.householdSnapshotName || household?.headName || '');
+      let nameStr = gs.name;
+      if (gs.isManual) nameStr = `* ${nameStr}`;
+      if (gs.isDeleted) nameStr = `${nameStr} (SİLİNDİ)`;
+      else if (gs.isPaused) nameStr = `${nameStr} (PASİF)`;
 
       return [
         (i + 1).toString(),
-        name,
-        household?.address || '',
-        memberCount.toString(),
-        (memberCount * multiplier).toString(),
-        (breadCount * multiplier).toString(),
-        stop.status === 'delivered' ? 'Teslim Edildi' : stop.status === 'failed' ? 'Edilemedi' : 'Bekliyor',
-        stop.deliveredAt ? safeFormat(stop.deliveredAt, 'HH:mm') : '-',
-        stop.issueReport || ''
+        nameStr,
+        gs.address,
+        gs.memberCount.toString(),
+        gs.food.toString(),
+        gs.bread.toString(),
+        gs.breakfast > 0 ? gs.breakfast.toString() : '-',
+        gs.status === 'delivered' ? 'Teslim Edildi' : gs.status === 'failed' ? 'Edilemedi' : 'Bekliyor',
+        gs.deliveredAt ? safeFormat(gs.deliveredAt, 'HH:mm') : '-',
+        gs.issueReport
       ];
     });
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      foot: [['', 'TOPLAM', '', totalPeople.toString(), totalFood.toString(), totalBread.toString(), `Teslim Edilen: ${totalDeliveredFood} Yemek`, '', '']],
+      foot: [['', 'TOPLAM', '', totalPeople.toString(), totalFood.toString(), totalBread.toString(), totalBreakfast.toString(), `Teslim: ${totalDeliveredFood}`, '', '']],
       showFoot: 'lastPage',
       startY: startY,
       styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
@@ -993,10 +1093,13 @@ export default function RoutesPage() {
       footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
       columnStyles: {
         0: { halign: 'center', cellWidth: 10 },
-        3: { halign: 'center', cellWidth: 12 },
-        4: { halign: 'center', cellWidth: 12 },
-        5: { halign: 'center', cellWidth: 12 },
-        7: { halign: 'center', cellWidth: 15 }
+        1: { cellWidth: 35 },
+        2: { cellWidth: 50 },
+        3: { halign: 'center', cellWidth: 10 },
+        4: { halign: 'center', cellWidth: 10 },
+        5: { halign: 'center', cellWidth: 10 },
+        6: { halign: 'center', cellWidth: 10 },
+        8: { halign: 'center', cellWidth: 15 }
       }
     });
 
@@ -1059,12 +1162,60 @@ export default function RoutesPage() {
     const weekRouteIds = weekRoutes.map(r => r.id);
     const weekStops = routeStops?.filter(rs => weekRouteIds.includes(rs.routeId)) || [];
 
+    // Sorting households by template order
+    const template = await db.routeTemplates.where('driverId').equals(driverId).first();
+    const tStops = template ? await db.routeTemplateStops.where('templateId').equals(template.id!).toArray() : [];
+    
     // Get unique households in these routes
     const householdIds = Array.from(new Set(weekStops.map(rs => rs.householdId)));
     
-    const tableColumn = ["Sıra", "Hane Adı", "Adres", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3))];
+    // Sort householdIds by template order
+    householdIds.sort((a, b) => {
+      const orderA = tStops.find(ts => ts.householdId === a)?.order || 9999;
+      const orderB = tStops.find(ts => ts.householdId === b)?.order || 9999;
+      return orderA - orderB;
+    });
+
+    const previousWeekStart = addDays(start, -7);
+    const previousWeekEnd = addDays(start, -1);
+    const prevStartDateStr = safeFormat(previousWeekStart, 'yyyy-MM-dd');
+    const prevEndDateStr = safeFormat(previousWeekEnd, 'yyyy-MM-dd');
+
+    const tableColumn = ["Sıra", "Hane Adı", "Adres", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3)), "Açıklama (Geçen Hafta)"];
     const tableRows = householdIds.map((hId, index) => {
       const h = households?.find(hh => hh.id === hId);
+      
+      // Calculate previous week summary for this household
+      const hHistory = h?.history || [];
+      const isNew = hHistory.some(hist => 
+        hist.action === 'created' && 
+        safeFormat(new Date(hist.date), 'yyyy-MM-dd') >= prevStartDateStr && 
+        safeFormat(new Date(hist.date), 'yyyy-MM-dd') <= prevEndDateStr
+      );
+
+      let prevWeekNote = '';
+      if (isNew) {
+        // Find which days they were served in the previous week
+        const prevStops = routeStops?.filter(rs => 
+          rs.householdId === hId && 
+          rs.status === 'delivered'
+        ) || [];
+        
+        const servedDates: string[] = [];
+        for (const ps of prevStops) {
+          const r = routes?.find(route => route.id === ps.routeId);
+          if (r && r.date >= prevStartDateStr && r.date <= prevEndDateStr) {
+            servedDates.push(safeFormat(new Date(r.date), 'EEEE').substring(0, 3));
+          }
+        }
+        
+        if (servedDates.length > 0) {
+          prevWeekNote = `Yeni Kayıt: Geçen hafta (${servedDates.join(', ')}) günleri yemek aldı.`;
+        } else {
+          prevWeekNote = 'Yeni Kayıt.';
+        }
+      }
+
       const row = [
         (index + 1).toString(),
         h?.headName || 'Bilinmeyen',
@@ -1082,6 +1233,7 @@ export default function RoutesPage() {
         }
       });
 
+      row.push(prevWeekNote);
       return row;
     });
 
@@ -1090,12 +1242,13 @@ export default function RoutesPage() {
       body: tableRows,
       startY: 30,
       theme: 'grid',
-      styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+      styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 60 },
+        0: { halign: 'center', cellWidth: 8 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 50 },
+        8: { cellWidth: 40, fontSize: 6 } // Açıklama column
       }
     });
 
