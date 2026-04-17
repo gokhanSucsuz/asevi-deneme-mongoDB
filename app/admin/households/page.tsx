@@ -87,9 +87,19 @@ export default function HouseholdsPage() {
 
     const totalContainers = totalPeople - ownContainerCount;
     
-    // Calculate total bread: Sum of breadCount, but double on last working day of week to match tracking logic
-    const baseBread = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
-    const totalBread = isLastWorkingDay ? baseBread * 2 : baseBread;
+    // Calculate total bread: Kahvaltı için ayrıca ekmek verilmiyor
+    const totalBread = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
+    
+    const wantsBreakfastHouseholds = householdsOnly.filter(h => !h.noBreakfast);
+    const wantsBreakfastInstitutions = institutionsOnly.filter(h => !h.noBreakfast);
+    const noBreakfastHouseholds = householdsOnly.filter(h => h.noBreakfast);
+    const noBreakfastInstitutions = institutionsOnly.filter(h => h.noBreakfast);
+    
+    const wantsBreakfastTotal = wantsBreakfastHouseholds.length + wantsBreakfastInstitutions.length;
+    const noBreakfastTotal = noBreakfastHouseholds.length + noBreakfastInstitutions.length;
+    
+    const wantsBreakfastPeople = wantsBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + wantsBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+    const noBreakfastPeople = noBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + noBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
     
     return {
       totalHouseholds: householdsOnly.length,
@@ -101,7 +111,11 @@ export default function HouseholdsPage() {
       inRouteHouseholds: inRouteHouseholds.length,
       selfServiceHouseholds: selfServiceHouseholds.length,
       totalContainers,
-      ownContainerCount
+      ownContainerCount,
+      wantsBreakfastTotal,
+      noBreakfastTotal,
+      wantsBreakfastPeople,
+      noBreakfastPeople
     };
   }, [allHouseholds, isLastWorkingDay]);
 
@@ -759,7 +773,7 @@ export default function HouseholdsPage() {
             <Home size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Aktif Hane Sayısı</p>
+            <p className="text-sm font-medium text-gray-500">Aktif Hane</p>
             <p className="text-2xl font-bold text-gray-900">{stats.totalHouseholds}</p>
             <p className="text-[10px] text-gray-400 mt-1">
               {stats.householdPeople} Kişi / {stats.inRouteHouseholds} Rota
@@ -771,7 +785,7 @@ export default function HouseholdsPage() {
             <Building2 size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Aktif Kurum Sayısı</p>
+            <p className="text-sm font-medium text-gray-500">Aktif Kurum</p>
             <p className="text-2xl font-bold text-gray-900">{stats.totalInstitutions}</p>
             <p className="text-[10px] text-gray-400 mt-1">
               {stats.institutionPeople} Kişi (Öğrenci vb.)
@@ -792,19 +806,40 @@ export default function HouseholdsPage() {
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Günlük Ekmek İhtiyacı</p>
+            <p className="text-sm font-medium text-gray-500">Günlük Ekmek</p>
             <p className="text-2xl font-bold text-gray-900">{stats.totalBread}</p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-yellow-50 text-yellow-600">
+            <ShoppingBasket size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Kahvaltı Verilen</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.wantsBreakfastTotal}</p>
             <p className="text-[10px] text-gray-400 mt-1">
-              {isLastWorkingDay ? 'Hafta Sonu Dahil (2 Günlük)' : 'Normal Günlük'}
+              {stats.wantsBreakfastPeople} Kişi
             </p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 rounded-full bg-orange-50 text-orange-600">
+          <div className="p-3 rounded-full bg-gray-50 text-gray-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Kendi Kabını Kullanan (Kişi)</p>
+            <p className="text-sm font-medium text-gray-500">Kahvaltı İstemeyen</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.noBreakfastTotal}</p>
+            <p className="text-[10px] text-gray-400 mt-1">
+              {stats.noBreakfastPeople} Kişi
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-teal-50 text-teal-600">
+            <ShoppingBasket size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Kendi Kabını Kullanan</p>
             <p className="text-2xl font-bold text-gray-900">{stats.ownContainerCount}</p>
           </div>
         </div>
@@ -813,17 +848,8 @@ export default function HouseholdsPage() {
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Kullanılan Vakıf Kabı</p>
+            <p className="text-sm font-medium text-gray-500">Vakıf Kabı Kullanan</p>
             <p className="text-2xl font-bold text-gray-900">{stats.totalContainers}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-          <div className="p-3 rounded-full bg-teal-50 text-teal-600">
-            <ShoppingBasket size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Kendi Kabını Kullanan (Kişi)</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalPeople - stats.totalContainers}</p>
           </div>
         </div>
       </div>

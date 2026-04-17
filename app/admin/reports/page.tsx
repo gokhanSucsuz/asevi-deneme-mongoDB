@@ -599,6 +599,7 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
+                      isAnimationActive={false}
                       data={deliveryMethodData}
                       cx="50%"
                       cy="50%"
@@ -629,6 +630,7 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
+                      isAnimationActive={false}
                       data={containerData}
                       cx="50%"
                       cy="50%"
@@ -659,6 +661,7 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
+                      isAnimationActive={false}
                       data={deliveryStatusData}
                       cx="50%"
                       cy="50%"
@@ -695,9 +698,9 @@ export default function ReportsPage() {
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                    <Line type="monotone" dataKey="Teslim Edilen Yemek" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="Dağıtılan Ekmek" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="Artan Yemek" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} />
+                    <Line isAnimationActive={false} type="monotone" dataKey="Teslim Edilen Yemek" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    <Line isAnimationActive={false} type="monotone" dataKey="Dağıtılan Ekmek" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
+                    <Line isAnimationActive={false} type="monotone" dataKey="Artan Yemek" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
