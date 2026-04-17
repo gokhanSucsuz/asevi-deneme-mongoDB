@@ -260,10 +260,10 @@ const processData = (data: any): any => {
 
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
-    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
+    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime', 'date'
   ];
 
-  const stringDateFields = ['date', 'endDate', 'pausedUntil', 'month'];
+  const stringDateFields = ['endDate', 'pausedUntil', 'month'];
 
   for (const key in result) {
     let value = result[key];
@@ -276,72 +276,58 @@ const processData = (data: any): any => {
 
     // 1. Force conversion to Date for known Date fields or any key ending in 'At'
     if (key.endsWith('At') || dateFields.includes(key)) {
-      if (typeof value === 'string' || typeof value === 'number') {
+      if ((typeof value === 'string' && value.length > 5) || typeof value === 'number') {
         const d = new Date(value);
         if (!isNaN(d.getTime())) {
           result[key] = d;
         }
       }
     } 
-    // 2. Specialized handling for 'date' and other yyyy-MM-dd fields
+    // 2. Specialized handling for yyyy-MM-dd fields
     else if (stringDateFields.includes(key)) {
       if (value instanceof Date) {
-        // Coerce back to string ONLY if it doesn't seem like a history/log entry 
-        // (History entries typically have an 'action' field)
-        if (!result.action) {
-          const year = value.getFullYear();
-          const month = String(value.getMonth() + 1).padStart(2, '0');
-          const day = String(value.getDate()).padStart(2, '0');
-          result[key] = `${year}-${month}-${day}`;
-        }
-      } else if (typeof value === 'string' && value.includes('T')) {
-        // If it's an ISO string:
-        // - If it has an 'action' field, it's history -> convert to Date object
-        // - Otherwise, it's likely a corrupted string-date -> truncate to yyyy-MM-dd
-        if (result.action) {
-          const d = new Date(value);
-          if (!isNaN(d.getTime())) result[key] = d;
-        } else {
-          result[key] = value.split('T')[0];
-        }
-      }
-    }
-    // 3. Heuristic for strings that look like ISO timestamps
-    else if (typeof value === 'string' && value.length > 10 && value.includes('T') && value.includes('-')) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        result[key] = d;
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, '0');
+        const day = String(value.getDate()).padStart(2, '0');
+        result[key] = `${year}-${month}-${day}`;
       }
     }
   }
   return result;
 };
 
-// Database repair utility to fix wrongly formatted dates in DB
 export const normalizeDatabaseTypes = async () => {
   try {
-    // Check if user is authenticated before attempting normalization
     if (!auth.currentUser) return;
 
+    const drivers = await db.drivers.toArray();
     const routes = await db.routes.toArray();
-    for (const r of routes) {
-      const rawDate = r.date as any;
-      if (rawDate instanceof Date) {
-        const d = rawDate as Date;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        await db.routes.update(r.id!, { date: `${year}-${month}-${day}` });
-      }
-    }
-
     const logs = await db.system_logs.toArray();
+
+    // 1. Log Sorting Normalization
     for (const l of logs) {
-      if (!l.timestamp) {
+      if (!l.timestamp || isNaN(new Date(l.timestamp).getTime())) {
         await db.system_logs.update(l.id!, { timestamp: new Date() });
       }
     }
-    console.log('Database types normalized');
+
+    // 2. Driver ID Synchronization (MongoDB Compatibility Fix)
+    // Ensures that routes are linked to the current driver IDs by checking Plate/TC fallback
+    for (const r of routes) {
+      const currentDriver = drivers.find(d => String(d.id) === String(r.driverId));
+      if (!currentDriver) {
+        // ID mismatch! Try to find driver by name or plate if stored
+        const reLinkedDriver = drivers.find(d => 
+          (r.driverSnapshotName && d.name === r.driverSnapshotName)
+        );
+        if (reLinkedDriver) {
+          console.log(`Relinking route ${r.id} from ${r.driverId} to ${reLinkedDriver.id}`);
+          await db.routes.update(r.id!, { driverId: String(reLinkedDriver.id) });
+        }
+      }
+    }
+
+    console.log('Database types and IDs synchronized/normalized');
   } catch (error) {
     console.error('Normalization error:', error);
   }

@@ -1743,7 +1743,8 @@ export default function RoutesPage() {
               {[...(systemLogs || [])].sort((a, b) => {
                 const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
                 const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                return timeB - timeA;
+                if (timeB !== timeA) return timeB - timeA;
+                return (String(b.id || '')).localeCompare(String(a.id || ''));
               }).slice(0, 10).map((log) => (
                 <tr key={log.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-700">

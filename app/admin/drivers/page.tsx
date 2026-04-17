@@ -120,9 +120,9 @@ export default function DriversPage() {
     setReportModalOpen(true);
   };
 
-  const getDriverRoutes = (driverId: string | undefined) => {
-    if (!driverId) return [];
-    return routes?.filter(r => String(r.driverId) === String(driverId) && r.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const getDriverRoutes = (id: string | undefined, name?: string) => {
+    if (!id) return [];
+    return routes?.filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && r.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   };
 
   const exportDriverReportPDF = async () => {
@@ -135,11 +135,17 @@ export default function DriversPage() {
       const endDate = new Date();
       const startDate = subMonths(endDate, months);
 
-      const driverRoutes = routes?.filter((r: Route) => 
-        String(r.driverId) === String(driverToReport.id!) && 
-        r.status === 'completed' &&
-        isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) })
-      ).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+      const driverRoutes = routes?.filter((r: Route) => {
+        const idMatch = String(r.driverId) === String(driverToReport.id!);
+        const nameMatch = r.driverSnapshotName && r.driverSnapshotName === driverToReport.name;
+        
+        // Use either ID match or name match for robustness during migration periods
+        const isThisDriver = idMatch || nameMatch;
+        
+        return isThisDriver && 
+               r.status === 'completed' &&
+               isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) });
+      }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
       const allStops = await db.routeStops.toArray();
       const driverStops = allStops.filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
@@ -325,7 +331,7 @@ export default function DriversPage() {
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-500">Toplam Rota</p>
-                  <p className="font-bold text-gray-900">{getDriverRoutes(driverToReport.id!).length}</p>
+                  <p className="font-bold text-gray-900">{getDriverRoutes(driverToReport.id!, driverToReport.name).length}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Rapor Dönemi</label>
@@ -354,7 +360,7 @@ export default function DriversPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getDriverRoutes(driverToReport.id!).map((route) => (
+                    {getDriverRoutes(driverToReport.id!, driverToReport.name).map((route) => (
                       <tr key={route.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
@@ -369,7 +375,7 @@ export default function DriversPage() {
                         </td>
                       </tr>
                     ))}
-                    {getDriverRoutes(driverToReport.id!).length === 0 && (
+                    {getDriverRoutes(driverToReport.id!, driverToReport.name).length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                           Henüz tamamlanmış rota kaydı bulunmuyor.

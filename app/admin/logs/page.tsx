@@ -30,7 +30,9 @@ export default function SystemLogsPage() {
   }).sort((a, b) => {
     const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
     const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return timeB - timeA;
+    if (timeB !== timeA) return timeB - timeA;
+    // Fallback if timestamps are equal
+    return (String(b.id || '')).localeCompare(String(a.id || ''));
   });
 
   const totalPages = Math.ceil((filteredLogs?.length || 0) / itemsPerPage);
