@@ -1466,20 +1466,33 @@ export default function RoutesPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hane / Kişi</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durum</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {routesOnDate.map((route) => (
-                  <tr key={route.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {safeFormat(route.date, 'dd.MM.yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {route.driverSnapshotName || getDriverName(route.driverId)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {routesOnDate.map((route) => {
+                  const stops = stopsOnDate?.filter(s => s.routeId === route.id) || [];
+                  const uniqueHouseholds = new Set(stops.map(s => s.householdId));
+                  const totalPeople = Array.from(uniqueHouseholds).reduce((sum, hId) => {
+                    const firstStop = stops.find(s => s.householdId === hId);
+                    return sum + (firstStop?.householdSnapshotMemberCount || 0);
+                  }, 0);
+
+                  return (
+                    <tr key={route.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {safeFormat(route.date, 'dd.MM.yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {route.driverSnapshotName || getDriverName(route.driverId)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="font-medium text-gray-900">{uniqueHouseholds.size} Hane</div>
+                        <div className="text-xs text-gray-500">{totalPeople} Kişi</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${route.status === 'approved' ? 'bg-purple-100 text-purple-800' :
                           route.status === 'completed' ? 'bg-green-100 text-green-800' : 
@@ -1562,7 +1575,8 @@ export default function RoutesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {routesOnDate.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
@@ -1595,7 +1609,7 @@ export default function RoutesPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Şoför</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hane Sayısı</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hane / Kişi</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
                 </tr>
               </thead>
@@ -1603,13 +1617,25 @@ export default function RoutesPage() {
                 {activeDrivers?.map((driver) => {
                   const template = routeTemplates?.find(rt => rt.driverId === driver.id);
                   const tStops = template ? (routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || []) : [];
+                  const totalPeople = tStops.reduce((sum, ts) => {
+                    const h = households?.find(hh => hh.id === ts.householdId);
+                    return sum + (h?.memberCount || 0);
+                  }, 0);
+                  
                   return (
                     <tr key={driver.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {driver.name} ({driver.vehiclePlate})
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {template ? `${tStops.length} Hane` : 'Şablon Oluşturulmamış'}
+                        {template ? (
+                          <>
+                            <div className="font-medium text-gray-900">{tStops.length} Hane</div>
+                            <div className="text-xs text-gray-500">{totalPeople} Kişi</div>
+                          </>
+                        ) : (
+                          <span className="text-gray-400 italic">Şablon Oluşturulmamış</span>
+                        )}
                       </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {template && (
