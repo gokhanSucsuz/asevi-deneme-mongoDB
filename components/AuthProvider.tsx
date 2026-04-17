@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { normalizeDatabaseTypes } from '@/lib/db';
+import { db, normalizeDatabaseTypes } from '@/lib/db';
 
 interface AuthContextType {
   user: User | null;
