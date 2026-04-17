@@ -231,22 +231,83 @@ const processData = (data: any): any => {
 
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
-    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime', 'date'
+    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
   ];
+
+  const stringDateFields = ['date', 'endDate', 'pausedUntil', 'month'];
 
   for (const key in result) {
     const value = result[key];
-    if (typeof value === 'string' && (key.endsWith('At') || dateFields.includes(key))) {
-      // Try to parse date if it looks like one
-      if (value.includes('T') || value.includes('-')) {
+    
+    // 1. Force conversion to Date for known Date fields or any key ending in 'At'
+    if (key.endsWith('At') || dateFields.includes(key)) {
+      if (typeof value === 'string' || typeof value === 'number') {
         const d = new Date(value);
-        if (!isNaN(d.getTime())) result[key] = d;
+        if (!isNaN(d.getTime())) {
+          result[key] = d;
+        }
       }
-    } else if (typeof value === 'object' && value !== null) {
+    } 
+    // 2. Specialized handling for 'date' and other yyyy-MM-dd fields
+    else if (stringDateFields.includes(key)) {
+      if (value instanceof Date) {
+        // Coerce back to string ONLY if it doesn't seem like a history/log entry 
+        // (History entries typically have an 'action' field)
+        if (!result.action) {
+          const year = value.getFullYear();
+          const month = String(value.getMonth() + 1).padStart(2, '0');
+          const day = String(value.getDate()).padStart(2, '0');
+          result[key] = `${year}-${month}-${day}`;
+        }
+      } else if (typeof value === 'string' && value.includes('T')) {
+        // If it's an ISO string:
+        // - If it has an 'action' field, it's history -> convert to Date object
+        // - Otherwise, it's likely a corrupted string-date -> truncate to yyyy-MM-dd
+        if (result.action) {
+          const d = new Date(value);
+          if (!isNaN(d.getTime())) result[key] = d;
+        } else {
+          result[key] = value.split('T')[0];
+        }
+      }
+    }
+    // 3. Heuristic for strings that look like ISO timestamps
+    else if (typeof value === 'string' && value.length > 10 && value.includes('T') && value.includes('-')) {
+      const d = new Date(value);
+      if (!isNaN(d.getTime())) {
+        result[key] = d;
+      }
+    } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
       result[key] = processData(value);
     }
   }
   return result;
+};
+
+// Database repair utility to fix wrongly formatted dates in DB
+export const normalizeDatabaseTypes = async () => {
+  try {
+    const routes = await db.routes.toArray();
+    for (const r of routes) {
+      if (r.date instanceof Date) {
+        const d = r.date;
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        await db.routes.update(r.id!, { date: `${year}-${month}-${day}` });
+      }
+    }
+
+    const logs = await db.system_logs.toArray();
+    for (const l of logs) {
+      if (!l.timestamp) {
+        await db.system_logs.update(l.id!, { timestamp: new Date() });
+      }
+    }
+    console.log('Database types normalized');
+  } catch (error) {
+    console.error('Normalization error:', error);
+  }
 };
 
 // Helper to encrypt sensitive fields before saving

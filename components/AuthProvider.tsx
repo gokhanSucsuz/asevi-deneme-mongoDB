@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
+import { normalizeDatabaseTypes } from '@/lib/db';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
 
   useEffect(() => {
+    // Correct database types once per session or on load
+    normalizeDatabaseTypes();
+
     const isDemo = typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true';
     if (isDemo) {
       setUser({
