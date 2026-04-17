@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
-import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes } from '@/lib/route-utils';
+import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays } from 'date-fns';
