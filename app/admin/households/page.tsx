@@ -115,6 +115,11 @@ export default function HouseholdsPage() {
     if (statusFilter === 'active') return matchesSearch && h.isActive;
     if (statusFilter === 'passive') return matchesSearch && !h.isActive && h.pausedUntil !== '9999-12-31';
     if (statusFilter === 'deleted') return matchesSearch && h.pausedUntil === '9999-12-31';
+    if (statusFilter === 'vakif_pickup') return matchesSearch && h.isSelfService;
+    if (statusFilter === 'no_breakfast') return matchesSearch && h.noBreakfast;
+    if (statusFilter === 'own_container') return matchesSearch && h.usesOwnContainer;
+    if (statusFilter === 'type_institution') return matchesSearch && h.type === 'institution';
+    if (statusFilter === 'type_household') return matchesSearch && (!h.type || h.type === 'household');
     
     return matchesSearch;
   });
@@ -841,10 +846,15 @@ export default function HouseholdsPage() {
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
           >
-            <option value="all">Tümü</option>
+            <option value="all">Tüm Durumlar</option>
             <option value="active">Aktif</option>
             <option value="passive">Pasif</option>
             <option value="deleted">Silinmiş</option>
+            <option value="vakif_pickup">Kendi İmkanlarıyla (Vakıftan)</option>
+            <option value="no_breakfast">Kahvaltı İstemiyor</option>
+            <option value="own_container">Kendi Kabını Kullanıyor</option>
+            <option value="type_household">Yalnızca Haneler</option>
+            <option value="type_institution">Yalnızca Kurumlar</option>
           </select>
         </div>
         <div className="w-full md:w-48">
