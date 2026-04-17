@@ -689,6 +689,11 @@ export const db = {
       notifyDbChange('system_logs');
       return res.id;
     },
+    update: async (id: string, data: Partial<SystemLog>) => {
+      checkDemoMode();
+      await callApi('system_logs', 'update', { id, data });
+      notifyDbChange('system_logs');
+    },
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
