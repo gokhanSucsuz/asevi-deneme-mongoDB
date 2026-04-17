@@ -1224,7 +1224,9 @@ export default function RoutesPage() {
             });
           }
 
-          await db.routeStops.bulkAdd(stopsToAdd);
+          if (stopsToAdd.length > 0) {
+              await db.routeStops.bulkAdd(stopsToAdd);
+          }
         }
       }
 

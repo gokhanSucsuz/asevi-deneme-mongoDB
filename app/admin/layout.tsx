@@ -182,7 +182,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       }
 
-      // 3. Check for backup (10 days rule)
+      // 4. Check for backup (10 days rule)
       const settings = await db.system_settings.get('global');
       const lastBackup = settings?.lastBackupDate ? new Date(settings.lastBackupDate) : null;
       const daysSinceBackup = lastBackup ? differenceInDays(now, lastBackup) : 999;
@@ -210,7 +210,64 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       }
 
-      // 4. Auto-generate next day routes at 18:00
+      // 5. Daily Snapshot for household stats at 08:30 AM
+      if (now.getHours() === 8 && now.getMinutes() >= 30) {
+          try {
+              // Get today's stats if they don't already exist
+              const todayDateStr = safeFormat(now, 'yyyy-MM-dd');
+              const logs = await db.system_logs.toArray();
+              const snapshotLog = logs.find(l => l.action === 'Günlük İstatistik Alındı' && safeFormat(new Date(l.timestamp), 'yyyy-MM-dd') === todayDateStr);
+              
+              if (!snapshotLog) {
+                  const activeHouseholds = allHouseholds.filter(h => h.isActive);
+                  const householdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household');
+                  const institutionsOnly = activeHouseholds.filter(h => h.type === 'institution');
+                  
+                  const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+                  const totalBread = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
+                  
+                  const ownContainerCount = activeHouseholds.reduce((sum, h) => {
+                    if (h.usesOwnContainer) return sum + (h.memberCount || 0);
+                    return sum;
+                  }, 0);
+                  
+                  const totalContainers = totalPeople - ownContainerCount;
+                  
+                  const wantsBreakfastHouseholds = householdsOnly.filter(h => !h.noBreakfast);
+                  const wantsBreakfastInstitutions = institutionsOnly.filter(h => !h.noBreakfast);
+                  const noBreakfastHouseholds = householdsOnly.filter(h => h.noBreakfast);
+                  const noBreakfastInstitutions = institutionsOnly.filter(h => h.noBreakfast);
+                  
+                  const wantsBreakfastPeople = wantsBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + wantsBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+                  const noBreakfastPeople = noBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + noBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+                  
+                  const statsObj = {
+                      totalHouseholds: householdsOnly.length,
+                      totalInstitutions: institutionsOnly.length,
+                      totalPeople,
+                      totalBread,
+                      wantsBreakfastPeople,
+                      noBreakfastPeople,
+                      totalContainers,
+                      ownContainerCount
+                  };
+                  
+                  // Save daily snapshot in system settings or special table (we'll log as details for report generation extraction)
+                  await db.system_logs.add({
+                    action: 'Günlük İstatistik Alındı',
+                    details: JSON.stringify(statsObj),
+                    category: 'system',
+                    personnelEmail: 'system',
+                    personnelName: 'Sistem',
+                    timestamp: new Date()
+                  });
+              }
+          } catch(e) {
+              console.error("Daily Snapshot Failed", e);
+          }
+      }
+
+      // 6. Auto-generate next day routes at 18:00
       if (now.getHours() >= 18) {
         try {
           const { getNextWorkingDay, generateRouteFromTemplate } = await import('../../lib/route-utils');

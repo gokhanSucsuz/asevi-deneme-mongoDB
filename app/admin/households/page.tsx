@@ -365,42 +365,85 @@ export default function HouseholdsPage() {
         toast.success('Başarıyla eklendi', { id: loadingToast });
       }
 
-      // Update today's and future vakif_pickup routes
+      // 1. Her durumda (eski/yeni fark etmeksizin) vakfın ve ilgili şoförün yarınki (veya haftanın kalan günleri) iş günü rota kaydına hane stopu eklenecek.
       const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
-      const futureRoutes = await db.routes.where('driverId').equals('vakif_pickup').toArray();
-      const relevantRoutes = futureRoutes.filter(r => r.date >= todayStr && r.status !== 'completed');
+      const futureRoutes = await db.routes.toArray();
+      const pendingOrInProgressRoutes = futureRoutes.filter(r => r.date >= todayStr && r.status !== 'completed' && r.status !== 'approved');
 
-      for (const route of relevantRoutes) {
-        const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
-        const existingStop = stops.find((s: RouteStop) => s.householdId === (editingId || data.id));
+      // Helper for next working day
+      const { getNextWorkingDay } = await import('@/lib/route-utils');
+      
+      const isNewRecord = !editingId;
+      
+      // We process future working days (if a route exists for them already).
+      // Mostly affects the 'vakif_pickup' routes right away and next general routes if they were generated
+      for (const route of pendingOrInProgressRoutes) {
+         // Is this route suitable for the household?
+         let isSuitable = false;
+         if (data.isSelfService) {
+             isSuitable = route.driverId === 'vakif_pickup';
+         } else {
+             // For standard route users, we don't automatically guess which driver. But if the route was already generated 
+             // and we are updating the person's count who was ALREADY on this route, we need to update it
+             // Or if it's a new record and they have a 'defaultDriverId', we add them
+         }
 
-        if (data.isSelfService && data.isActive && data.pausedUntil !== '9999-12-31' && (!data.pausedUntil || data.pausedUntil < route.date)) {
-          // Should be in route
-          if (existingStop) {
-            // Update existing stop
-            await db.routeStops.update(existingStop.id!, {
-              householdSnapshotName: data.headName,
-              householdSnapshotMemberCount: data.memberCount,
-              householdSnapshotBreadCount: data.breadCount ?? data.memberCount
-            });
-          } else {
-            // Add new stop
-            await db.routeStops.add({
-              routeId: route.id!,
-              householdId: editingId || data.id!,
-              householdSnapshotName: data.headName,
-              householdSnapshotMemberCount: data.memberCount,
-              householdSnapshotBreadCount: data.breadCount ?? data.memberCount,
-              order: stops.length + 1,
-              status: 'pending'
-            });
-          }
-        } else {
-          // Should NOT be in route
-          if (existingStop) {
-            await db.routeStops.delete(existingStop.id!);
-          }
-        }
+         const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
+         const existingStop = stops.find((s: RouteStop) => s.householdId === (editingId || data.id));
+
+         // Conditions for being in a future route
+         const isActivelyReceiving = data.isActive && data.pausedUntil !== '9999-12-31' && (!data.pausedUntil || data.pausedUntil < route.date);
+         
+         if (isActivelyReceiving) {
+            if (data.isSelfService && route.driverId === 'vakif_pickup') {
+                if (existingStop) {
+                    await db.routeStops.update(existingStop.id!, {
+                        householdSnapshotName: data.headName,
+                         householdSnapshotMemberCount: data.memberCount,
+                         householdSnapshotBreadCount: data.breadCount ?? data.memberCount
+                    });
+                } else {
+                    await db.routeStops.add({
+                         routeId: route.id!,
+                         householdId: editingId || data.id!,
+                         householdSnapshotName: data.headName,
+                         householdSnapshotMemberCount: data.memberCount,
+                         householdSnapshotBreadCount: data.breadCount ?? data.memberCount,
+                         order: stops.length + 1,
+                         status: 'pending'
+                    });
+                }
+            } else if (!data.isSelfService && existingStop) {
+                // Not self service, but WAS ALREADY on the route (so we just update amounts)
+                await db.routeStops.update(existingStop.id!, {
+                     householdSnapshotName: data.headName,
+                     householdSnapshotMemberCount: data.memberCount,
+                     householdSnapshotBreadCount: data.breadCount ?? data.memberCount
+                 });
+            } else if (!data.isSelfService && isNewRecord && typeof data.defaultDriverId === 'string' && route.driverId === data.defaultDriverId && route.date > todayStr) {
+                // It's a new record with a designated driver, and the route is tomorrow or later
+                 await db.routeStops.add({
+                     routeId: route.id!,
+                     householdId: data.id!,
+                     householdSnapshotName: data.headName,
+                     householdSnapshotMemberCount: data.memberCount,
+                     householdSnapshotBreadCount: data.breadCount ?? data.memberCount,
+                     order: stops.length + 1,
+                     status: 'pending'
+                });
+            }
+         } else {
+             if (existingStop) {
+                  await db.routeStops.delete(existingStop.id!);
+             }
+         }
+      }
+
+      // 2. Alert message for new household added
+      if (isNewRecord && !data.isSelfService) {
+        toast.info(`${data.headName} için kayıt oluşturuldu. Yarınki günlük rotaya otomatik atanması için 'Şoför Değişikliği/Atama' yapılmalıdır.`, { duration: 6000 });
+      } else if (isNewRecord && data.isSelfService) {
+        toast.info(`${data.headName} için kayıt oluşturuldu ve yarınki 'Vakıftan Alacaklar' rotasına eklendi.`, { duration: 6000 });
       }
 
       closeModal();
@@ -566,8 +609,20 @@ export default function HouseholdsPage() {
             pausedUntil: '9999-12-31', // effectively deleted
             history
           });
-          await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Sebep: ${actionReason}`);
-          toast.success('Hane başarıyla silindi', { id: loadingToast });
+          
+          const today = new Date().toISOString().split('T')[0];
+          // Remove from ALL future routes (including pending and in_progress)
+          const futureRoutes = await db.routes.toArray();
+          const activeRoutes = futureRoutes.filter(r => r.date >= today && r.status !== 'completed' && r.status !== 'approved');
+          
+          for (const r of activeRoutes) {
+            await db.routeStops
+              .where({ routeId: r.id, householdId: existing.id! })
+              .delete();
+          }
+
+          await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Tüm aktif ve gelecek rotalardan çıkarıldı. Sebep: ${actionReason}`);
+          toast.success('Hane başarıyla silindi ve aktif/gelecek rotalardan kaldırıldı', { id: loadingToast });
         }
         setDeleteModalOpen(false);
       } catch (error) {
@@ -1007,8 +1062,8 @@ export default function HouseholdsPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.breadCount ?? household.memberCount}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <div className="flex flex-col gap-1">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${household.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {household.isActive ? 'Aktif' : household.pausedUntil ? `${household.pausedUntil}'e kadar Pasif` : 'Pasif'}
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${household.isActive ? 'bg-green-100 text-green-800' : household.pausedUntil === '9999-12-31' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {household.isActive ? 'Aktif' : household.pausedUntil === '9999-12-31' ? 'SİLİNMİŞ (PASİF)' : `${household.pausedUntil}'e kadar Pasif`}
                     </span>
                     {household.isSelfService && (
                       <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-purple-100 text-purple-800 uppercase">
