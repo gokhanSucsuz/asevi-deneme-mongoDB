@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+// Vercel'e bu fonksiyon için 60 saniye süre tanımasını söyler
+export const maxDuration = 60;
+
 export async function GET() {
   try {
     const db = await getDb();
