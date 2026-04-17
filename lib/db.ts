@@ -260,10 +260,10 @@ const processData = (data: any): any => {
 
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
-    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime', 'date'
+    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
   ];
 
-  const stringDateFields = ['endDate', 'pausedUntil', 'month'];
+  const stringDateFields = ['endDate', 'pausedUntil', 'month', 'date'];
 
   for (const key in result) {
     let value = result[key];
