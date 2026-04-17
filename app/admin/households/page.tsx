@@ -38,8 +38,8 @@ export default function HouseholdsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  const [sortField, setSortField] = useState<keyof Household>('headName');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<keyof Household>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [surveyModalOpen, setSurveyModalOpen] = useState(false);
   const [selectedHouseholdForSurvey, setSelectedHouseholdForSurvey] = useState<Household | null>(null);
   const [activeSurvey, setActiveSurvey] = useState<any>(null);
@@ -196,6 +196,7 @@ export default function HouseholdsPage() {
       members: [],
       memberCount: 1,
       breadCount: 1,
+      isRetired: false,
       isActive: true,
     }
   });
@@ -216,6 +217,7 @@ export default function HouseholdsPage() {
         breadCount: household.breadCount ?? household.memberCount,
         otherMemberCount: household.otherMemberCount ?? 0,
         isSelfService: household.isSelfService ?? false,
+        isRetired: household.isRetired ?? false,
         usesOwnContainer: household.usesOwnContainer ?? false,
         members: household.members && household.members.length > 0 ? household.members : []
       });
@@ -236,6 +238,7 @@ export default function HouseholdsPage() {
         memberCount: 1,
         otherMemberCount: 0,
         breadCount: 1,
+        isRetired: false,
         isActive: true,
         isSelfService: false,
         usesOwnContainer: false,
@@ -961,7 +964,12 @@ export default function HouseholdsPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sıra</th>
+              <th 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('createdAt')}
+              >
+                Sıra {sortField === 'createdAt' && (sortOrder === 'asc' ? '↑' : '↓')}
+              </th>
               <th 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('householdNo')}
@@ -1015,12 +1023,19 @@ export default function HouseholdsPage() {
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    {showSensitive[household.id!] ? household.householdNo : maskSensitive(household.householdNo, 2)}
-                    {household.householdNo && (
-                      <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      {showSensitive[household.id!] ? household.householdNo : maskSensitive(household.householdNo, 2)}
+                      {household.householdNo && (
+                        <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
+                          {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      )}
+                    </div>
+                    {household.isRetired && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
+                        Emekli
+                      </span>
                     )}
                   </div>
                 </td>
@@ -1449,15 +1464,33 @@ export default function HouseholdsPage() {
                     <input
                       type="checkbox"
                       {...register('noBreakfast')}
+                      id="noBreakfast"
                       className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                     />
-                    <label className="ml-2 block text-sm font-bold text-orange-900">
+                    <label htmlFor="noBreakfast" className="ml-2 block text-sm font-bold text-orange-900">
                       Kahvaltı Almıyor
                     </label>
                   </div>
                   <p className="text-xs text-orange-700">
                     Bu seçenek işaretlendiğinde, haftanın son iş günü dağıtılan ek öğün (kahvaltı) hesaplamasına bu hane dahil edilmez.
                   </p>
+                  
+                  <div className="pt-2 mt-2 border-t border-orange-200">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        {...register('isRetired')}
+                        id="isRetired"
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isRetired" className="ml-2 block text-sm font-bold text-purple-900">
+                        Emekli Hanesi
+                      </label>
+                    </div>
+                    <p className="text-xs text-purple-700 mt-1">
+                      Emekli olarak işaretlenen haneler, listede özel etiketle gösterilir.
+                    </p>
+                  </div>
                 </div>
 
                 {householdType === 'institution' && (

@@ -36,6 +36,7 @@ export interface Household {
   isVakifPickup?: boolean;
   usesOwnContainer?: boolean;
   usesContainer?: boolean;
+  isRetired?: boolean;
   pausedUntil?: string;
   createdAt: Date;
   defaultDriverId?: string;
@@ -230,7 +231,7 @@ const processData = (data: any): any => {
 
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
-    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
+    'lastBackupDate', 'deliveredAt', 'personnelCompletionTime', 'date'
   ];
 
   for (const key in result) {

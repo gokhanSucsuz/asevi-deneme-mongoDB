@@ -43,6 +43,21 @@ export default function SurveysPage() {
     isActive: true
   });
 
+  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
+  const sessionUser = session ? JSON.parse(session) : null;
+
+  const addLog = async (action: string, details?: string) => {
+    if (!sessionUser) return;
+    await db.system_logs.add({
+      action,
+      details: details || '',
+      category: 'survey',
+      personnelEmail: user?.email || 'Bilinmeyen Email',
+      personnelName: sessionUser.name || 'Bilinmeyen Personel',
+      timestamp: new Date()
+    });
+  };
+
   const handleAddQuestion = () => {
     const question: SurveyQuestion = {
       id: Math.random().toString(36).substr(2, 9),
@@ -84,12 +99,14 @@ export default function SurveysPage() {
     try {
       if (editingSurvey) {
         await db.surveys.update(editingSurvey.id!, newSurvey);
+        await addLog('Anket Güncellendi', `${newSurvey.title} anketi güncellendi.`);
         toast.success('Anket başarıyla güncellendi', { id: loadingToast });
       } else {
         await db.surveys.add({
           ...newSurvey as Survey,
           createdAt: new Date()
         });
+        await addLog('Anket Oluşturuldu', `${newSurvey.title} anketi oluşturuldu.`);
         toast.success('Anket başarıyla oluşturuldu', { id: loadingToast });
       }
       setIsModalOpen(false);
@@ -101,7 +118,7 @@ export default function SurveysPage() {
     }
   };
 
-  const handleDeleteSurvey = async (id: string) => {
+  const handleDeleteSurvey = async (id: string, title: string) => {
     if (confirm('Bu anketi silmek istediğinize emin misiniz? Tüm cevaplar da silinecektir.')) {
       try {
         await db.surveys.delete(id);
@@ -111,6 +128,7 @@ export default function SurveysPage() {
         for (const resp of surveyResponses) {
           await db.surveyResponses.delete(resp.id!);
         }
+        await addLog('Anket Silindi', `${title} anketi silindi.`);
         toast.success('Anket silindi');
       } catch (error) {
         console.error(error);
@@ -237,7 +255,7 @@ export default function SurveysPage() {
                           <Edit2 size={16} />
                         </button>
                         <button 
-                          onClick={() => handleDeleteSurvey(survey.id!)}
+                          onClick={() => handleDeleteSurvey(survey.id!, survey.title)}
                           className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 size={16} />
