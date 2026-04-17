@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
       
       const newObj: any = {};
       for (const [key, value] of Object.entries(obj)) {
-        if (key === '_id' && value instanceof ObjectId) {
-          newObj.id = value.toString();
+        if (key === '_id') {
+          newObj.id = value instanceof ObjectId ? value.toString() : String(value);
         } else if (value instanceof ObjectId) {
           newObj[key] = value.toString();
         } else if (typeof value === 'object' && value !== null) {
@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
         if (sort) cursor = cursor.sort(sort);
         if (limitVal) cursor = cursor.limit(limitVal);
         const results = await cursor.toArray();
+        if (collection === 'route_templates') {
+          console.log('[DEBUG_LIST_ROUTES]', JSON.stringify(results, null, 2));
+        }
         return NextResponse.json(results.map(doc => convertObjectIds(doc)));
       }
       case 'get': {

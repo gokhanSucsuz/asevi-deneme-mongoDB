@@ -37,7 +37,7 @@ const publicPages = ['/admin/login', '/admin/register', '/admin/forgot-password'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
@@ -46,6 +46,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const checkPersonnelAuth = async () => {
+      // Don't do anything while Firebase auth is initializing
+      if (authLoading) return;
+
       const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com'];
       const isPublicPage = publicPages.some(page => pathname.startsWith(page));
 
@@ -121,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     checkPersonnelAuth();
-  }, [pathname, router, user]);
+  }, [pathname, router, user, authLoading]);
 
   // Background tasks: Check for expired pauses and auto-complete past routes
   useEffect(() => {
