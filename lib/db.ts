@@ -250,8 +250,14 @@ const processData = (data: any): any => {
   const stringDateFields = ['date', 'endDate', 'pausedUntil', 'month'];
 
   for (const key in result) {
-    const value = result[key];
+    let value = result[key];
     
+    // First, process nested objects (including EJSON dates)
+    if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+      value = processData(value);
+      result[key] = value;
+    }
+
     // 1. Force conversion to Date for known Date fields or any key ending in 'At'
     if (key.endsWith('At') || dateFields.includes(key)) {
       if (typeof value === 'string' || typeof value === 'number') {
@@ -290,8 +296,6 @@ const processData = (data: any): any => {
       if (!isNaN(d.getTime())) {
         result[key] = d;
       }
-    } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
-      result[key] = processData(value);
     }
   }
   return result;

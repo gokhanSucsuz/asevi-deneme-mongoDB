@@ -27,7 +27,11 @@ export default function SystemLogsPage() {
     const matchesCategory = categoryFilter === 'all' || log.category === categoryFilter;
     
     return matchesSearch && matchesCategory;
-  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }).sort((a, b) => {
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return timeB - timeA;
+  });
 
   const totalPages = Math.ceil((filteredLogs?.length || 0) / itemsPerPage);
   const paginatedLogs = filteredLogs?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
