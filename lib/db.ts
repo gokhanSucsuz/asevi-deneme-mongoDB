@@ -221,6 +221,19 @@ const processData = (data: any): any => {
   // If it's a Date or other non-plain object, don't process further
   if (data instanceof Date) return data;
   
+  // Handle MongoDB EJSON $date format
+  if (data.$date) {
+    if (typeof data.$date === 'string' || typeof data.$date === 'number') {
+      const d = new Date(data.$date);
+      if (!isNaN(d.getTime())) return d;
+    } else if (typeof data.$date === 'object' && data.$date.$numberLong) {
+      // Handle {$date: {$numberLong: "..."}}
+      const d = new Date(parseInt(data.$date.$numberLong));
+      if (!isNaN(d.getTime())) return d;
+    }
+    return data;
+  }
+  
   const result = Array.isArray(data) ? [...data] : { ...data };
   
   // Decrypt sensitive fields if they exist at this level

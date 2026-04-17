@@ -5,7 +5,7 @@ import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat } from '@/lib/date-utils';
@@ -1742,8 +1742,11 @@ export default function RoutesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {systemLogs?.slice(0, 10).map((log) => (
                 <tr key={log.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                    {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm')}
+                  <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-700">
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} className="text-blue-500" />
+                      {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm')}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {log.action}

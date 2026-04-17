@@ -97,9 +97,9 @@ export default function SystemLogsPage() {
               {paginatedLogs?.map((log, idx) => (
                 <tr key={log.id || idx} className="hover:bg-gray-50 transition-colors">
                   <td className="p-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock size={14} />
-                      {safeFormat(new Date(log.timestamp), 'dd.MM.yyyy HH:mm:ss')}
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <Clock size={16} className="text-blue-500" />
+                      {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm:ss')}
                     </div>
                   </td>
                   <td className="p-4">

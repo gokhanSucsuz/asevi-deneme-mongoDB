@@ -1176,7 +1176,10 @@ export default function HouseholdsPage() {
                            item.action === 'paused' ? 'Pasife Alındı' : 
                            item.action === 'activated' ? 'Aktifleştirildi' : 'Silindi'}
                         </p>
-                        <p className="text-sm text-gray-500">{safeFormat(new Date(item.date), 'dd.MM.yyyy HH:mm')}</p>
+                        <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                          <Clock size={14} className="text-blue-500" />
+                          {safeFormat(item.date, 'dd.MM.yyyy HH:mm')}
+                        </div>
                         {item.note && <p className="text-sm text-gray-700 mt-1">{item.note}</p>}
                       </div>
                     </div>
