@@ -1196,7 +1196,7 @@ export default function RoutesPage() {
           const stopsToAdd: RouteStop[] = [];
           const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
           
-          let nextOrder = tStops.length > 0 ? Math.max(...tStops.map(t => t.order)) + 1 : 1;
+          let nextOrder = tStops.length > 0 ? Math.max(...tStops.map((t: RouteStop) => t.order)) + 1 : 1;
 
           // Standard Meal
           stopsToAdd.push({
