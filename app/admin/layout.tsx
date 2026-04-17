@@ -209,6 +209,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           console.log('Automatic backup notification sent to edirneysdv@gmail.com');
         }
       }
+
+      // 4. Auto-generate next day routes at 18:00
+      if (now.getHours() >= 18) {
+        try {
+          const { getNextWorkingDay, generateRouteFromTemplate } = await import('../../lib/route-utils');
+          const nextDay = await getNextWorkingDay(now);
+          const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+          
+          const existingNextRoutes = await db.routes.where('date').equals(nextDayStr).toArray();
+          const routeDriverIds = existingNextRoutes.map(r => r.driverId);
+          
+          const drivers = await db.drivers.toArray();
+          let anyGenerated = false;
+          
+          for (const d of drivers) {
+            if (d.isActive && !routeDriverIds.includes(d.id!)) {
+              const routeId = await generateRouteFromTemplate(d.id!, nextDayStr);
+              if (routeId) anyGenerated = true;
+            }
+          }
+          
+          if (anyGenerated) {
+            await db.system_logs.add({
+              action: 'Otomatik Rota Oluşturma',
+              details: `${nextDayStr} tarihi için eksik rotalar saat 18:00 itibarıyla sistem tarafından otomatik oluşturuldu.`,
+              category: 'route',
+              personnelEmail: 'system',
+              personnelName: 'Sistem',
+              timestamp: new Date()
+            });
+          }
+        } catch(e) {
+          console.error("18:00 route auto-generation failed", e);
+        }
+      }
     };
 
     runBackgroundTasks();
