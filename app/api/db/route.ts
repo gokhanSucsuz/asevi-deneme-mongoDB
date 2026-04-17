@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       }
     };
 
+    // DIŞARI ÇIKAN VERİLER İÇİN (MongoDB -> Frontend)
     const convertObjectIds = (obj: any): any => {
       if (!obj || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(convertObjectIds);
@@ -62,9 +63,30 @@ export async function POST(req: NextRequest) {
       return newObj;
     };
 
+    // YENİ EKLENEN: İÇERİ GİREN VERİLER İÇİN (Frontend -> MongoDB)
+    const processInboundData = (obj: any): any => {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(processInboundData);
+      
+      const newObj: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        // Eğer değer 24 karakterli geçerli bir ObjectId formatındaysa dönüştür
+        if (typeof value === 'string' && value.length === 24 && /^[0-9a-fA-F]{24}$/.test(value)) {
+          newObj[key] = new ObjectId(value);
+        } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+          newObj[key] = processInboundData(value);
+        } else {
+          newObj[key] = value;
+        }
+      }
+      return newObj;
+    };
+
     switch (operation) {
       case 'list': {
-        let cursor = col.find(queryObj || {});
+        // Gelen sorgudaki id'leri objeye çeviriyoruz
+        const processedQuery = queryObj ? processInboundData(queryObj) : {};
+        let cursor = col.find(processedQuery);
         if (sort) cursor = cursor.sort(sort);
         if (limitVal) cursor = cursor.limit(limitVal);
         const results = await cursor.toArray();
@@ -79,35 +101,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(convertObjectIds(doc));
       }
       case 'add': {
-        const result = await col.insertOne(data);
+        // Veriyi kaydederken id'leri objeye çeviriyoruz
+        const result = await col.insertOne(processInboundData(data));
         return NextResponse.json({ id: result.insertedId.toString() });
       }
       case 'put': {
         const { id: docId, ...rest } = data;
-        await col.replaceOne({ _id: getQueryId(docId) } as any, rest, { upsert: true });
+        await col.replaceOne({ _id: getQueryId(docId) } as any, processInboundData(rest), { upsert: true });
         return NextResponse.json({ success: true });
       }
       case 'update': {
-        await col.updateOne({ _id: getQueryId(id) } as any, { $set: data });
+        await col.updateOne({ _id: getQueryId(id) } as any, { $set: processInboundData(data) });
         return NextResponse.json({ success: true });
       }
       case 'delete': {
         if (id) {
           await col.deleteOne({ _id: getQueryId(id) } as any);
         } else if (queryObj) {
-          await col.deleteMany(queryObj);
+          await col.deleteMany(processInboundData(queryObj));
         }
         return NextResponse.json({ success: true });
       }
       case 'bulkAdd': {
         if (Array.isArray(data) && data.length > 0) {
-          await col.insertMany(data);
+          await col.insertMany(processInboundData(data));
         }
         return NextResponse.json({ success: true });
       }
       case 'restore': {
         const backupData = data;
-        // Tüm olası koleksiyon eşleşmeleri
         const mapping: any = {
           households: 'households',
           drivers: 'drivers',
@@ -145,8 +167,9 @@ export async function POST(req: NextRequest) {
               const { id, _id, ...rest } = item;
               const docId = id || _id;
               
-              // Tarih alanlarını MongoDB Date objesine çevir (Sıralama ve filtreleme için kritik)
-              const processedItem: any = { ...rest };
+              // Restore işlemi de inbound bir işlemdir, processInboundData'dan geçirmeliyiz.
+              const processedItem: any = processInboundData({ ...rest });
+              
               const dateFields = [
                 'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
                 'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
@@ -160,7 +183,6 @@ export async function POST(req: NextRequest) {
                     const d = new Date(processedItem[key]);
                     if (!isNaN(d.getTime())) processedItem[key] = d;
                   } else if (stringDateFields.includes(key)) {
-                    // Ensure it stays as yyyy-MM-dd string
                     if (processedItem[key].includes('T')) {
                       processedItem[key] = processedItem[key].split('T')[0];
                     }
@@ -168,7 +190,6 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              // Hassas verileri şifrele
               const sensitiveFields = ['tcNo', 'householdNo', 'phone', 'address', 'password'];
               for (const field of sensitiveFields) {
                 if (processedItem[field] && !isEncrypted(processedItem[field])) {
