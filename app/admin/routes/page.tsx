@@ -263,6 +263,8 @@ export default function RoutesPage() {
     const loadingToast = toast.loading('Rota oluşturuluyor...');
     try {
       const driver = drivers?.find(d => d.id === selectedDriverId);
+      const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(selectedDate));
+      
       const routeId = await db.routes.add({
         driverId: selectedDriverId,
         driverSnapshotName: driver?.name,
@@ -272,19 +274,39 @@ export default function RoutesPage() {
         history: [{ action: 'created', date: new Date(), note: 'Sistem yöneticisi tarafından oluşturuldu' }]
       });
 
-      const stops: RouteStop[] = selectedHouseholds.map((sh) => {
+      const stops: RouteStop[] = [];
+      
+      selectedHouseholds.forEach((sh) => {
         const h = households?.find(hh => hh.id === sh.householdId);
-        return {
+        if (!h) return;
+        
+        // Standard Meal
+        stops.push({
           routeId: routeId as string,
           householdId: sh.householdId,
-          householdSnapshotName: h?.headName,
-          householdSnapshotMemberCount: h?.memberCount,
-          householdSnapshotBreadCount: h?.breadCount ?? h?.memberCount,
-          order: sh.order,
+          householdSnapshotName: h.headName,
+          householdSnapshotMemberCount: h.memberCount,
+          householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+          order: sh.order * 2 - 1, // Multiply by 2 so we have space for breakfast
           status: 'pending',
           isManual: true,
           mealType: 'standard'
-        };
+        });
+
+        // Breakfast Meal
+        if (isLastWorkingDay && !h.noBreakfast) {
+          stops.push({
+            routeId: routeId as string,
+            householdId: sh.householdId,
+            householdSnapshotName: `${h.headName} (Kahvaltı)`,
+            householdSnapshotMemberCount: h.memberCount,
+            householdSnapshotBreadCount: 0,
+            order: sh.order * 2,
+            status: 'pending',
+            isManual: true,
+            mealType: 'breakfast'
+          });
+        }
       });
 
       await db.routeStops.bulkAdd(stops);
@@ -573,15 +595,37 @@ export default function RoutesPage() {
         history: [{ action: 'created', date: new Date(), note: 'Yönetici tarafından oluşturuldu' }]
       });
 
-      const stops: RouteStop[] = pickupHouseholds.map((h, idx) => ({
-        routeId: routeId as string,
-        householdId: h.id!,
-        householdSnapshotName: h.headName,
-        householdSnapshotMemberCount: h.memberCount,
-        householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
-        order: idx + 1,
-        status: 'pending'
-      }));
+      const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(selectedDate));
+      const stops: RouteStop[] = [];
+      let orderIdx = 1;
+
+      pickupHouseholds.forEach(h => {
+        // Standard
+        stops.push({
+          routeId: routeId as string,
+          householdId: h.id!,
+          householdSnapshotName: h.headName,
+          householdSnapshotMemberCount: h.memberCount,
+          householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+          order: orderIdx++,
+          status: 'pending',
+          mealType: 'standard'
+        });
+
+        // Breakfast
+        if (isLastWorkingDay && !h.noBreakfast) {
+          stops.push({
+            routeId: routeId as string,
+            householdId: h.id!,
+            householdSnapshotName: `${h.headName} (Kahvaltı)`,
+            householdSnapshotMemberCount: h.memberCount,
+            householdSnapshotBreadCount: 0,
+            order: orderIdx++,
+            status: 'pending',
+            mealType: 'breakfast'
+          });
+        }
+      });
 
       await db.routeStops.bulkAdd(stops);
       await addLog('Vakıf Pickup Listesi Oluşturuldu', `${selectedDate} tarihi için vakıftan yemek alanlar listesi oluşturuldu.`);
@@ -1148,15 +1192,39 @@ export default function RoutesPage() {
         if (targetRoute) {
           const h = await db.households.get(householdId);
           const tStops = await db.routeStops.where('routeId').equals(targetRoute.id!).toArray();
-          await db.routeStops.add({
+          
+          const stopsToAdd: RouteStop[] = [];
+          const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
+          
+          let nextOrder = tStops.length > 0 ? Math.max(...tStops.map(t => t.order)) + 1 : 1;
+
+          // Standard Meal
+          stopsToAdd.push({
             routeId: targetRoute.id!,
             householdId: householdId,
             householdSnapshotName: h?.headName || '',
             householdSnapshotMemberCount: h?.memberCount || 0,
             householdSnapshotBreadCount: h?.breadCount ?? h?.memberCount ?? 0,
             status: 'pending',
-            order: tStops.length + 1
+            order: nextOrder++,
+            mealType: 'standard'
           });
+
+          // Breakfast Meal
+          if (isLastWorkingDay && !h?.noBreakfast) {
+            stopsToAdd.push({
+              routeId: targetRoute.id!,
+              householdId: householdId,
+              householdSnapshotName: `${h?.headName} (Kahvaltı)`,
+              householdSnapshotMemberCount: h?.memberCount || 0,
+              householdSnapshotBreadCount: 0,
+              status: 'pending',
+              order: nextOrder++,
+              mealType: 'breakfast'
+            });
+          }
+
+          await db.routeStops.bulkAdd(stopsToAdd);
         }
       }
 
