@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Search, Filter, Clock, User, Tag, Info } from 'lucide-react';
 import { useAppQuery } from '@/lib/hooks';
 import { safeFormat } from '@/lib/date-utils';
+import { normalizeTurkish } from '@/lib/utils';
 
 export default function SystemLogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,11 +17,12 @@ export default function SystemLogsPage() {
   const allLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
 
   const filteredLogs = allLogs?.filter(log => {
+    const search = normalizeTurkish(searchTerm);
     const matchesSearch = 
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.details || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.personnelName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.personnelEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      normalizeTurkish(log.action).includes(search) ||
+      normalizeTurkish(log.details || '').includes(search) ||
+      normalizeTurkish(log.personnelName).includes(search) ||
+      normalizeTurkish(log.personnelEmail).includes(search);
     
     const matchesCategory = categoryFilter === 'all' || log.category === categoryFilter;
     

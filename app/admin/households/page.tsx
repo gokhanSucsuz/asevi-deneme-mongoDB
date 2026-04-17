@@ -13,6 +13,7 @@ import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import * as XLSX from 'xlsx';
 import { safeFormat } from '@/lib/date-utils';
+import { normalizeTurkish } from '@/lib/utils';
 
 export default function HouseholdsPage() {
   const { user, role } = useAuth();
@@ -117,14 +118,15 @@ export default function HouseholdsPage() {
       wantsBreakfastPeople,
       noBreakfastPeople
     };
-  }, [allHouseholds, isLastWorkingDay]);
+  }, [allHouseholds]);
 
   const filteredHouseholds = allHouseholds?.filter(h => {
-    const matchesSearch = h.headName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          h.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const search = normalizeTurkish(searchTerm);
+    const matchesSearch = normalizeTurkish(h.headName).includes(search) || 
+                          normalizeTurkish(h.address).includes(search) ||
                           h.phone.includes(searchTerm) ||
                           (h.tcNo && h.tcNo.includes(searchTerm)) ||
-                          (h.householdNo && h.householdNo.toLowerCase().includes(searchTerm.toLowerCase()));
+                          (h.householdNo && normalizeTurkish(h.householdNo).includes(search));
     
     if (statusFilter === 'active') return matchesSearch && h.isActive;
     if (statusFilter === 'passive') return matchesSearch && !h.isActive && h.pausedUntil !== '9999-12-31';
@@ -148,9 +150,11 @@ export default function HouseholdsPage() {
       if (bVal === undefined || bVal === null) return -1;
       
       if (typeof aVal === 'string' && typeof bVal === 'string') {
+        const normA = normalizeTurkish(aVal);
+        const normB = normalizeTurkish(bVal);
         return sortOrder === 'asc' 
-          ? aVal.localeCompare(bVal, 'tr') 
-          : bVal.localeCompare(aVal, 'tr');
+          ? normA.localeCompare(normB, 'tr') 
+          : normB.localeCompare(normA, 'tr');
       }
       
       return sortOrder === 'asc' 

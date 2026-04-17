@@ -9,6 +9,7 @@ import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, A
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat } from '@/lib/date-utils';
+import { normalizeTurkish } from '@/lib/utils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
@@ -137,41 +138,41 @@ export default function RoutesPage() {
 
   const filteredAvailableHouseholds = availableHouseholds?.filter(h => {
     if (!templateSearchTerm) return true;
-    const search = templateSearchTerm.toLowerCase();
+    const search = normalizeTurkish(templateSearchTerm);
     return (
-      h.headName.toLowerCase().includes(search) ||
-      h.address.toLowerCase().includes(search) ||
-      (h.tcNo || '').includes(search) ||
-      (h.householdNo || '').includes(search)
+      normalizeTurkish(h.headName).includes(search) ||
+      normalizeTurkish(h.address).includes(search) ||
+      (h.tcNo || '').includes(templateSearchTerm) ||
+      (h.householdNo || '').toLowerCase().includes(search)
     );
   }).sort((a, b) => {
-    const fieldA = (a[templateSortField] || '').toString().toLowerCase();
-    const fieldB = (b[templateSortField] || '').toString().toLowerCase();
+    const fieldA = normalizeTurkish((a[templateSortField] || '').toString());
+    const fieldB = normalizeTurkish((b[templateSortField] || '').toString());
     
     if (templateSortOrder === 'asc') {
-      return fieldA.localeCompare(fieldB);
+      return fieldA.localeCompare(fieldB, 'tr');
     } else {
-      return fieldB.localeCompare(fieldA);
+      return fieldB.localeCompare(fieldA, 'tr');
     }
   });
 
   const filteredDailyHouseholds = availableHouseholds?.filter(h => {
     if (!dailySearchTerm) return true;
-    const search = dailySearchTerm.toLowerCase();
+    const search = normalizeTurkish(dailySearchTerm);
     return (
-      h.headName.toLowerCase().includes(search) ||
-      h.address.toLowerCase().includes(search) ||
-      (h.tcNo || '').includes(search) ||
-      (h.householdNo || '').includes(search)
+      normalizeTurkish(h.headName).includes(search) ||
+      normalizeTurkish(h.address).includes(search) ||
+      (h.tcNo || '').includes(dailySearchTerm) ||
+      (h.householdNo || '').toLowerCase().includes(search)
     );
   }).sort((a, b) => {
-    const fieldA = (a[dailySortField] || '').toString().toLowerCase();
-    const fieldB = (b[dailySortField] || '').toString().toLowerCase();
+    const fieldA = normalizeTurkish((a[dailySortField] || '').toString());
+    const fieldB = normalizeTurkish((b[dailySortField] || '').toString());
     
     if (dailySortOrder === 'asc') {
-      return fieldA.localeCompare(fieldB);
+      return fieldA.localeCompare(fieldB, 'tr');
     } else {
-      return fieldB.localeCompare(fieldA);
+      return fieldB.localeCompare(fieldA, 'tr');
     }
   });
 
