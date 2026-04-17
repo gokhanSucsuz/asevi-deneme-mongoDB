@@ -10,10 +10,17 @@ export async function calculateBreadForNextDay(dateStr: string) {
   const existing = await db.breadTracking.where('date').equals(dateStr).first();
 
   // 2. Get leftover for the SAME day (from routes + manual)
-  const routes = await db.routes.where('date').equals(dateStr).toArray();
-  const routeLeftover = routes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
-  const manualLeftover = existing?.manualLeftoverAmount || 0;
-  const leftoverAmount = routeLeftover + manualLeftover;
+  // For past dates with existing records, we respect the stored leftover amount
+  // to allow for manual corrections to stay fixed.
+  let leftoverAmount = 0;
+  if (isPast && existing) {
+    leftoverAmount = existing.leftoverAmount;
+  } else {
+    const routes = await db.routes.where('date').equals(dateStr).toArray();
+    const routeLeftover = routes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
+    const manualLeftover = existing?.manualLeftoverAmount || 0;
+    leftoverAmount = routeLeftover + manualLeftover;
+  }
 
   // 3. Calculate total needed
   let totalNeeded = 0;
@@ -22,7 +29,7 @@ export async function calculateBreadForNextDay(dateStr: string) {
     totalNeeded = existing.totalNeeded;
     
     // Formula: Total Needed - Today's Leftover = Ordered Bread
-    const finalOrderAmount = Math.max(0, totalNeeded - leftoverAmount);
+    const finalOrderAmount = existing.finalOrderAmount;
 
     return { 
       totalNeeded, 

@@ -64,6 +64,27 @@ export default function BreadTrackingPage() {
           status: 'ordered'
         });
       }
+      // 3. Fix 16.04.2026 (User Request)
+      const targetDate2 = '2026-04-16';
+      const existing2 = await db.breadTracking.where('date').equals(targetDate2).first();
+      // Total = 499 + 7 = 506
+      if (existing2 && (existing2.totalNeeded !== 506 || existing2.leftoverAmount !== 7)) {
+        await db.breadTracking.update(existing2.id!, { 
+          totalNeeded: 506, 
+          leftoverAmount: 7,
+          finalOrderAmount: 499 
+        });
+      } else if (!existing2) {
+        await db.breadTracking.add({
+          date: targetDate2,
+          totalNeeded: 506,
+          delivered: 0,
+          leftoverAmount: 7,
+          finalOrderAmount: 499,
+          status: 'ordered',
+          note: 'Kullanıcı talebi doğrultusunda düzeltildi'
+        });
+      }
     };
     fixDate();
   }, []);
