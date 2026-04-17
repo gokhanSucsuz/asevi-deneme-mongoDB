@@ -6,7 +6,7 @@ import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, Syst
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { Plus, Edit2, Trash2, X, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
-import { format, subMonths, startOfDay, differenceInDays } from 'date-fns';
+import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat } from '@/lib/date-utils';
 import autoTable from 'jspdf-autotable';
@@ -1613,7 +1613,7 @@ export default function RoutesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {template && (
                         <button 
-                          onClick={() => exportWeeklyChecklistPDF(driver.id!, safeFormat(startOfDay(new Date()), 'yyyy-MM-dd'))} 
+                          onClick={() => exportWeeklyChecklistPDF(driver.id!, safeFormat(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'))} 
                           className="text-indigo-600 hover:text-indigo-900 mr-3"
                           title="Haftalık Çizelge Al"
                         >
