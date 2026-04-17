@@ -1475,10 +1475,26 @@ export default function RoutesPage() {
                 {routesOnDate.map((route) => {
                   const stops = stopsOnDate?.filter(s => s.routeId === route.id) || [];
                   const uniqueHouseholds = new Set(stops.map(s => s.householdId));
-                  const totalPeople = Array.from(uniqueHouseholds).reduce((sum, hId) => {
+                  
+                  let householdCount = 0;
+                  let institutionCount = 0;
+                  let householdPeople = 0;
+                  let institutionPeople = 0;
+
+                  Array.from(uniqueHouseholds).forEach(hId => {
                     const firstStop = stops.find(s => s.householdId === hId);
-                    return sum + (firstStop?.householdSnapshotMemberCount || 0);
-                  }, 0);
+                    const memberCount = firstStop?.householdSnapshotMemberCount || 0;
+                    const h = households?.find(hh => hh.id === hId);
+                    const isInstitution = h?.type === 'institution';
+
+                    if (isInstitution) {
+                      institutionCount++;
+                      institutionPeople += memberCount;
+                    } else {
+                      householdCount++;
+                      householdPeople += memberCount;
+                    }
+                  });
 
                   return (
                     <tr key={route.id}>
@@ -1489,8 +1505,12 @@ export default function RoutesPage() {
                         {route.driverSnapshotName || getDriverName(route.driverId)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="font-medium text-gray-900">{uniqueHouseholds.size} Hane</div>
-                        <div className="text-xs text-gray-500">{totalPeople} Kişi</div>
+                        <div className="font-medium text-gray-900">
+                          {householdCount} Hane {institutionCount > 0 && <span className="text-blue-600">/ {institutionCount} Kurum</span>}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {householdPeople} Kişi {institutionPeople > 0 && <span className="text-blue-600">/ {institutionPeople} Kurum Kişisi</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -1617,10 +1637,25 @@ export default function RoutesPage() {
                 {activeDrivers?.map((driver) => {
                   const template = routeTemplates?.find(rt => rt.driverId === driver.id);
                   const tStops = template ? (routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || []) : [];
-                  const totalPeople = tStops.reduce((sum, ts) => {
+                  
+                  let householdCount = 0;
+                  let institutionCount = 0;
+                  let householdPeople = 0;
+                  let institutionPeople = 0;
+
+                  tStops.forEach(ts => {
                     const h = households?.find(hh => hh.id === ts.householdId);
-                    return sum + (h?.memberCount || 0);
-                  }, 0);
+                    const isInstitution = h?.type === 'institution';
+                    const memberCount = h?.memberCount || 0;
+
+                    if (isInstitution) {
+                      institutionCount++;
+                      institutionPeople += memberCount;
+                    } else {
+                      householdCount++;
+                      householdPeople += memberCount;
+                    }
+                  });
                   
                   return (
                     <tr key={driver.id}>
@@ -1630,8 +1665,12 @@ export default function RoutesPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {template ? (
                           <>
-                            <div className="font-medium text-gray-900">{tStops.length} Hane</div>
-                            <div className="text-xs text-gray-500">{totalPeople} Kişi</div>
+                            <div className="font-medium text-gray-900">
+                              {householdCount} Hane {institutionCount > 0 && <span className="text-blue-600">/ {institutionCount} Kurum</span>}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {householdPeople} Kişi {institutionPeople > 0 && <span className="text-blue-600">/ {institutionPeople} Kurum Kişisi</span>}
+                            </div>
                           </>
                         ) : (
                           <span className="text-gray-400 italic">Şablon Oluşturulmamış</span>
