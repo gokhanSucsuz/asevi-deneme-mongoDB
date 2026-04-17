@@ -234,6 +234,22 @@ const processData = (data: any): any => {
     return data;
   }
   
+  // Handle MongoDB EJSON $oid format
+  if (data.$oid && typeof data.$oid === 'string') {
+    return data.$oid;
+  }
+  
+  // Convert _id to id for consistent application usage
+  if (data._id && !data.id) {
+    const rawId = typeof data._id === 'object' && data._id.$oid ? data._id.$oid : data._id;
+    data.id = String(rawId);
+  }
+  
+  // More robust id handling - if we have an id that is an object ($oid), convert it
+  if (data.id && typeof data.id === 'object' && data.id.$oid) {
+    data.id = String(data.id.$oid);
+  }
+  
   const result = Array.isArray(data) ? [...data] : { ...data };
   
   // Decrypt sensitive fields if they exist at this level

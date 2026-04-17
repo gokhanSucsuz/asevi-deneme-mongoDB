@@ -120,8 +120,9 @@ export default function DriversPage() {
     setReportModalOpen(true);
   };
 
-  const getDriverRoutes = (driverId: string) => {
-    return routes?.filter(r => r.driverId === driverId && r.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+  const getDriverRoutes = (driverId: string | undefined) => {
+    if (!driverId) return [];
+    return routes?.filter(r => String(r.driverId) === String(driverId) && r.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   };
 
   const exportDriverReportPDF = async () => {
@@ -135,13 +136,13 @@ export default function DriversPage() {
       const startDate = subMonths(endDate, months);
 
       const driverRoutes = routes?.filter((r: Route) => 
-        r.driverId === driverToReport.id! && 
+        String(r.driverId) === String(driverToReport.id!) && 
         r.status === 'completed' &&
         isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) })
-      ).sort((a: Route) => new Date(a.date).getTime() - new Date(a.date).getTime()) || [];
+      ).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
       const allStops = await db.routeStops.toArray();
-      const driverStops = allStops.filter((s: RouteStop) => driverRoutes.some((r: Route) => r.id === s.routeId));
+      const driverStops = allStops.filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
 
       const totalKm = driverRoutes.reduce((acc: number, r: Route) => acc + ((r.endKm || 0) - (r.startKm || 0)), 0);
       const totalDelivered = driverStops.filter((s: RouteStop) => s.status === 'delivered').length;
