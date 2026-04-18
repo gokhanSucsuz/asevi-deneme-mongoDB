@@ -419,6 +419,11 @@ export const db = {
           const searchVal = (field === 'tcNo' || field === 'householdNo') ? encrypt(val) : val;
           const data = await callApi('households', 'list', { query: { [field]: searchVal }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Household : null;
+        },
+        count: async () => {
+          const searchVal = (field === 'tcNo' || field === 'householdNo') ? encrypt(val) : val;
+          const data = await callApi('households', 'list', { query: { [field]: searchVal } });
+          return data.length;
         }
       })
     })
@@ -478,6 +483,10 @@ export const db = {
         first: async () => {
           const data = await callApi('routes', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Route : null;
+        },
+        count: async () => {
+          const data = await callApi('routes', 'list', { query: { [field]: val } });
+          return data.length;
         }
       }),
       notEqual: (val: any) => ({
@@ -597,6 +606,10 @@ export const db = {
         first: async () => {
           const data = await callApi('route_templates', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as RouteTemplate : null;
+        },
+        count: async () => {
+          const data = await callApi('route_templates', 'list', { query: { [field]: val } });
+          return data.length;
         }
       })
     }),
@@ -622,6 +635,10 @@ export const db = {
         toArray: async () => {
           const data = await callApi('route_template_stops', 'list', { query: { [field]: val } });
           return data.map(processData) as RouteTemplateStop[];
+        },
+        count: async () => {
+          const data = await callApi('route_template_stops', 'list', { query: { [field]: val } });
+          return data.length;
         },
         delete: async () => {
           checkDemoMode();
@@ -672,6 +689,11 @@ export const db = {
           const searchVal = (field === 'tcNo') ? encrypt(val) : val;
           const data = await callApi('personnel', 'list', { query: { [field]: searchVal }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Personnel : null;
+        },
+        count: async () => {
+          const searchVal = (field === 'tcNo') ? encrypt(val) : val;
+          const data = await callApi('personnel', 'list', { query: { [field]: searchVal } });
+          return data.length;
         }
       })
     }),
@@ -720,6 +742,10 @@ export const db = {
         toArray: async () => {
           const data = await callApi('system_logs', 'list', { query: { [field]: val }, sort: { timestamp: -1 } });
           return data.map(processData) as SystemLog[];
+        },
+        count: async () => {
+          const data = await callApi('system_logs', 'list', { query: { [field]: val } });
+          return data.length;
         }
       }),
       greaterThanOrEqual: (val: any) => ({
@@ -744,6 +770,10 @@ export const db = {
         first: async () => {
           const data = await callApi('working_days', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as WorkingDay : null;
+        },
+        count: async () => {
+          const data = await callApi('working_days', 'list', { query: { [field]: val } });
+          return data.length;
         }
       })
     }),
@@ -785,6 +815,10 @@ export const db = {
         first: async () => {
           const data = await callApi('bread_tracking', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as BreadTracking : null;
+        },
+        count: async () => {
+          const data = await callApi('bread_tracking', 'list', { query: { [field]: val } });
+          return data.length;
         }
       })
     }),
