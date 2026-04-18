@@ -63,7 +63,7 @@ export default function SystemLogsPage() {
     }
 
     return matchesSearch && matchesCategory && matchesDate;
-  }).sort((a, b) => {
+  }).sort((a: any, b: any) => {
     let valA = a[sortField];
     let valB = b[sortField];
 
