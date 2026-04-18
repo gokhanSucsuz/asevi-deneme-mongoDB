@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Tender, BreadTracking } from '@/lib/db';
-import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAfter } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAfter, subHours } from 'date-fns';
 import { safeFormat } from '@/lib/date-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
+import { checkIsWorkingDay, getNextWorkingDay } from '@/lib/route-utils';
 import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
@@ -148,14 +149,19 @@ export default function BreadTrackingPage() {
           const dayRoutes = routes?.filter(r => r.date === dateStr) || [];
           const allApproved = dayRoutes.length > 0 && dayRoutes.every(r => r.status === 'approved');
           
+          const isWorkingDay = await checkIsWorkingDay(new Date(dateStr));
+          const deliveryDate = existing?.deliveryDate || (await getNextWorkingDay(new Date(dateStr))).toISOString().split('T')[0];
+
           return {
             id: existing?.id || dateStr,
             date: dateStr,
+            deliveryDate,
             totalNeeded: breadData.totalNeeded,
             leftoverAmount: breadData.leftoverAmount,
             finalOrderAmount: breadData.finalOrderAmount,
             status: existing?.status || 'pending',
             allApproved,
+            isWorkingDay,
             note: existing?.note || breadData.note || '',
             manualLeftoverAmount: breadData.manualLeftoverAmount,
             manualLeftoverNote: breadData.manualLeftoverNote
@@ -542,6 +548,7 @@ export default function BreadTrackingPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teslimat Tarihi</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam İhtiyaç</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Artan Ekmek</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sipariş Miktarı</th>
@@ -552,9 +559,19 @@ export default function BreadTrackingPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {reportData.map((b) => (
-                  <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-bold text-gray-900">{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</td>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{b.totalNeeded}</td>
+                    <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        <div className="flex flex-col">
+                          <span>{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</span>
+                          {!b.isWorkingDay && (
+                            <span className="text-[10px] text-red-500 font-bold uppercase">Tatil Günü</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.totalNeeded}</td>
                     <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                       <div className="flex flex-col">
                         <span className="font-medium">{b.leftoverAmount}</span>
@@ -576,9 +593,9 @@ export default function BreadTrackingPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={b.note}>{b.note || '-'}</td>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
-                        {b.date === safeFormat(new Date(), 'yyyy-MM-dd') && b.status !== 'ordered' && (
+                        {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
                           <button
                             onClick={() => handleOrderBread(b)}
                             className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
@@ -588,7 +605,7 @@ export default function BreadTrackingPage() {
                             <span>Sipariş Ver</span>
                           </button>
                         )}
-                        {b.date === safeFormat(new Date(), 'yyyy-MM-dd') && (
+                        {isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
                           <button
                             onClick={() => {
                               setSelectedDate(b.date);

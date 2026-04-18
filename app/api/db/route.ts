@@ -4,7 +4,7 @@ import { adminAuth } from '@/lib/firebase-admin';
 import { ObjectId } from 'mongodb';
 import { encrypt, decrypt, isEncrypted } from '@/lib/crypto';
 
-const SENSITIVE_FIELDS = ['tcNo', 'householdNo', 'phone', 'address', 'password'];
+const SENSITIVE_FIELDS = ['tcNo', 'householdNo', 'phone', 'address', 'password', 'details'];
 
 function decryptSensitiveFields(doc: any): any {
   if (!doc || typeof doc !== 'object') return doc;

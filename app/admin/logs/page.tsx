@@ -8,7 +8,6 @@ import { useAuth } from '@/components/AuthProvider';
 import { useAppQuery } from '@/lib/hooks';
 import { safeFormat } from '@/lib/date-utils';
 import { normalizeTurkish } from '@/lib/utils';
-import { decrypt, isEncrypted } from '@/lib/crypto';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -30,16 +29,10 @@ export default function SystemLogsPage() {
   
   const decryptedLogs = useMemo(() => {
     if (!allLogs) return [];
-    return allLogs.map(log => {
-      let details = log.details || '';
-      if (isEncrypted(details)) {
-        details = decrypt(details) || '*** Şifre Çözülemedi ***';
-      }
-      return {
-        ...log,
-        decryptedDetails: details
-      };
-    });
+    return allLogs.map(log => ({
+      ...log,
+      decryptedDetails: log.details || ''
+    }));
   }, [allLogs]);
 
   const filteredLogs = decryptedLogs?.filter(log => {

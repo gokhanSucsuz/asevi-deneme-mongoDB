@@ -151,6 +151,7 @@ export interface BreadTracking {
   finalOrderAmount: number;
   containerCount?: number;
   ownContainerCount?: number;
+  deliveryDate?: string; // yyyy-MM-dd
   status: 'pending' | 'ordered';
   note?: string;
   manualLeftoverAmount?: number;

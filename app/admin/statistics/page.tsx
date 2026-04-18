@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
@@ -34,7 +35,13 @@ export default function StatisticsPage() {
   const breadTracking = useAppQuery(() => db.breadTracking.toArray(), [], 'bread_tracking');
   const leftoverFood = useAppQuery(() => db.leftover_food.toArray(), [], 'leftover_food');
 
-  if (!routes || !routeStops || !drivers || !households || !breadTracking || !leftoverFood) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
+  if (!routes || !routeStops || !drivers || !households || !breadTracking || !leftoverFood || !isMounted) {
     return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
   }
 

@@ -963,12 +963,6 @@ export default function HouseholdsPage() {
               </th>
               <th 
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('householdNo')}
-              >
-                Hane No {sortField === 'householdNo' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('tcNo')}
               >
                 TC Kimlik No {sortField === 'tcNo' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -979,9 +973,9 @@ export default function HouseholdsPage() {
               >
                 Hane / Kurum Adı {sortField === 'headName' && (sortOrder === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefon</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Telefon</th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 w-40"
                 onClick={() => handleSort('address')}
               >
                 Adres {sortField === 'address' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -1013,24 +1007,7 @@ export default function HouseholdsPage() {
                 <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500 font-medium">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      {showSensitive[household.id!] ? household.householdNo : maskSensitive(household.householdNo, 2)}
-                      {household.householdNo && (
-                        <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
-                          {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                      )}
-                    </div>
-                    {household.isRetired && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
-                        Emekli
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[household.id!] ? household.tcNo : maskSensitive(household.tcNo)}
                     {household.tcNo && (
@@ -1040,15 +1017,22 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-normal break-words text-sm font-medium text-gray-900">
                   <div className="flex flex-col">
-                    <span>{household.headName}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{household.headName}</span>
+                      {household.isRetired && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
+                          Emekli
+                        </span>
+                      )}
+                    </div>
                     {household.type === 'institution' && (
                       <span className="text-[10px] text-indigo-600 font-bold uppercase">Kurum</span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-500 w-40">
                   <div className="flex items-center gap-2">
                     {showSensitive[household.id!] ? household.phone : maskSensitive(household.phone, 3)}
                     {household.phone && (
@@ -1058,9 +1042,9 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                <td className="px-6 py-4 text-sm text-gray-500 w-40">
                   <div className="flex items-center gap-2">
-                    {showSensitive[household.id!] ? household.address : maskSensitive(household.address, 5)}
+                    {showSensitive[household.id!] ? household.address : maskSensitive(household.address, 10)}
                     {household.address && (
                       <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
                         {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}

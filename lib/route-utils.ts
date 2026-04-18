@@ -298,18 +298,22 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
       });
 
       // Calculate and save bread tracking for the next day
-      const existingBreadTracking = await db.breadTracking.where('date').equals(nextDayStr).first();
-      if (!existingBreadTracking) {
-        const breadData = await calculateBreadForNextDay(nextDayStr);
-        await db.breadTracking.add({
-          date: nextDayStr,
-          totalNeeded: breadData.totalNeeded,
-          leftoverAmount: breadData.leftoverAmount,
-          finalOrderAmount: breadData.finalOrderAmount,
-          delivered: 0,
-          status: 'pending',
-          note: breadData.note
-        });
+      const nextIsWorking = await checkIsWorkingDay(nextDay);
+      if (nextIsWorking) {
+        const existingBreadTracking = await db.breadTracking.where('date').equals(nextDayStr).first();
+        if (!existingBreadTracking) {
+          const breadData = await calculateBreadForNextDay(nextDayStr);
+          await db.breadTracking.add({
+            date: nextDayStr,
+            deliveryDate: nextDayStr,
+            totalNeeded: breadData.totalNeeded,
+            leftoverAmount: breadData.leftoverAmount,
+            finalOrderAmount: breadData.finalOrderAmount,
+            delivered: 0,
+            status: 'pending',
+            note: breadData.note
+          });
+        }
       }
     }
   }
