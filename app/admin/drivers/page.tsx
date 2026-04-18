@@ -122,7 +122,7 @@ export default function DriversPage() {
 
   const getDriverRoutes = (id: string | undefined, name?: string) => {
     if (!id) return [];
-    return routes?.filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && r.status === 'completed').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+    return routes?.filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && (r.status === 'completed' || r.status === 'approved')).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   };
 
   const exportDriverReportPDF = async () => {
@@ -143,7 +143,7 @@ export default function DriversPage() {
         const isThisDriver = idMatch || nameMatch;
         
         return isThisDriver && 
-               r.status === 'completed' &&
+               (r.status === 'completed' || r.status === 'approved') &&
                isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) });
       }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
