@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/db';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Search, Filter, Clock, User, Tag, Info, ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
 import { useAppQuery } from '@/lib/hooks';
 import { safeFormat } from '@/lib/date-utils';
 import { normalizeTurkish } from '@/lib/utils';
@@ -13,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
 
 export default function SystemLogsPage() {
+  const { user, personnel } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
@@ -99,6 +101,8 @@ export default function SystemLogsPage() {
     return sortDirection === 'asc' ? <ArrowUp size={14} className="text-blue-500" /> : <ArrowDown size={14} className="text-blue-500" />;
   };
 
+  const personnelName = personnel?.name || user?.email || 'Bilinmeyen Personel';
+
   const exportPDF = async () => {
     try {
       const doc = await getTurkishPdf('landscape');
@@ -150,7 +154,7 @@ export default function SystemLogsPage() {
         }
       });
 
-      addReportFooter(doc);
+      addReportFooter(doc, personnelName);
       
       doc.save(`sistem_gecmisi_${safeFormat(new Date(), 'yyyy-MM-dd_HH-mm')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu');
