@@ -13,7 +13,7 @@ import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function DriversPage() {
@@ -257,15 +257,24 @@ export default function DriversPage() {
       // Add Chart to PDF
       if (chartRef.current) {
         try {
-          const canvas = await html2canvas(chartRef.current, { scale: 2 });
-          const imgData = canvas.toDataURL('image/png');
+          // Temporarily force light theme / standard colors for capture
+          const originalStyle = chartRef.current.style.backgroundColor;
+          chartRef.current.style.backgroundColor = 'white';
+          
+          const imgData = await toPng(chartRef.current, {
+            quality: 0.95,
+            backgroundColor: 'white',
+            pixelRatio: 2,
+          });
+          
+          chartRef.current.style.backgroundColor = originalStyle;
           
           if (currentY + 100 > 280) { // check if chart fits on page
             doc.addPage();
             currentY = 20;
           }
           
-          doc.addImage(imgData, 'PNG', 14, currentY, 180, 80);
+          doc.addImage(imgData, 'PNG', 15, currentY, 180, 80);
           currentY += 90;
         } catch (chartErr) {
           console.error("PDF chart adding failed", chartErr);
@@ -452,9 +461,28 @@ export default function DriversPage() {
                 </div>
               </div>
               
-              <div className="mb-6" ref={chartRef}>
-                <h4 className="font-bold text-gray-900 mb-4">Teslimat İstatistikleri (Seçili Dönem)</h4>
-                <div className="bg-white p-4 border border-gray-200 rounded-lg h-72">
+              {/* Performance Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                {[
+                  { label: 'Toplam KM', val: totalKm, color: 'text-gray-900', bg: 'bg-gray-50' },
+                  { label: 'Hane Teslim', val: totalHouseholdDeliveries, color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { label: 'Ulaşılan Kişi', val: totalDeliveredPeople, color: 'text-green-600', bg: 'bg-green-50' },
+                  { label: 'Başarısız', val: totalFailedStops, color: 'text-red-500', bg: 'bg-red-50' },
+                  { label: 'Tamamlanan', val: driverRoutes.length, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                ].map((stat, i) => (
+                  <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center`}>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                    <p className={`text-2xl font-black ${stat.color}`}>{stat.val}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mb-6 p-6 bg-white border border-gray-200 rounded-[2rem] shadow-sm" ref={chartRef}>
+                <h4 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  <BarChart className="text-blue-600" size={20} />
+                  Performans Grafiği (Günlük Dağılım)
+                </h4>
+                <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={getDriverRoutes(driverToReport.id!, driverToReport.name)

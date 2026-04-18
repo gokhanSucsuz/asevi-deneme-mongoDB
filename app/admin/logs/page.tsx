@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/lib/db';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Search, Filter, Clock, User, Tag, Info, ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react';
@@ -23,24 +23,21 @@ export default function SystemLogsPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
-  const [decryptedLogs, setDecryptedLogs] = useState<any[]>([]);
 
   const allLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
   
-  useEffect(() => {
-    if (allLogs) {
-      const logs = allLogs.map(log => {
-        let details = log.details || '';
-        if (isEncrypted(details)) {
-          details = decrypt(details) || '*** Şifre Çözülemedi ***';
-        }
-        return {
-          ...log,
-          decryptedDetails: details
-        };
-      });
-      setDecryptedLogs(logs);
-    }
+  const decryptedLogs = useMemo(() => {
+    if (!allLogs) return [];
+    return allLogs.map(log => {
+      let details = log.details || '';
+      if (isEncrypted(details)) {
+        details = decrypt(details) || '*** Şifre Çözülemedi ***';
+      }
+      return {
+        ...log,
+        decryptedDetails: details
+      };
+    });
   }, [allLogs]);
 
   const filteredLogs = decryptedLogs?.filter(log => {
@@ -104,7 +101,7 @@ export default function SystemLogsPage() {
 
   const exportPDF = async () => {
     try {
-      const doc = getTurkishPdf('landscape');
+      const doc = await getTurkishPdf('landscape');
       const finalY = await addVakifLogo(doc);
       
       doc.setFontSize(16);
