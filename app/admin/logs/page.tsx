@@ -66,8 +66,8 @@ export default function SystemLogsPage() {
 
     return matchesSearch && matchesCategory && matchesDate;
   }).sort((a: any, b: any) => {
-    let valA = a[sortField];
-    let valB = b[sortField];
+    let valA = (a as any)[sortField];
+    let valB = (b as any)[sortField];
 
     if (sortField === 'timestamp') {
       valA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -154,7 +154,7 @@ export default function SystemLogsPage() {
         }
       });
 
-      addReportFooter(doc, personnelName);
+      addReportFooter(doc, personnel?.name || 'Bilinmeyen Personel');
       
       doc.save(`sistem_gecmisi_${safeFormat(new Date(), 'yyyy-MM-dd_HH-mm')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu');

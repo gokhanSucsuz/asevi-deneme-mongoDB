@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Driver, Route, RouteStop } from '@/lib/db';
-import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart as BarChartIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, subMonths, subWeeks, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -493,7 +493,7 @@ export default function DriversPage() {
               
               <div className="mb-6 p-6 bg-white border border-gray-200 rounded-[2rem] shadow-sm" ref={chartRef}>
                 <h4 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <BarChart className="text-blue-600" size={20} />
+                  <BarChartIcon className="text-blue-600" size={20} />
                   Performans Grafiği (Günlük Dağılım)
                 </h4>
                 <div className="h-72">

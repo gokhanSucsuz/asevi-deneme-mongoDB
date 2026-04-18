@@ -34,6 +34,11 @@ export default function BreadTrackingPage() {
     maxBreadCount: 0
   });
 
+  const breadTracking = useAppQuery(() => db.breadTracking.toArray(), [], 'bread_tracking');
+  const households = useAppQuery(() => db.households.toArray(), [], 'households');
+  const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  const tenders = useAppQuery(() => db.tenders.toArray(), [], 'tenders');
+
   const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
   const todaysRoutes = routes?.filter(r => r.date === todayStr) || [];
   const isTodayRoutesApproved = todaysRoutes.length > 0 && todaysRoutes.every(r => r.status === 'approved');
@@ -56,10 +61,6 @@ export default function BreadTrackingPage() {
     fetchNextDayInfo();
   }, [isTodayRoutesApproved, routes]);
 
-  const breadTracking = useAppQuery(() => db.breadTracking.toArray(), [], 'bread_tracking');
-  const households = useAppQuery(() => db.households.toArray(), [], 'households');
-  const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
-  const tenders = useAppQuery(() => db.tenders.toArray(), [], 'tenders');
   const [nextWorkingDayStr, setNextWorkingDayStr] = useState('');
 
   // Fix for 14.04.2026 and clear older records
