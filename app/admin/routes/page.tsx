@@ -5,7 +5,7 @@ import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat } from '@/lib/date-utils';
@@ -1706,71 +1706,99 @@ export default function RoutesPage() {
         </>
       )}
 
-      {/* Transaction History Section */}
-      <div className="mt-12 bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 min-w-[600px]">
-          <div className="flex items-center gap-2">
-            <History className="text-gray-500" size={20} />
-            <h3 className="text-lg font-bold text-gray-900">Son İşlem Geçmişi</h3>
-          </div>
-          <div className="flex gap-2">
-            <div className="relative group">
-              <button className="flex items-center gap-2 bg-white border border-gray-300 px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <Download size={16} />
-                Rapor Al
-              </button>
-              <div className="absolute right-0 pt-2 w-48 hidden group-hover:block z-10">
-                <div className="bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
-                  <button onClick={() => exportHistoryPDF(1)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-50">Son 1 Ay</button>
-                  <button onClick={() => exportHistoryPDF(3)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-b border-gray-50">Son 3 Ay</button>
-                  <button onClick={() => exportHistoryPDF(6)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Son 6 Ay</button>
-                </div>
+      {/* Route Completion Statistics Cards */}
+      <div className="mt-12">
+        <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+          <History className="text-blue-600" size={24} />
+          Günlük Dağıtım İstatistikleri ({safeFormat(selectedDate, 'dd MMMM yyyy')})
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Driver Routes Completion Card */}
+          <div className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Şoför Rotaları</p>
+                <h4 className="text-2xl font-black text-gray-900">Genel Tamamlanma</h4>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-2xl">
+                <BarChart3 className="text-blue-600" size={24} />
               </div>
             </div>
+            
+            {(() => {
+              const todaysRoutes = routes?.filter(r => r.date === selectedDateStr) || [];
+              const totalRoutes = todaysRoutes.length;
+              const completedRoutes = todaysRoutes.filter(r => r.status === 'completed' || r.status === 'approved').length;
+              const ratio = totalRoutes > 0 ? Math.round((completedRoutes / totalRoutes) * 100) : 0;
+              
+              return (
+                <div>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-black text-gray-900">%{ratio}</span>
+                    <span className="text-sm font-bold text-gray-500 pb-1">{completedRoutes} / {totalRoutes} Rota</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-3">
+                    <div 
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-1000" 
+                      style={{ width: `${ratio}%` }}
+                    />
+                  </div>
+                  <p className="mt-4 text-sm text-gray-500 font-medium">
+                    {totalRoutes === 0 ? 'Bugün için tanımlı rota bulunmuyor.' : completedRoutes === totalRoutes ? 'Tüm şoför rotaları başarıyla tamamlandı.' : 'Bazı rotalar henüz tamamlanmadı.'}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarih</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">İşlem</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Personel</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Detay</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {[...(systemLogs || [])].sort((a, b) => {
-                const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-                if (timeB !== timeA) return timeB - timeA;
-                return (String(b.id || '')).localeCompare(String(a.id || ''));
-              }).slice(0, 10).map((log) => (
-                <tr key={log.id}>
-                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-xs font-semibold text-gray-700">
-                    <div className="flex items-center gap-1">
-                      <Clock size={14} className="text-blue-500" />
-                      {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
-                    {log.action}
-                  </td>
-                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                    {log.personnelName}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {log.details}
-                  </td>
-                </tr>
-              ))}
-              {(!systemLogs || systemLogs.length === 0) && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">Henüz işlem kaydı yok.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+          {/* Self-Service (Vakıf) Completion Card */}
+          <div className="bg-white p-6 rounded-[2rem] border border-gray-200 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Vakıf (Elden Teslim)</p>
+                <h4 className="text-2xl font-black text-gray-900">Günlük Teslimat Oranı</h4>
+              </div>
+              <div className="p-3 bg-green-50 rounded-2xl">
+                <Info className="text-green-600" size={24} />
+              </div>
+            </div>
+
+            {(() => {
+              const selfServiceHouseholds = households?.filter(h => h.isSelfService && h.isActive) || [];
+              const totalHouseholds = selfServiceHouseholds.length;
+              
+              // Find deliveries for self-service households today
+              // Usually handled in a special way in this system
+              const todaysStops = routeStops?.filter(s => {
+                const route = routes?.find(r => r.id === s.routeId);
+                return route?.date === selectedDateStr;
+              }) || [];
+              
+              const selfServiceCompleted = selfServiceHouseholds.filter(h => 
+                todaysStops.some(s => s.householdId === h.id && (s.status === 'delivered' || s.status === 'failed'))
+              ).length;
+
+              const ratio = totalHouseholds > 0 ? Math.round((selfServiceCompleted / totalHouseholds) * 100) : 0;
+
+              return (
+                <div>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-black text-gray-900">%{ratio}</span>
+                    <span className="text-sm font-bold text-gray-500 pb-1">{selfServiceCompleted} / {totalHouseholds} Hane</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-3">
+                    <div 
+                      className="bg-green-600 h-3 rounded-full transition-all duration-1000" 
+                      style={{ width: `${ratio}%` }}
+                    />
+                  </div>
+                  <p className="mt-4 text-sm text-gray-500 font-medium">
+                    {totalHouseholds === 0 ? 'Bugün için vakıf teslimatı bekleyen hane yok.' : selfServiceCompleted === totalHouseholds ? 'Tüm vakıf teslimatları tamamlandı.' : 'Bazı vakıf teslimatları henüz işlenmedi.'}
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
 

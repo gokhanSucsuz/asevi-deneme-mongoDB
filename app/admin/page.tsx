@@ -5,9 +5,10 @@ import { useAppQuery } from '@/lib/hooks';
 import { db as firestoreDb } from '@/lib/db';
 import { format } from 'date-fns';
 import { safeFormat } from '@/lib/date-utils';
-import { Truck, MapPin, CheckCircle, Clock, XCircle, ShoppingBasket, Users } from 'lucide-react';
+import { Truck, MapPin, CheckCircle, Clock, XCircle, ShoppingBasket, Users, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Route, RouteStop, Driver, Household, BreadTracking } from '@/lib/db';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
   const today = safeFormat(new Date(), 'yyyy-MM-dd');
@@ -17,6 +18,15 @@ export default function AdminDashboard() {
   const breadTracking = useAppQuery(() => firestoreDb.breadTracking.toArray(), [], 'bread_tracking') || [];
   const routes = useAppQuery(() => firestoreDb.routes.where('date').equals(today).toArray(), [today], 'routes') || [];
   const routeStops = useAppQuery(() => firestoreDb.routeStops.toArray(), [], 'route_stops') || [];
+
+  const nextMonthObj = new Date();
+  nextMonthObj.setMonth(nextMonthObj.getMonth() + 1);
+  const nextMonthStr = safeFormat(nextMonthObj, 'yyyy-MM');
+  const nextMonthConfig = useAppQuery(() => firestoreDb.working_days.where('month').equals(nextMonthStr).toArray(), [nextMonthStr], 'working_days_next_month') || [];
+
+  const todayDate = new Date();
+  const isAfter25th = todayDate.getDate() >= 25;
+  const showWorkingDayWarning = isAfter25th && nextMonthConfig.length === 0;
 
   const todayBread = breadTracking.find(b => b.date === today);
   
@@ -90,6 +100,27 @@ export default function AdminDashboard() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Anlık Takip Paneli</h2>
+
+      {showWorkingDayWarning && (
+        <div className="mb-8 bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm shadow-amber-100">
+          <div className="flex items-center gap-4 text-center md:text-left">
+            <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl">
+              <AlertTriangle size={32} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-amber-900">Çalışma Günleri Hatırlatması</h3>
+              <p className="text-sm font-medium text-amber-700">Gelecek ay ({nextMonthStr}) için çalışma günleri henüz belirlenmemiş. Sistem varsayılan haftaiçi takvimini kullanacak fakat onayınız gereklidir.</p>
+            </div>
+          </div>
+          <Link 
+            href="/admin/working-days"
+            className="w-full md:w-auto bg-amber-600 text-white px-8 py-3 rounded-2xl font-black hover:bg-amber-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-200 group"
+          >
+            Günleri Belirle
+            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">

@@ -428,22 +428,22 @@ export default function DriversPage() {
               </button>
             </div>
             <div className="p-6 flex-1 overflow-y-auto">
-              <div className="mb-6 grid grid-cols-4 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500">Araç Plakası</p>
-                  <p className="font-bold text-gray-900">{driverToReport.vehiclePlate}</p>
+              <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Araç Plakası</p>
+                  <p className="text-lg font-black text-gray-900">{driverToReport.vehiclePlate}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500">Toplam Rota</p>
-                  <p className="font-bold text-gray-900">{getDriverRoutes(driverToReport.id!, driverToReport.name).length}</p>
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Toplam Rota</p>
+                  <p className="text-lg font-black text-gray-900">{driverReportStats?.driverRoutes.length || 0}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rapor Dönemi</label>
-                  <div className="flex items-center gap-2">
+                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Rapor Dönemi</label>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <select
                       value={reportRange}
                       onChange={(e) => setReportRange(e.target.value)}
-                      className="block flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                      className="block w-full sm:w-auto rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm border p-2.5 bg-white"
                     >
                       <option value="d1">Son 1 Gün</option>
                       <option value="w1">Son 1 Hafta</option>
@@ -458,14 +458,14 @@ export default function DriversPage() {
                           type="date"
                           value={customStartDate}
                           onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm border p-2 bg-white"
                         />
-                        <span className="text-gray-500">-</span>
+                        <span className="text-gray-400 font-bold">-</span>
                         <input
                           type="date"
                           value={customEndDate}
                           onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm border p-2 bg-white"
                         />
                       </div>
                     )}

@@ -6,7 +6,7 @@ import { db, Tender, BreadTracking } from '@/lib/db';
 import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAfter } from 'date-fns';
 import { safeFormat } from '@/lib/date-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle } from 'lucide-react';
+import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
@@ -33,6 +33,28 @@ export default function BreadTrackingPage() {
     endDate: safeFormat(addDays(new Date(), 365), 'yyyy-MM-dd'),
     maxBreadCount: 0
   });
+
+  const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+  const todaysRoutes = routes?.filter(r => r.date === todayStr) || [];
+  const isTodayRoutesApproved = todaysRoutes.length > 0 && todaysRoutes.every(r => r.status === 'approved');
+
+  const [nextWorkDayInfo, setNextWorkDayInfo] = useState<{date: string, totalNeeded: number} | null>(null);
+
+  useEffect(() => {
+    const fetchNextDayInfo = async () => {
+      if (isTodayRoutesApproved) {
+        const { getNextWorkingDay } = await import('@/lib/route-utils');
+        const nextDate = await getNextWorkingDay(new Date());
+        const nextDateStr = safeFormat(nextDate, 'yyyy-MM-dd');
+        // Lazy calculate to avoid circular or heavy load
+        const breadData = await calculateBreadForNextDay(nextDateStr);
+        setNextWorkDayInfo({ date: nextDateStr, totalNeeded: breadData.totalNeeded });
+      } else {
+        setNextWorkDayInfo(null);
+      }
+    };
+    fetchNextDayInfo();
+  }, [isTodayRoutesApproved, routes]);
 
   const breadTracking = useAppQuery(() => db.breadTracking.toArray(), [], 'bread_tracking');
   const households = useAppQuery(() => db.households.toArray(), [], 'households');
@@ -440,6 +462,37 @@ export default function BreadTrackingPage() {
                     : 'Kalan ekmek sayısı kritik seviyeye ulaştı! Lütfen yeni ihale hazırlıklarına başlayın.'}
                 </p>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white shadow-sm rounded-xl p-6 border border-gray-200">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Info size={20} className="text-blue-600" />
+            Sipariş Önerisi
+          </h3>
+          
+          {nextWorkDayInfo ? (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+              <div className="flex items-center gap-2 text-blue-800 mb-2">
+                <CheckCircle size={20} />
+                <span className="font-bold text-sm">Tüm Rotalar Onaylandı</span>
+              </div>
+              <p className="text-xs text-blue-700 mb-3">
+                Bugünkü tüm rotalar onaylandığı için sistem bir sonraki çalışma günü ({safeFormat(new Date(nextWorkDayInfo.date), 'dd.MM.yyyy')}) SIPARISINI önermektedir.
+              </p>
+              <div className="bg-white p-3 rounded-lg border border-blue-100 flex justify-between items-center">
+                <span className="text-xs font-bold text-gray-500 uppercase">Önerilen Sipariş</span>
+                <span className="text-xl font-black text-blue-600">{nextWorkDayInfo.totalNeeded} Adet</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+              <p className="text-xs text-gray-500 italic leading-relaxed">
+                {todaysRoutes.length === 0 
+                  ? 'Henüz bugüne ait rota tanımlanmamış.'
+                  : 'Sipariş önerisi için bugünkü tüm rotaların onaylanması gerekmektedir.'}
+              </p>
             </div>
           )}
         </div>

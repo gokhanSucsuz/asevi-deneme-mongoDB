@@ -25,6 +25,41 @@ export default function WorkingDaysPage() {
   });
 
   useEffect(() => {
+    const checkNextMonthAutoSelection = async () => {
+      if (isDemo) return;
+      const nextMonthObj = addMonths(new Date(), 1);
+      const nextMonthStr = safeFormat(nextMonthObj, 'yyyy-MM');
+      
+      const count = await db.working_days.where('month').equals(nextMonthStr).count();
+      if (count === 0) {
+        // Auto-select weekdays for next month
+        const nextMonthDays = eachDayOfInterval({
+          start: startOfMonth(nextMonthObj),
+          end: endOfMonth(nextMonthObj)
+        });
+
+        const autoDays = nextMonthDays.map(day => {
+          const dateStr = safeFormat(day, 'yyyy-MM-dd');
+          const dayOfWeek = day.getDay();
+          const isWorkingDay = dayOfWeek !== 0 && dayOfWeek !== 6;
+          
+          return {
+            date: dateStr,
+            isWorkingDay,
+            month: nextMonthStr,
+            updatedAt: new Date(),
+            updatedBy: 'Sistem (Otomatik)'
+          };
+        });
+
+        await db.working_days.bulkPut(autoDays);
+        console.log(`Otomatik çalışma günleri seçildi: ${nextMonthStr}`);
+      }
+    };
+    checkNextMonthAutoSelection();
+  }, [isDemo]);
+
+  useEffect(() => {
     const fetchWorkingDays = async () => {
       setIsLoading(true);
       try {
@@ -113,6 +148,34 @@ export default function WorkingDaysPage() {
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
+  const autoSelectWeekdays = async () => {
+    if (isDemo) return;
+    const loadingToast = toast.loading('Haftaiçi günler seçiliyor...');
+    try {
+      const daysToSave = daysInMonth.map(day => {
+        const dateStr = safeFormat(day, 'yyyy-MM-dd');
+        const dayOfWeek = day.getDay();
+        const isWorkingDay = dayOfWeek !== 0 && dayOfWeek !== 6;
+        
+        return {
+          date: dateStr,
+          isWorkingDay,
+          month: monthStr,
+          updatedAt: new Date(),
+          updatedBy: user?.email || 'Sistem'
+        };
+      });
+
+      await db.working_days.bulkPut(daysToSave);
+      const updatedDays = await db.working_days.where('month').equals(monthStr).toArray();
+      setWorkingDays(updatedDays);
+      toast.success('Haftaiçi günler otomatik olarak seçildi', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('İşlem başarısız', { id: loadingToast });
+    }
+  };
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64">Yükleniyor...</div>;
   }
@@ -149,10 +212,12 @@ export default function WorkingDaysPage() {
               <ChevronRight size={24} />
             </button>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <CalendarIcon size={18} />
-            <span>Takvim Görünümü</span>
-          </div>
+          <button
+            onClick={autoSelectWeekdays}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-lg transition-colors border border-blue-100"
+          >
+            Haftaiçi Günleri Otomatik Seç
+          </button>
         </div>
 
         <div className="p-6">

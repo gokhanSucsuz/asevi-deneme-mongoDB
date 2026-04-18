@@ -68,6 +68,22 @@ export async function calculateBreadForNextDay(dateStr: string) {
 
     // Check if it's the last working day of the week (e.g., Friday)
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
+    
+    // User special request logic:
+    // "2 günden fazla tatil günü var ise ekmek siparişinde toplam ihtiyaç sayısı geçerli olacak."
+    const { getNextWorkingDay } = await import('./route-utils');
+    const nextWorkDay = await getNextWorkingDay(new Date(dateStr));
+    const gapDays = differenceInDays(nextWorkDay, new Date(dateStr));
+
+    // Formula: Total Needed - Today's Leftover = Ordered Bread
+    let finalOrderAmount = Math.max(0, totalNeeded - leftoverAmount);
+
+    // If gap is more than 2 days (e.g. Fri -> Mon is 3 days gap), use totalNeeded instead of subtracting leftovers
+    // or if specifically requested "toplam ihtiyaç sayısı geçerli olacak"
+    if (gapDays > 2) {
+      finalOrderAmount = totalNeeded;
+    }
+
     if (isLastWorkingDay) {
       // Food is doubled (Standard + Breakfast), but bread stays 1x
       // Breakfast count excludes households with noBreakfast: true
@@ -92,8 +108,6 @@ export async function calculateBreadForNextDay(dateStr: string) {
     }
 
     // Formula: Total Needed - Today's Leftover = Ordered Bread
-    const finalOrderAmount = Math.max(0, totalNeeded - leftoverAmount);
-
     return { 
       totalNeeded, 
       leftoverAmount, 

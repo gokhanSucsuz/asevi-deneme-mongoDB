@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Survey, SurveyQuestion, SurveyResponse } from '@/lib/db';
-import { Plus, Trash2, Edit2, Save, X, ClipboardList, BarChart3, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, PieChart as PieChartIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, ClipboardList, BarChart3, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Users, PieChart as PieChartIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/AuthProvider';
@@ -131,29 +131,56 @@ export default function SurveysPage() {
   };
 
   const statsData = useMemo(() => {
-    if (!selectedSurveyForStats || !responses || !surveys) return null;
+    if (!selectedSurveyForStats || !responses || !surveys || !households) return null;
     const survey = surveys.find(s => s.id === selectedSurveyForStats);
     if (!survey) return null;
 
     const surveyResponses = responses.filter(r => r.surveyId === selectedSurveyForStats);
     
+    // Weighted stats: multiply by household member count
+    const getWeights = (r: SurveyResponse) => {
+      const h = households.find(hh => hh.id === r.householdId);
+      return h?.memberCount || 1;
+    };
+
+    const totalPeopleReached = surveyResponses.reduce((sum, r) => sum + getWeights(r), 0);
+
     const questionStats = survey.questions.map(q => {
-      const answers = surveyResponses.map(r => r.answers.find(a => a.questionId === q.id)?.value).filter(v => v !== undefined);
-      
       if (q.type === 'rating') {
         const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-        answers.forEach(v => { if (counts[v] !== undefined) counts[v]++; });
+        let totalWeightedScore = 0;
+        let totalWeightedResponses = 0;
+
+        surveyResponses.forEach(r => {
+          const val = r.answers.find(a => a.questionId === q.id)?.value;
+          const weight = getWeights(r);
+          if (val !== undefined && counts[val] !== undefined) {
+            counts[val] += weight;
+            totalWeightedScore += (val * weight);
+            totalWeightedResponses += weight;
+          }
+        });
+
         return {
           id: q.id,
           text: q.text,
           type: q.type,
           data: Object.entries(counts).map(([name, value]) => ({ name: `${name} Yıldız`, value })),
-          average: answers.length > 0 ? (answers.reduce((a, b) => a + b, 0) / answers.length).toFixed(1) : 0
+          average: totalWeightedResponses > 0 ? (totalWeightedScore / totalWeightedResponses).toFixed(1) : 0,
+          totalWeightedResponses
         };
       } else if (q.type === 'select' || q.type === 'radio') {
         const counts: Record<string, number> = {};
         q.options?.forEach(opt => counts[opt] = 0);
-        answers.forEach(v => { if (counts[v] !== undefined) counts[v]++; });
+        
+        surveyResponses.forEach(r => {
+          const val = r.answers.find(a => a.questionId === q.id)?.value;
+          const weight = getWeights(r);
+          if (val !== undefined && counts[val] !== undefined) {
+            counts[val] += weight;
+          }
+        });
+
         return {
           id: q.id,
           text: q.text,
@@ -161,21 +188,27 @@ export default function SurveysPage() {
           data: Object.entries(counts).map(([name, value]) => ({ name, value }))
         };
       } else {
+        const answers = surveyResponses.map(r => ({
+          value: r.answers.find(a => a.questionId === q.id)?.value,
+          weight: getWeights(r)
+        })).filter(v => v.value !== undefined);
+
         return {
           id: q.id,
           text: q.text,
           type: q.type,
-          recentAnswers: answers.slice(-5)
+          recentAnswers: answers.slice(-10).map(v => v.value)
         };
       }
     });
 
     return {
       survey,
-      totalResponses: surveyResponses.length,
+      totalHouseholds: surveyResponses.length,
+      totalPeopleReached,
       questionStats
     };
-  }, [selectedSurveyForStats, responses, surveys]);
+  }, [selectedSurveyForStats, responses, surveys, households]);
 
   return (
     <div className="space-y-6">
@@ -319,15 +352,42 @@ export default function SurveysPage() {
           {statsData ? (
             <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg">
-                  <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Toplam Katılım</p>
-                  <p className="text-4xl font-black">{statsData.totalResponses}</p>
-                  <div className="mt-4 flex items-center gap-2 text-indigo-200 text-sm">
-                    <CheckCircle2 size={16} />
-                    <span>Hane bazlı katılım oranı: %{((statsData.totalResponses / (households?.length || 1)) * 100).toFixed(1)}</span>
+                <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-3xl text-white shadow-lg overflow-hidden relative">
+                  <div className="relative z-10">
+                    <p className="text-indigo-100 text-[10px] font-black uppercase tracking-widest mb-1">Toplam Hane Katılımı</p>
+                    <p className="text-4xl font-black">{statsData.totalHouseholds}</p>
+                    <div className="mt-4 flex items-center gap-2 text-indigo-200 text-xs font-bold">
+                      <CheckCircle2 size={16} />
+                      <span>Hane katılım oranı: %{((statsData.totalHouseholds / (households?.length || 1)) * 100).toFixed(1)}</span>
+                    </div>
                   </div>
+                  <ClipboardList className="absolute -bottom-4 -right-4 text-white/10 w-32 h-32 rotate-12" />
                 </div>
-                {/* Add more summary cards if needed */}
+                
+                <div className="bg-white p-6 rounded-3xl text-gray-900 shadow-sm border border-gray-100 overflow-hidden relative">
+                  <div className="relative z-10">
+                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">Toplam Ulaşılan Kişi</p>
+                    <p className="text-4xl font-black text-indigo-600">{statsData.totalPeopleReached}</p>
+                    <p className="text-xs text-gray-500 mt-4 leading-relaxed font-medium">
+                      Hane temsilcilerinin cevapları, hanelerindeki tüm bireyler baz alınarak ağırlıklandırılmıştır.
+                    </p>
+                  </div>
+                  <Users className="absolute -bottom-4 -right-4 text-indigo-50 w-32 h-32 rotate-12" />
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl text-gray-900 shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2">Genel Verimlilik</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-green-600">
+                      {statsData.questionStats.length > 0 
+                        ? (statsData.questionStats.filter(q => q.type === 'rating').reduce((sum, q) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter(q => q.type === 'rating').length || 0).toFixed(1)
+                        : '0.0'
+                      }
+                    </span>
+                    <span className="text-sm font-bold text-gray-400 mb-1">/ 5.0</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Ortalama Memnuniyet</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
