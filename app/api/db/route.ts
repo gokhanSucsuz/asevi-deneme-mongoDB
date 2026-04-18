@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       if (!obj || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(convertObjectIds);
       if (obj instanceof ObjectId) return obj.toString();
+      if (obj instanceof Date) return obj.toISOString(); // Or leave it as Date and let NextResponse handle it
       
       const newObj: any = {};
       for (const [key, value] of Object.entries(obj)) {
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
           newObj.id = value instanceof ObjectId ? value.toString() : String(value);
         } else if (value instanceof ObjectId) {
           newObj[key] = value.toString();
+        } else if (value instanceof Date) {
+          newObj[key] = value.toISOString();
         } else if (typeof value === 'object' && value !== null) {
           newObj[key] = convertObjectIds(value);
         } else {
