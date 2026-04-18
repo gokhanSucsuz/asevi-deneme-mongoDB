@@ -1,6 +1,5 @@
 import { auth } from '../firebase';
 import { notifyDbChange } from './hooks';
-import { encrypt, decrypt } from './crypto';
 import { revalidateData } from './cache-actions';
 
 // Helper to check demo mode
@@ -252,12 +251,6 @@ const processData = (data: any): any => {
   
   const result = Array.isArray(data) ? [...data] : { ...data };
   
-  // Decrypt sensitive fields if they exist at this level
-  if (result.tcNo) result.tcNo = decrypt(result.tcNo);
-  if (result.householdNo) result.householdNo = decrypt(result.householdNo);
-  if (result.phone) result.phone = decrypt(result.phone);
-  if (result.address) result.address = decrypt(result.address);
-
   const dateFields = [
     'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
     'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
@@ -298,9 +291,12 @@ const processData = (data: any): any => {
   return result;
 };
 
+let normalizationStarted = false;
 export const normalizeDatabaseTypes = async () => {
   try {
+    if (normalizationStarted) return;
     if (!auth.currentUser) return;
+    normalizationStarted = true;
 
     const drivers = await db.drivers.toArray();
     const routes = await db.routes.toArray();
@@ -323,28 +319,18 @@ export const normalizeDatabaseTypes = async () => {
           (r.driverSnapshotName && d.name === r.driverSnapshotName)
         );
         if (reLinkedDriver) {
-          console.log(`Relinking route ${r.id} from ${r.driverId} to ${reLinkedDriver.id}`);
           await db.routes.update(r.id!, { driverId: String(reLinkedDriver.id) });
         }
       }
     }
-
-    console.log('Database types and IDs synchronized/normalized');
   } catch (error) {
     console.error('Normalization error:', error);
   }
 };
 
-// Helper to encrypt sensitive fields before saving
+// Helper to prepare data before saving (encryption is now handled server-side)
 const prepareData = (data: any) => {
-  if (!data) return data;
-  const result = { ...data };
-  if (result.tcNo) result.tcNo = encrypt(result.tcNo);
-  if (result.householdNo) result.householdNo = encrypt(result.householdNo);
-  if (result.phone) result.phone = encrypt(result.phone);
-  if (result.address) result.address = encrypt(result.address);
-  if (result.password) result.password = encrypt(result.password);
-  return result;
+  return data;
 };
 
 async function callApi(collection: string, operation: string, params: any = {}) {
@@ -411,18 +397,15 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
-          const searchVal = (field === 'tcNo' || field === 'householdNo') ? encrypt(val) : val;
-          const data = await callApi('households', 'list', { query: { [field]: searchVal } });
+          const data = await callApi('households', 'list', { query: { [field]: val } });
           return data.map(processData) as Household[];
         },
         first: async () => {
-          const searchVal = (field === 'tcNo' || field === 'householdNo') ? encrypt(val) : val;
-          const data = await callApi('households', 'list', { query: { [field]: searchVal }, limit: 1 });
+          const data = await callApi('households', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Household : null;
         },
         count: async () => {
-          const searchVal = (field === 'tcNo' || field === 'householdNo') ? encrypt(val) : val;
-          const data = await callApi('households', 'list', { query: { [field]: searchVal } });
+          const data = await callApi('households', 'list', { query: { [field]: val } });
           return data.length;
         }
       })
@@ -681,18 +664,15 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
-          const searchVal = (field === 'tcNo') ? encrypt(val) : val;
-          const data = await callApi('personnel', 'list', { query: { [field]: searchVal } });
+          const data = await callApi('personnel', 'list', { query: { [field]: val } });
           return data.map(processData) as Personnel[];
         },
         first: async () => {
-          const searchVal = (field === 'tcNo') ? encrypt(val) : val;
-          const data = await callApi('personnel', 'list', { query: { [field]: searchVal }, limit: 1 });
+          const data = await callApi('personnel', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Personnel : null;
         },
         count: async () => {
-          const searchVal = (field === 'tcNo') ? encrypt(val) : val;
-          const data = await callApi('personnel', 'list', { query: { [field]: searchVal } });
+          const data = await callApi('personnel', 'list', { query: { [field]: val } });
           return data.length;
         }
       })

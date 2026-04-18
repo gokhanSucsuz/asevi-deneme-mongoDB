@@ -233,51 +233,75 @@ export default function StatisticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Yemek Dağılımı (Hane vs Kurum)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={foodDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
-                {foodDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[300px] w-full">
+            {foodDistributionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={foodDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
+                    {foodDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-gray-400">Veri yok</div>
+            )}
+          </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Ekmek Dağılımı (Hane vs Kurum)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={breadDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
-                {breadDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value: any, name: any) => [`${value} Adet`, name]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[300px] w-full">
+            {breadDistributionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={breadDistributionData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
+                    {breadDistributionData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: any, name: any) => [`${value} Adet`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-gray-400">Veri yok</div>
+            )}
+          </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Teslimat Şekli (Yemek)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={deliveryTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
-                {deliveryTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[300px] w-full">
+            {deliveryTypeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={deliveryTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
+                    {deliveryTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-gray-400">Veri yok</div>
+            )}
+          </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold mb-4 text-gray-800">Kap Kullanımı (Yemek)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={containerTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
-                {containerTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="h-[300px] w-full">
+            {containerTypeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={containerTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={renderCustomizedLabel} labelLine={false}>
+                    {containerTypeData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(value: any, name: any) => [`${value} Porsiyon`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-gray-400">Veri yok</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

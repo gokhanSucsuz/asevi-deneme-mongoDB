@@ -2,7 +2,51 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { adminAuth } from '@/lib/firebase-admin';
 import { ObjectId } from 'mongodb';
-import { encrypt, isEncrypted } from '@/lib/crypto';
+import { encrypt, decrypt, isEncrypted } from '@/lib/crypto';
+
+const SENSITIVE_FIELDS = ['tcNo', 'householdNo', 'phone', 'address', 'password'];
+
+function decryptSensitiveFields(doc: any): any {
+  if (!doc || typeof doc !== 'object') return doc;
+  if (Array.isArray(doc)) return doc.map(decryptSensitiveFields);
+  
+  const result = { ...doc };
+  for (const field of SENSITIVE_FIELDS) {
+    if (typeof result[field] === 'string' && isEncrypted(result[field])) {
+      result[field] = decrypt(result[field]);
+    }
+  }
+  
+  // Also process nested objects (like history)
+  for (const key in result) {
+    if (typeof result[key] === 'object' && result[key] !== null && !(result[key] instanceof Date) && !(result[key] instanceof ObjectId)) {
+      result[key] = decryptSensitiveFields(result[key]);
+    }
+  }
+  
+  return result;
+}
+
+function encryptSensitiveFields(doc: any): any {
+  if (!doc || typeof doc !== 'object') return doc;
+  if (Array.isArray(doc)) return doc.map(encryptSensitiveFields);
+
+  const result = { ...doc };
+  for (const field of SENSITIVE_FIELDS) {
+    if (typeof result[field] === 'string' && !isEncrypted(result[field])) {
+      result[field] = encrypt(result[field]);
+    }
+  }
+
+  // Also process nested objects
+  for (const key in result) {
+    if (typeof result[key] === 'object' && result[key] !== null && !(result[key] instanceof Date) && !(result[key] instanceof ObjectId)) {
+      result[key] = encryptSensitiveFields(result[key]);
+    }
+  }
+
+  return result;
+}
 
 async function verifyAuth(req: NextRequest) {
   const authHeader = req.headers.get('Authorization');
@@ -32,6 +76,51 @@ export async function POST(req: NextRequest) {
   try {
     const { collection, operation, data, id, query: queryObj, sort, limit: limitVal } = await req.json();
     const db = await getDb();
+    
+    // Role-based Access Control
+    const userEmail = user.email;
+    const adminEmails = ["edirnesydv@gmail.com", "edirneysdv@gmail.com", "real.lucifer22@gmail.com"];
+    
+    // Check if user is a hardcoded admin
+    const andIsHardcodedAdmin = userEmail && adminEmails.includes(userEmail);
+    
+    // Fetch personnel record if not hardcoded admin
+    let userRole = andIsHardcodedAdmin ? 'admin' : null;
+    let isActive = andIsHardcodedAdmin;
+    let isApproved = andIsHardcodedAdmin;
+    
+    if (!andIsHardcodedAdmin && userEmail) {
+      const p = await db.collection('personnel').findOne({ email: userEmail });
+      if (p) {
+        userRole = p.role;
+        isActive = p.isActive;
+        isApproved = p.isApproved;
+      }
+    }
+    
+    const isAdmin = userRole === 'admin';
+    const isAuthorized = isAdmin || (isActive && isApproved);
+    
+    if (!isAuthorized) {
+      // Allow only self-fetching of personnel record for approval status check
+      if (collection === 'personnel' && operation === 'list' && queryObj?.email === userEmail) {
+        // Continue
+      } else {
+        return NextResponse.json({ error: 'Access Denied: Account not active or approved' }, { status: 403 });
+      }
+    }
+
+    // Restriction 1: Only admins can delete anything
+    if (operation === 'delete' && !isAdmin) {
+      return NextResponse.json({ error: 'Only admins can delete data' }, { status: 403 });
+    }
+    
+    // Restriction 2: Only admins can manage personnel or system settings
+    if (['personnel', 'system_settings', 'working_days'].includes(collection) && operation !== 'get' && operation !== 'list' && !isAdmin) {
+       // Allow self-update for profile (optional, but keep it strict for now)
+       return NextResponse.json({ error: 'Only admins can modify system configurations' }, { status: 403 });
+    }
+
     const col = db.collection(collection);
 
     const getQueryId = (id: string) => {
@@ -105,8 +194,8 @@ export async function POST(req: NextRequest) {
       return obj;
     };
 
-    const safeData = data ? convertIncomingObjectIds(data) : {};
-    const safeQuery = queryObj ? convertIncomingObjectIds(queryObj) : {};
+    const safeData = data ? encryptSensitiveFields(convertIncomingObjectIds(data)) : {};
+    const safeQuery = queryObj ? encryptSensitiveFields(convertIncomingObjectIds(queryObj)) : {};
 
     switch (operation) {
       case 'list': {
@@ -114,15 +203,12 @@ export async function POST(req: NextRequest) {
         if (sort) cursor = cursor.sort(sort);
         if (limitVal) cursor = cursor.limit(limitVal);
         const results = await cursor.toArray();
-        if (collection === 'route_templates') {
-          console.log('[DEBUG_LIST_ROUTES]', JSON.stringify(results, null, 2));
-        }
-        return NextResponse.json(results.map(doc => convertObjectIds(doc)));
+        return NextResponse.json(results.map(doc => decryptSensitiveFields(convertObjectIds(doc))));
       }
       case 'get': {
         const doc = await col.findOne({ _id: getQueryId(id) } as any);
         if (!doc) return NextResponse.json(null);
-        return NextResponse.json(convertObjectIds(doc));
+        return NextResponse.json(decryptSensitiveFields(convertObjectIds(doc)));
       }
       case 'add': {
         const result = await col.insertOne(safeData);

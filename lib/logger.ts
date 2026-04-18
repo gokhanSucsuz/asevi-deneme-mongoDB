@@ -30,7 +30,6 @@ export const addSystemLog = async (
     });
     
     notifyDbChange('system_logs');
-    console.log(`Log Recorded: ${action} - ${personnelName}`);
   } catch (error) {
     console.error('Failed to record system log:', error);
   }

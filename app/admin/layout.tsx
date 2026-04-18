@@ -303,7 +303,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     runBackgroundTasks();
     const interval = setInterval(runBackgroundTasks, 1000 * 60 * 60); // Run every hour
     return () => clearInterval(interval);
-  }, [isAuthorized]);
+  }, [isAuthorized, currentPersonnel, user]);
 
   const handleLogout = async () => {
     setIsAuthorized(false);

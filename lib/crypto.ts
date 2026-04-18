@@ -1,7 +1,7 @@
 import CryptoJS from 'crypto-js';
 
 // The key should be 32 bytes for AES-256
-const SECRET_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || 'default-secret-key-32-chars-long!!';
+const SECRET_KEY = process.env.ENCRYPTION_KEY || 'default-secret-key-32-chars-long!!';
 // Fixed IV for determinism - allows Firestore 'where' queries to work
 const FIXED_IV = CryptoJS.enc.Hex.parse('000102030405060708090a0b0c0d0e0f');
 
