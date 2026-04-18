@@ -83,14 +83,14 @@ export default function ApprovePersonnelPage() {
         console.error('User notification email failed:', emailError);
       }
 
-      await db.system_logs.add({
-        action: 'Personel Onaylandı (Hızlı Onay)',
-        details: `${personnel.name} personeli hızlı onay linki ile onaylandı.`,
-        category: 'personnel',
-        personnelEmail: user?.email || 'system',
-        personnelName: user?.displayName || 'Admin',
-        timestamp: new Date()
-      });
+      const { addSystemLog } = await import('@/lib/logger');
+      await addSystemLog(
+        user,
+        null, // No need for specific personnel object since it's just user context
+        'Personel Onaylandı (Hızlı Onay)',
+        `${personnel.name} personeli hızlı onay linki ile onaylandı.`,
+        'personnel'
+      );
 
       toast.success('Personel başarıyla onaylandı.');
       router.push('/admin/personnel');

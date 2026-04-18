@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import { encrypt, isEncrypted } from '@/lib/crypto';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 export default function SystemSettingsPage() {
   const { user, role } = useAuth();
@@ -56,14 +57,13 @@ export default function SystemSettingsPage() {
       const session = localStorage.getItem('personnel-session');
       const sessionUser = session ? JSON.parse(session) : null;
       if (sessionUser) {
-        await db.system_logs.add({
-          action: 'Dağıtım Paneli Durumu Değiştirildi',
-          details: `Dağıtım paneli ${newState ? 'AKTİF' : 'PASİF'} hale getirildi.`,
-          category: 'system',
-          personnelEmail: user?.email || 'Bilinmeyen Email',
-          personnelName: sessionUser.name || 'Bilinmeyen Personel',
-          timestamp: new Date()
-        });
+        await addSystemLog(
+          user,
+          sessionUser,
+          'Dağıtım Paneli Durumu Değiştirildi',
+          `Dağıtım paneli ${newState ? 'AKTİF' : 'PASİF'} hale getirildi.`,
+          'system'
+        );
       }
       
       toast.success(`Dağıtım paneli ${newState ? 'aktifleştirildi' : 'pasifleştirildi'}.`, { id: loadingToast });
@@ -95,14 +95,13 @@ export default function SystemSettingsPage() {
           const session = localStorage.getItem('personnel-session');
           const sessionUser = session ? JSON.parse(session) : null;
           if (sessionUser) {
-            await db.system_logs.add({
-              action: 'Veritabanı Geri Yüklendi',
-              details: `JSON dosyasından toplu veri aktarımı yapıldı.`,
-              category: 'system',
-              personnelEmail: user?.email || 'Bilinmeyen Email',
-              personnelName: sessionUser.name || 'Bilinmeyen Personel',
-              timestamp: new Date()
-            });
+            await addSystemLog(
+              user,
+              sessionUser,
+              'Veritabanı Geri Yüklendi',
+              `JSON dosyasından toplu veri aktarımı yapıldı.`,
+              'system'
+            );
           }
 
           toast.success('Veriler başarıyla geri yüklendi.', { id: loadingToast });
@@ -198,14 +197,13 @@ export default function SystemSettingsPage() {
       const session = localStorage.getItem('personnel-session');
       const sessionUser = session ? JSON.parse(session) : null;
       if (sessionUser) {
-        await db.system_logs.add({
-          action: 'Veritabanı Yedeklendi',
-          details: `Tüm veritabanı ${formatType.toUpperCase()} formatında yedeklendi.`,
-          category: 'system',
-          personnelEmail: user?.email || 'Bilinmeyen Email',
-          personnelName: sessionUser.name || 'Bilinmeyen Personel',
-          timestamp: new Date()
-        });
+        await addSystemLog(
+          user,
+          sessionUser,
+          'Veritabanı Yedeklendi',
+          `Tüm veritabanı ${formatType.toUpperCase()} formatında yedeklendi.`,
+          'system'
+        );
       }
 
       toast.success('Yedekleme başarıyla tamamlandı.', { id: loadingToast });
@@ -314,14 +312,13 @@ export default function SystemSettingsPage() {
       const session = localStorage.getItem('personnel-session');
       const sessionUser = session ? JSON.parse(session) : null;
       if (sessionUser) {
-        await db.system_logs.add({
-          action: 'Veri Formatları Düzeltildi',
-          details: `Toplam ${rCount + wdCount + btCount + hCount + lfCount + tCount} kayıt düzeltildi.`,
-          category: 'system',
-          personnelEmail: user?.email || 'Bilinmeyen Email',
-          personnelName: sessionUser.name || 'Bilinmeyen Personel',
-          timestamp: new Date()
-        });
+        await addSystemLog(
+          user,
+          sessionUser,
+          'Veri Formatları Düzeltildi',
+          `Toplam ${rCount + wdCount + btCount + hCount + lfCount + tCount} kayıt düzeltildi.`,
+          'system'
+        );
       }
 
       toast.success('Veri formatları başarıyla düzeltildi.', { id: loadingToast });
@@ -416,14 +413,13 @@ export default function SystemSettingsPage() {
       const session = localStorage.getItem('personnel-session');
       const sessionUser = session ? JSON.parse(session) : null;
       if (sessionUser) {
-        await db.system_logs.add({
-          action: 'Veri Şifreleme Tamamlandı',
-          details: `${hCount} hane, ${dCount} şoför ve ${pCount} personel verisi AES-256 ile şifrelendi.`,
-          category: 'security',
-          personnelEmail: user?.email || 'Bilinmeyen Email',
-          personnelName: sessionUser.name || 'Bilinmeyen Personel',
-          timestamp: new Date()
-        });
+        await addSystemLog(
+          user,
+          sessionUser,
+          'Veri Şifreleme Tamamlandı',
+          `${hCount} hane, ${dCount} şoför ve ${pCount} personel verisi AES-256 ile şifrelendi.`,
+          'security'
+        );
       }
 
       toast.success('Şifreleme işlemi başarıyla tamamlandı.', { id: loadingToast });

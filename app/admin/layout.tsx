@@ -15,6 +15,7 @@ import { signOut } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
 import { safeFormat } from '@/lib/date-utils';
+import { addSystemLog } from '@/lib/logger';
 
 const navigation = [
   { name: 'Kontrol Paneli', href: '/admin', icon: Home },
@@ -145,14 +146,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             pausedUntil: undefined
           });
           
-          await db.system_logs.add({
-            action: 'Otomatik Aktivasyon',
-            details: `${household.headName} hanesinin duraklatma süresi dolduğu için otomatik olarak aktifleştirildi.`,
-            category: 'household',
-            personnelEmail: 'system',
-            personnelName: 'Sistem',
-            timestamp: new Date()
-          });
+          await addSystemLog(
+            user,
+            currentPersonnel,
+            'Otomatik Aktivasyon',
+            `${household.headName} hanesinin duraklatma süresi dolduğu için otomatik olarak aktifleştirildi.`,
+            'household'
+          );
         }
       }
 
@@ -171,14 +171,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             await db.breadTracking.update(breadTracking.id!, { delivered: deliveredCount });
           }
           
-          await db.system_logs.add({
-            action: 'Otomatik Rota Tamamlama',
-            details: `${safeFormat(new Date(route.date), 'dd.MM.yyyy')} tarihli rota süresi geçtiği için otomatik olarak tamamlandı.`,
-            category: 'route',
-            personnelEmail: 'system',
-            personnelName: 'Sistem',
-            timestamp: new Date()
-          });
+          await addSystemLog(
+            user,
+            currentPersonnel,
+            'Otomatik Rota Tamamlama',
+            `${safeFormat(new Date(route.date), 'dd.MM.yyyy')} tarihli rota süresi geçtiği için otomatik olarak tamamlandı.`,
+            'route'
+          );
         }
       }
 
@@ -198,14 +197,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         
         // Only log once per day
         if (!lastLogDate || differenceInDays(now, lastLogDate) >= 1) {
-          await db.system_logs.add({
-            action: 'Otomatik Yedekleme Bildirimi',
-            details: `10 gündür yedekleme yapılmadı. edirneysdv@gmail.com adresine bilgilendirme gönderildi.`,
-            category: 'system',
-            personnelEmail: 'system',
-            personnelName: 'Sistem',
-            timestamp: new Date()
-          });
+          await addSystemLog(
+            user,
+            currentPersonnel,
+            'Otomatik Yedekleme Bildirimi',
+            `10 gündür yedekleme yapılmadı. edirneysdv@gmail.com adresine bilgilendirme gönderildi.`,
+            'system'
+          );
           console.log('Automatic backup notification sent to edirneysdv@gmail.com');
         }
       }
@@ -253,14 +251,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   };
                   
                   // Save daily snapshot in system settings or special table (we'll log as details for report generation extraction)
-                  await db.system_logs.add({
-                    action: 'Günlük İstatistik Alındı',
-                    details: JSON.stringify(statsObj),
-                    category: 'system',
-                    personnelEmail: 'system',
-                    personnelName: 'Sistem',
-                    timestamp: new Date()
-                  });
+                  await addSystemLog(
+                    user,
+                    currentPersonnel,
+                    'Günlük İstatistik Alındı',
+                    JSON.stringify(statsObj),
+                    'system'
+                  );
               }
           } catch(e) {
               console.error("Daily Snapshot Failed", e);

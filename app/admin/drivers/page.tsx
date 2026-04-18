@@ -197,13 +197,24 @@ export default function DriversPage() {
 
       await addVakifLogo(doc, 14, 10, 20);
 
+      let periodLabel = '';
+      switch (reportRange) {
+        case 'd1': periodLabel = 'Son 1 Gün'; break;
+        case 'w1': periodLabel = 'Son 1 Hafta'; break;
+        case 'm1': periodLabel = 'Son 1 Ay'; break;
+        case 'm3': periodLabel = 'Son 3 Ay'; break;
+        case 'm6': periodLabel = 'Son 6 Ay'; break;
+        case 'custom': periodLabel = 'Özel Aralık'; break;
+        default: periodLabel = '';
+      }
+
       doc.setFontSize(14);
       doc.text('Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı', 40, 18);
       doc.setFontSize(12);
       doc.text(`${driverToReport.name} - Şoför Performans Raporu`, 40, 25);
       doc.setFontSize(10);
       doc.text(`Araç Plakası: ${driverToReport.vehiclePlate}`, 40, 31);
-      doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${months} Ay)`, 40, 37);
+      doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${periodLabel})`, 40, 37);
       doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 43);
 
       // Summary Table

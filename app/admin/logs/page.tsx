@@ -7,20 +7,38 @@ import { Search, Filter, Clock, User, Tag, Info } from 'lucide-react';
 import { useAppQuery } from '@/lib/hooks';
 import { safeFormat } from '@/lib/date-utils';
 import { normalizeTurkish } from '@/lib/utils';
+import { decrypt, isEncrypted } from '@/lib/crypto';
 
 export default function SystemLogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [decryptedLogs, setDecryptedLogs] = useState<any[]>([]);
 
   const allLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
+  
+  useEffect(() => {
+    if (allLogs) {
+      const logs = allLogs.map(log => {
+        let details = log.details || '';
+        if (isEncrypted(details)) {
+          details = decrypt(details) || '*** Şifre Çözülemedi ***';
+        }
+        return {
+          ...log,
+          decryptedDetails: details
+        };
+      });
+      setDecryptedLogs(logs);
+    }
+  }, [allLogs]);
 
-  const filteredLogs = allLogs?.filter(log => {
+  const filteredLogs = decryptedLogs?.filter(log => {
     const search = normalizeTurkish(searchTerm);
     const matchesSearch = 
       normalizeTurkish(log.action).includes(search) ||
-      normalizeTurkish(log.details || '').includes(search) ||
+      normalizeTurkish(log.decryptedDetails || '').includes(search) ||
       normalizeTurkish(log.personnelName).includes(search) ||
       normalizeTurkish(log.personnelEmail).includes(search);
     
@@ -120,7 +138,7 @@ export default function SystemLogsPage() {
                     </span>
                   </td>
                   <td className="p-4 font-medium text-gray-900">{log.action}</td>
-                  <td className="p-4 text-sm text-gray-600 max-w-md">{log.details}</td>
+                  <td className="p-4 text-sm text-gray-600 max-w-md">{log.decryptedDetails}</td>
                 </tr>
               ))}
               {!paginatedLogs?.length && (
