@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Driver, Route, RouteStop } from '@/lib/db';
 import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff } from 'lucide-react';
@@ -131,69 +131,81 @@ export default function DriversPage() {
     return routes?.filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && (r.status === 'completed' || r.status === 'approved')).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
   };
 
+  // Helper calculations for reports - moved to memo for UI access
+  const driverReportStats = useMemo(() => {
+    if (!reportModalOpen || !driverToReport) return null;
+
+    let startDate = new Date();
+    let endDate = new Date();
+    switch (reportRange) {
+      case 'd1': startDate = subDays(endDate, 1); break;
+      case 'w1': startDate = subWeeks(endDate, 1); break;
+      case 'm1': startDate = subMonths(endDate, 1); break;
+      case 'm3': startDate = subMonths(endDate, 3); break;
+      case 'm6': startDate = subMonths(endDate, 6); break;
+      case 'custom':
+        startDate = parseISO(customStartDate);
+        endDate = parseISO(customEndDate);
+        break;
+      default: startDate = subMonths(endDate, 1);
+    }
+
+    const driverRoutes = routes?.filter((r: Route) => {
+      const idMatch = String(r.driverId) === String(driverToReport.id!);
+      const nameMatch = r.driverSnapshotName && r.driverSnapshotName === driverToReport.name;
+      const isThisDriver = idMatch || nameMatch;
+      
+      return isThisDriver && 
+             (r.status === 'completed' || r.status === 'approved') &&
+             isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) });
+    }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+
+    const driverStops = (routeStops || []).filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
+
+    const totalKm = driverRoutes.reduce((acc: number, r: Route) => acc + ((r.endKm || 0) - (r.startKm || 0)), 0);
+    
+    let totalDeliveredPeople = 0;
+    let totalHouseholdDeliveries = 0;
+    let totalFailedStops = 0;
+    
+    driverRoutes.forEach(r => {
+      const stopsForRoute = driverStops.filter(s => String(s.routeId) === String(r.id));
+      totalFailedStops += stopsForRoute.filter(s => s.status === 'failed').length;
+      
+      const deliveredStops = stopsForRoute.filter(s => s.status === 'delivered');
+      const uniqueHouseholdsInRoute = new Map();
+      
+      deliveredStops.forEach(s => {
+        if (!uniqueHouseholdsInRoute.has(s.householdId)) {
+          uniqueHouseholdsInRoute.set(s.householdId, s.householdSnapshotMemberCount || 0);
+        }
+      });
+      
+      totalHouseholdDeliveries += uniqueHouseholdsInRoute.size;
+      uniqueHouseholdsInRoute.forEach(count => {
+        totalDeliveredPeople += count;
+      });
+    });
+
+    return {
+      startDate,
+      endDate,
+      driverRoutes,
+      driverStops,
+      totalKm,
+      totalDeliveredPeople,
+      totalHouseholdDeliveries,
+      totalFailedStops
+    };
+  }, [reportModalOpen, driverToReport, reportRange, customStartDate, customEndDate, routes, routeStops]);
+
   const exportDriverReportPDF = async () => {
-    if (!driverToReport) return;
+    if (!driverToReport || !driverReportStats) return;
+    const { startDate, endDate, driverRoutes, driverStops, totalKm, totalDeliveredPeople, totalHouseholdDeliveries, totalFailedStops } = driverReportStats;
     const loadingToast = toast.loading('Rapor hazırlanıyor...');
     
     try {
       const doc = await getTurkishPdf('portrait');
-      let endDate = new Date();
-      let startDate = new Date();
-      
-      switch (reportRange) {
-        case 'd1': startDate = subDays(endDate, 1); break;
-        case 'w1': startDate = subWeeks(endDate, 1); break;
-        case 'm1': startDate = subMonths(endDate, 1); break;
-        case 'm3': startDate = subMonths(endDate, 3); break;
-        case 'm6': startDate = subMonths(endDate, 6); break;
-        case 'custom':
-          startDate = parseISO(customStartDate);
-          endDate = parseISO(customEndDate);
-          break;
-        default: startDate = subMonths(endDate, 1);
-      }
-
-      const driverRoutes = routes?.filter((r: Route) => {
-        const idMatch = String(r.driverId) === String(driverToReport.id!);
-        const nameMatch = r.driverSnapshotName && r.driverSnapshotName === driverToReport.name;
-        
-        // Use either ID match or name match for robustness during migration periods
-        const isThisDriver = idMatch || nameMatch;
-        
-        return isThisDriver && 
-               (r.status === 'completed' || r.status === 'approved') &&
-               isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) });
-      }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
-
-      const allStops = await db.routeStops.toArray();
-      const driverStops = allStops.filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
-
-      const totalKm = driverRoutes.reduce((acc: number, r: Route) => acc + ((r.endKm || 0) - (r.startKm || 0)), 0);
-      
-      // Calculate total delivered people by grouping by route and unique households
-      let totalDeliveredPeople = 0;
-      let totalHouseholdDeliveries = 0; // Number of unique successful deliveries to households
-      let totalFailedStops = 0; // Raw failed stops count for the report
-      
-      driverRoutes.forEach(r => {
-        const stopsForRoute = driverStops.filter(s => String(s.routeId) === String(r.id));
-        totalFailedStops += stopsForRoute.filter(s => s.status === 'failed').length;
-        
-        // Group delivered stops by household to avoid double counting breakfast/lunch
-        const deliveredStops = stopsForRoute.filter(s => s.status === 'delivered');
-        const uniqueHouseholdsInRoute = new Map();
-        
-        deliveredStops.forEach(s => {
-          if (!uniqueHouseholdsInRoute.has(s.householdId)) {
-            uniqueHouseholdsInRoute.set(s.householdId, s.householdSnapshotMemberCount || 0);
-          }
-        });
-        
-        totalHouseholdDeliveries += uniqueHouseholdsInRoute.size;
-        uniqueHouseholdsInRoute.forEach(count => {
-          totalDeliveredPeople += count;
-        });
-      });
 
       await addVakifLogo(doc, 14, 10, 20);
 
@@ -462,20 +474,22 @@ export default function DriversPage() {
               </div>
               
               {/* Performance Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                {[
-                  { label: 'Toplam KM', val: totalKm, color: 'text-gray-900', bg: 'bg-gray-50' },
-                  { label: 'Hane Teslim', val: totalHouseholdDeliveries, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { label: 'Ulaşılan Kişi', val: totalDeliveredPeople, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Başarısız', val: totalFailedStops, color: 'text-red-500', bg: 'bg-red-50' },
-                  { label: 'Tamamlanan', val: driverRoutes.length, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                ].map((stat, i) => (
-                  <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center`}>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{stat.label}</p>
-                    <p className={`text-2xl font-black ${stat.color}`}>{stat.val}</p>
-                  </div>
-                ))}
-              </div>
+              {driverReportStats && (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                  {[
+                    { label: 'Toplam KM', val: driverReportStats.totalKm, color: 'text-gray-900', bg: 'bg-gray-50' },
+                    { label: 'Hane Teslim', val: driverReportStats.totalHouseholdDeliveries, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Ulaşılan Kişi', val: driverReportStats.totalDeliveredPeople, color: 'text-green-600', bg: 'bg-green-50' },
+                    { label: 'Başarısız', val: driverReportStats.totalFailedStops, color: 'text-red-500', bg: 'bg-red-50' },
+                    { label: 'Tamamlanan', val: driverReportStats.driverRoutes.length, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                  ].map((stat, i) => (
+                    <div key={i} className={`${stat.bg} p-4 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center`}>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className={`text-2xl font-black ${stat.color}`}>{stat.val}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
               
               <div className="mb-6 p-6 bg-white border border-gray-200 rounded-[2rem] shadow-sm" ref={chartRef}>
                 <h4 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
