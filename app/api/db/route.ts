@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // DIŞARI ÇIKAN VERİLER İÇİN (MongoDB -> Frontend)
     const convertObjectIds = (obj: any): any => {
       if (!obj || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(convertObjectIds);
@@ -63,30 +62,52 @@ export async function POST(req: NextRequest) {
       return newObj;
     };
 
-    // YENİ EKLENEN: İÇERİ GİREN VERİLER İÇİN (Frontend -> MongoDB)
-    const processInboundData = (obj: any): any => {
-      if (!obj || typeof obj !== 'object') return obj;
-      if (Array.isArray(obj)) return obj.map(processInboundData);
+    const convertIncomingObjectIds = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
       
-      const newObj: any = {};
-      for (const [key, value] of Object.entries(obj)) {
-        // Eğer değer 24 karakterli geçerli bir ObjectId formatındaysa dönüştür
-        if (typeof value === 'string' && value.length === 24 && /^[0-9a-fA-F]{24}$/.test(value)) {
-          newObj[key] = new ObjectId(value);
-        } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
-          newObj[key] = processInboundData(value);
-        } else {
-          newObj[key] = value;
-        }
+      if (Array.isArray(obj)) {
+         return obj.map(item => {
+             if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item)) {
+                 return new ObjectId(item);
+             }
+             if (typeof item === 'object') {
+                 return convertIncomingObjectIds(item);
+             }
+             return item;
+         });
       }
-      return newObj;
+      
+      if (typeof obj === 'object') {
+        if (obj instanceof ObjectId || obj instanceof Date) return obj;
+        
+        const newObj: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (key === 'id') {
+              newObj[key] = value;
+          } else if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+              if (key === '_id' || key.endsWith('Id') || key === 'defaultDriverId') {
+                  newObj[key] = new ObjectId(value);
+              } else {
+                  newObj[key] = value;
+              }
+          } else if (typeof value === 'object' && value !== null) {
+              newObj[key] = convertIncomingObjectIds(value);
+          } else {
+              newObj[key] = value;
+          }
+        }
+        return newObj;
+      }
+      
+      return obj;
     };
+
+    const safeData = data ? convertIncomingObjectIds(data) : {};
+    const safeQuery = queryObj ? convertIncomingObjectIds(queryObj) : {};
 
     switch (operation) {
       case 'list': {
-        // Gelen sorgudaki id'leri objeye çeviriyoruz
-        const processedQuery = queryObj ? processInboundData(queryObj) : {};
-        let cursor = col.find(processedQuery);
+        let cursor = col.find(safeQuery);
         if (sort) cursor = cursor.sort(sort);
         if (limitVal) cursor = cursor.limit(limitVal);
         const results = await cursor.toArray();
@@ -101,35 +122,35 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(convertObjectIds(doc));
       }
       case 'add': {
-        // Veriyi kaydederken id'leri objeye çeviriyoruz
-        const result = await col.insertOne(processInboundData(data));
+        const result = await col.insertOne(safeData);
         return NextResponse.json({ id: result.insertedId.toString() });
       }
       case 'put': {
-        const { id: docId, ...rest } = data;
-        await col.replaceOne({ _id: getQueryId(docId) } as any, processInboundData(rest), { upsert: true });
+        const { id: docId, ...rest } = safeData;
+        await col.replaceOne({ _id: getQueryId(docId) } as any, rest, { upsert: true });
         return NextResponse.json({ success: true });
       }
       case 'update': {
-        await col.updateOne({ _id: getQueryId(id) } as any, { $set: processInboundData(data) });
+        await col.updateOne({ _id: getQueryId(id) } as any, { $set: safeData });
         return NextResponse.json({ success: true });
       }
       case 'delete': {
         if (id) {
           await col.deleteOne({ _id: getQueryId(id) } as any);
-        } else if (queryObj) {
-          await col.deleteMany(processInboundData(queryObj));
+        } else if (safeQuery && Object.keys(safeQuery).length > 0) {
+          await col.deleteMany(safeQuery);
         }
         return NextResponse.json({ success: true });
       }
       case 'bulkAdd': {
-        if (Array.isArray(data) && data.length > 0) {
-          await col.insertMany(processInboundData(data));
+        if (Array.isArray(safeData) && safeData.length > 0) {
+          await col.insertMany(safeData);
         }
         return NextResponse.json({ success: true });
       }
       case 'restore': {
         const backupData = data;
+        // Tüm olası koleksiyon eşleşmeleri
         const mapping: any = {
           households: 'households',
           drivers: 'drivers',
@@ -167,9 +188,8 @@ export async function POST(req: NextRequest) {
               const { id, _id, ...rest } = item;
               const docId = id || _id;
               
-              // Restore işlemi de inbound bir işlemdir, processInboundData'dan geçirmeliyiz.
-              const processedItem: any = processInboundData({ ...rest });
-              
+              // Tarih alanlarını MongoDB Date objesine çevir (Sıralama ve filtreleme için kritik)
+              const processedItem: any = { ...rest };
               const dateFields = [
                 'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
                 'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
@@ -183,6 +203,7 @@ export async function POST(req: NextRequest) {
                     const d = new Date(processedItem[key]);
                     if (!isNaN(d.getTime())) processedItem[key] = d;
                   } else if (stringDateFields.includes(key)) {
+                    // Ensure it stays as yyyy-MM-dd string
                     if (processedItem[key].includes('T')) {
                       processedItem[key] = processedItem[key].split('T')[0];
                     }
@@ -190,6 +211,7 @@ export async function POST(req: NextRequest) {
                 }
               }
 
+              // Hassas verileri şifrele
               const sensitiveFields = ['tcNo', 'householdNo', 'phone', 'address', 'password'];
               for (const field of sensitiveFields) {
                 if (processedItem[field] && !isEncrypted(processedItem[field])) {

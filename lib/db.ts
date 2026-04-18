@@ -263,7 +263,7 @@ const processData = (data: any): any => {
     'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
   ];
 
-  const stringDateFields = ['endDate', 'pausedUntil', 'month', 'date'];
+  const stringDateFields = ['date', 'endDate', 'pausedUntil', 'month'];
 
   for (const key in result) {
     let value = result[key];
@@ -290,6 +290,8 @@ const processData = (data: any): any => {
         const month = String(value.getMonth() + 1).padStart(2, '0');
         const day = String(value.getDate()).padStart(2, '0');
         result[key] = `${year}-${month}-${day}`;
+      } else if (typeof value === 'string' && value.includes('T')) {
+        result[key] = value.split('T')[0];
       }
     }
   }
