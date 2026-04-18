@@ -1010,10 +1010,10 @@ export default function HouseholdsPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedHouseholds?.map((household, index) => (
               <tr key={household.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500 font-medium">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       {showSensitive[household.id!] ? household.householdNo : maskSensitive(household.householdNo, 2)}
@@ -1030,7 +1030,7 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[household.id!] ? household.tcNo : maskSensitive(household.tcNo)}
                     {household.tcNo && (
@@ -1040,7 +1040,7 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                   <div className="flex flex-col">
                     <span>{household.headName}</span>
                     {household.type === 'institution' && (
@@ -1048,7 +1048,7 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[household.id!] ? household.phone : maskSensitive(household.phone, 3)}
                     {household.phone && (
@@ -1068,9 +1068,9 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.memberCount}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{household.breadCount ?? household.memberCount}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{household.memberCount}</td>
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{household.breadCount ?? household.memberCount}</td>
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex flex-col gap-1">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${household.isActive ? 'bg-green-100 text-green-800' : household.pausedUntil === '9999-12-31' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
                       {household.isActive ? 'Aktif' : household.pausedUntil === '9999-12-31' ? 'SİLİNMİŞ (PASİF)' : `${household.pausedUntil}'e kadar Pasif`}
@@ -1092,7 +1092,7 @@ export default function HouseholdsPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                   {!isDemo && (
                     <button onClick={() => handleOpenSurvey(household)} className="text-indigo-600 hover:text-indigo-900 mr-4" title="Anket Uygula">
                       <ClipboardList size={18} />

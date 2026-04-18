@@ -233,7 +233,7 @@ export default function PersonnelPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {personnelList?.map((personnel) => (
               <tr key={personnel.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[personnel.id!] ? personnel.tcNo : maskSensitive(personnel.tcNo)}
                     {personnel.tcNo && (
@@ -243,36 +243,36 @@ export default function PersonnelPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                   {personnel.username}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   {personnel.email}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   {personnel.name}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   {personnel.role === 'admin' ? 'Yönetici' : 'Personel'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     personnel.isApproved ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {personnel.isApproved ? 'Onaylı' : 'Bekliyor'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     personnel.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                     {personnel.isActive ? 'Aktif' : 'Pasif'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   {safeFormat(new Date(personnel.createdAt), 'dd.MM.yyyy HH:mm')}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                   {!isDemo && (
                     <>
                       <button onClick={() => toggleApproval(personnel)} className="text-blue-600 hover:text-blue-900 mr-3" title={personnel.isApproved ? "Onayı Kaldır" : "Onayla"}>

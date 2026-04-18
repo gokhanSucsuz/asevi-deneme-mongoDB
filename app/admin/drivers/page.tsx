@@ -347,7 +347,7 @@ export default function DriversPage() {
           <tbody className="bg-white divide-y divide-gray-200">
             {drivers?.map((driver) => (
               <tr key={driver.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <div className="flex items-center gap-2">
                     {showSensitive[driver.id!] ? driver.tcNo : maskSensitive(driver.tcNo)}
                     {driver.tcNo && (
@@ -357,17 +357,17 @@ export default function DriversPage() {
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{driver.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">{driver.name}</td>
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   {showSensitive[driver.id!] ? driver.phone : maskSensitive(driver.phone, 4)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{driver.vehiclePlate}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{driver.vehiclePlate}</td>
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${driver.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {driver.isActive ? 'Aktif' : 'Pasif'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                   <button onClick={() => openReportModal(driver)} className="text-gray-600 hover:text-gray-900 mr-4" title="Rapor">
                     <FileText size={18} />
                   </button>
@@ -542,19 +542,19 @@ export default function DriversPage() {
 
                       return (
                         <tr key={route.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                             {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                             {(route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-blue-600">
                             {uniqueHouseholds.size} / {deliveredPeople}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-red-500 font-medium">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-red-500 font-medium">
                             {failedCount}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                             {route.remainingFood || 0} / {route.remainingBread || 0}
                           </td>
                         </tr>

@@ -1489,13 +1489,13 @@ export default function RoutesPage() {
 
                   return (
                     <tr key={route.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                         {safeFormat(route.date, 'dd.MM.yyyy')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                         {route.driverSnapshotName || getDriverName(route.driverId)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                         <div className="font-medium text-gray-900">
                           {householdCount} Hane {institutionCount > 0 && <span className="text-blue-600">/ {institutionCount} Kurum</span>}
                         </div>
@@ -1503,7 +1503,7 @@ export default function RoutesPage() {
                           {householdPeople} Kişi {institutionPeople > 0 && <span className="text-blue-600">/ {institutionPeople} Kurum Kişisi</span>}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${route.status === 'approved' ? 'bg-purple-100 text-purple-800' :
                           route.status === 'completed' ? 'bg-green-100 text-green-800' : 
@@ -1514,7 +1514,7 @@ export default function RoutesPage() {
                          route.status === 'in_progress' ? 'Devam Ediyor' : 'Bekliyor'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         {route.driverId === 'vakif_pickup' && route.status === 'pending' && (
                           <button
@@ -1650,10 +1650,10 @@ export default function RoutesPage() {
                   
                   return (
                     <tr key={driver.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                         {driver.name} ({driver.vehiclePlate})
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                         {template ? (
                           <>
                             <div className="font-medium text-gray-900">
@@ -1667,7 +1667,7 @@ export default function RoutesPage() {
                           <span className="text-gray-400 italic">Şablon Oluşturulmamış</span>
                         )}
                       </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       {template && (
                         <button 
                           onClick={() => exportWeeklyChecklistPDF(driver.id!, safeFormat(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd'))} 
@@ -1747,16 +1747,16 @@ export default function RoutesPage() {
                 return (String(b.id || '')).localeCompare(String(a.id || ''));
               }).slice(0, 10).map((log) => (
                 <tr key={log.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-700">
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-xs font-semibold text-gray-700">
                     <div className="flex items-center gap-1">
                       <Clock size={14} className="text-blue-500" />
                       {safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm')}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
                     {log.action}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                     {log.personnelName}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">

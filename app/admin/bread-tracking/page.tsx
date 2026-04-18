@@ -499,9 +499,9 @@ export default function BreadTrackingPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {reportData.map((b) => (
                   <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.totalNeeded}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-bold text-gray-900">{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</td>
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{b.totalNeeded}</td>
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                       <div className="flex flex-col">
                         <span className="font-medium">{b.leftoverAmount}</span>
                         {b.manualLeftoverAmount && (
@@ -511,8 +511,8 @@ export default function BreadTrackingPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-600">{b.finalOrderAmount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-black text-blue-600">{b.finalOrderAmount}</td>
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                       <span className={`px-2 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase tracking-wider ${
                         b.status === 'ordered'
                           ? 'bg-green-100 text-green-800' 
@@ -522,7 +522,7 @@ export default function BreadTrackingPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={b.note}>{b.note || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         {b.date === safeFormat(new Date(), 'yyyy-MM-dd') && b.status !== 'ordered' && (
                           <button
@@ -582,13 +582,13 @@ export default function BreadTrackingPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {tenders?.map((t) => (
                 <tr key={t.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{t.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.tenderNo || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeFormat(new Date(t.date), 'dd.MM.yyyy')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{safeFormat(new Date(t.endDate), 'dd.MM.yyyy')}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{t.maxBreadCount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{t.remainingMaxBreadCount}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">{t.name}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{t.tenderNo || '-'}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{safeFormat(new Date(t.date), 'dd.MM.yyyy')}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{safeFormat(new Date(t.endDate), 'dd.MM.yyyy')}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{t.maxBreadCount}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-bold text-purple-600">{t.remainingMaxBreadCount}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
                     <span className={`px-2 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase ${
                       t.remainingMaxBreadCount > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>

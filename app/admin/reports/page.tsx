@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/components/AuthProvider';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -340,28 +340,23 @@ export default function ReportsPage() {
         try {
           const chartsEl = reportRef.current.querySelector('.charts-container') as HTMLElement;
           if (chartsEl) {
-            // Force standard colors for capture to avoid oklch issues with html2canvas
+            // Force standard colors for capture to avoid issues with html-to-image
             const originalStyle = chartsEl.getAttribute('style') || '';
             chartsEl.setAttribute('style', originalStyle + '; --color-primary: #4f46e5; --color-success: #10b981; --color-warning: #f59e0b; --color-danger: #ef4444;');
             
-            const canvas = await html2canvas(chartsEl, { 
-              scale: 2, 
-              useCORS: true, 
-              logging: false,
-              allowTaint: true,
+            const imgData = await toPng(chartsEl, { 
+              quality: 0.95,
               backgroundColor: '#ffffff',
-              onclone: (clonedDoc) => {
-                const clonedCharts = clonedDoc.querySelector('.charts-container') as HTMLElement;
-                if (clonedCharts) {
-                  clonedCharts.style.width = '1200px'; // Force a fixed width for consistent capture
-                }
+              pixelRatio: 2,
+              filter: (node) => {
+                // Don't capture responsive containers that aren't rendered properly
+                if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
+                return true;
               }
             });
             
             // Restore original style
             chartsEl.setAttribute('style', originalStyle);
-            
-            const imgData = canvas.toDataURL('image/png');
             
             let finalY = (doc as any).lastAutoTable.finalY + 10;
             
@@ -374,8 +369,14 @@ export default function ReportsPage() {
             doc.setFont('Roboto', 'bold');
             doc.text('GRAFİKSEL ANALİZ', 14, finalY);
             
+            // Calculate height keeping aspect ratio (assume image is wide)
             const imgWidth = doc.internal.pageSize.width - 28;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            // Get original dimensions from a temporary image
+            const img = new Image();
+            img.src = imgData;
+            await new Promise((resolve) => { img.onload = resolve; });
+            
+            const imgHeight = (img.height * imgWidth) / img.width;
             
             doc.addImage(imgData, 'PNG', 14, finalY + 5, imgWidth, imgHeight);
           }
@@ -526,19 +527,19 @@ export default function ReportsPage() {
                     const route = filteredRoutes.find(r => r.id === stop.routeId);
                     return (
                       <tr key={stop.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-900">
                           {route ? safeFormat(route.date, 'dd.MM.yyyy') : '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-900">
                           {stop.householdSnapshotName}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                           {route?.driverSnapshotName || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                           {stop.householdSnapshotMemberCount} / {stop.householdSnapshotBreadCount}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                        <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-red-600 font-medium">
                           {stop.issueReport || 'Belirtilmedi'}
                         </td>
                       </tr>

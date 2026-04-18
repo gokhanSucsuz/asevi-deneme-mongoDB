@@ -1,6 +1,7 @@
 import { db } from './db';
 import { User } from 'firebase/auth';
 import { encrypt } from './crypto';
+import { notifyDbChange } from './hooks';
 
 /**
  * Global logging utility for system operations.
@@ -28,6 +29,7 @@ export const addSystemLog = async (
       timestamp: new Date()
     });
     
+    notifyDbChange('system_logs');
     console.log(`Log Recorded: ${action} - ${personnelName}`);
   } catch (error) {
     console.error('Failed to record system log:', error);
