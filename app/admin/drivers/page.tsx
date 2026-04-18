@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Driver, Route, RouteStop } from '@/lib/db';
-import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, subMonths, subWeeks, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
 import { toPng } from 'html-to-image';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function DriversPage() {
   const { user, role, personnel } = useAuth();
@@ -498,7 +498,7 @@ export default function DriversPage() {
                 </h4>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
+                    <RechartsBarChart
                       data={getDriverRoutes(driverToReport.id!, driverToReport.name)
                             .filter(r => {
                                let sd = new Date(); let ed = new Date();
@@ -550,7 +550,7 @@ export default function DriversPage() {
                       <Bar yAxisId="left" dataKey="Ulaşılan Kişi" fill="#3b82f6" name="Kişi Sayısı" />
                       <Bar yAxisId="left" dataKey="Hane Teslimatı" fill="#10b981" name="Hane Sayısı" />
                       <Bar yAxisId="left" dataKey="Başarısız" fill="#ef4444" name="Başarısız Gidilen" />
-                    </BarChart>
+                    </RechartsBarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
