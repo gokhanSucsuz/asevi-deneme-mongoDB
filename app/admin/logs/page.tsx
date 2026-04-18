@@ -234,8 +234,8 @@ export default function SystemLogsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <table className="w-full text-left table-fixed border-collapse">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th onClick={() => handleSort('timestamp')} className="p-4 font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none w-48">
