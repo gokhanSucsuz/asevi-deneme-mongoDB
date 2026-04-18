@@ -151,8 +151,31 @@ export default function DriversPage() {
       const driverStops = allStops.filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
 
       const totalKm = driverRoutes.reduce((acc: number, r: Route) => acc + ((r.endKm || 0) - (r.startKm || 0)), 0);
-      const totalDelivered = driverStops.filter((s: RouteStop) => s.status === 'delivered').length;
-      const totalFailed = driverStops.filter((s: RouteStop) => s.status === 'failed').length;
+      
+      // Calculate total delivered people by grouping by route and unique households
+      let totalDeliveredPeople = 0;
+      let totalHouseholdDeliveries = 0; // Number of unique successful deliveries to households
+      let totalFailedStops = 0; // Raw failed stops count for the report
+      
+      driverRoutes.forEach(r => {
+        const stopsForRoute = driverStops.filter(s => String(s.routeId) === String(r.id));
+        totalFailedStops += stopsForRoute.filter(s => s.status === 'failed').length;
+        
+        // Group delivered stops by household to avoid double counting breakfast/lunch
+        const deliveredStops = stopsForRoute.filter(s => s.status === 'delivered');
+        const uniqueHouseholdsInRoute = new Map();
+        
+        deliveredStops.forEach(s => {
+          if (!uniqueHouseholdsInRoute.has(s.householdId)) {
+            uniqueHouseholdsInRoute.set(s.householdId, s.householdSnapshotMemberCount || 0);
+          }
+        });
+        
+        totalHouseholdDeliveries += uniqueHouseholdsInRoute.size;
+        uniqueHouseholdsInRoute.forEach(count => {
+          totalDeliveredPeople += count;
+        });
+      });
 
       await addVakifLogo(doc, 14, 10, 20);
 
@@ -167,24 +190,35 @@ export default function DriversPage() {
 
       // Summary Table
       autoTable(doc, {
-        head: [['Toplam KM', 'Başarılı Teslimat', 'Başarısız Teslimat', 'Toplam Rota']],
-        body: [[totalKm, totalDelivered, totalFailed, driverRoutes.length]],
+        head: [['Toplam KM', 'Hane Teslimatı', 'Ulaşılan Kişi', 'Başarısız Gidilen', 'Toplam Rota']],
+        body: [[totalKm, totalHouseholdDeliveries, totalDeliveredPeople, totalFailedStops, driverRoutes.length]],
         startY: 50,
         styles: { font: 'Roboto', fontSize: 10, halign: 'center' },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [41, 128, 185] }
       });
 
       // Detailed Table
-      const tableColumn = ["Tarih", "KM", "Başarılı", "Başarısız", "Kalan Y/E"];
+      const tableColumn = ["Tarih", "KM", "Teslim (Hane/Kişi)", "Başarısız", "Kalan Y/E"];
       const tableRows = driverRoutes.map((route: Route) => {
-        const routeStops = driverStops.filter((s: RouteStop) => s.routeId === route.id);
-        const delivered = routeStops.filter((s: RouteStop) => s.status === 'delivered').length;
-        const failed = routeStops.filter((s: RouteStop) => s.status === 'failed').length;
+        const _routeStops = driverStops.filter((s: RouteStop) => String(s.routeId) === String(route.id));
+        const _delivered = _routeStops.filter((s: RouteStop) => s.status === 'delivered');
+        const _failed = _routeStops.filter((s: RouteStop) => s.status === 'failed').length;
+        
+        const _uniqueHouseholds = new Map();
+        _delivered.forEach(s => {
+          if (!_uniqueHouseholds.has(s.householdId)) {
+            _uniqueHouseholds.set(s.householdId, s.householdSnapshotMemberCount || 0);
+          }
+        });
+        
+        let _deliveredPeople = 0;
+        _uniqueHouseholds.forEach(count => _deliveredPeople += count);
+
         return [
           safeFormat(new Date(route.date), 'dd.MM.yyyy'),
           (route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-',
-          delivered,
-          failed,
+          `${_uniqueHouseholds.size} / ${_deliveredPeople}`,
+          _failed,
           `${route.remainingFood || 0} / ${route.remainingBread || 0}`
         ];
       });
