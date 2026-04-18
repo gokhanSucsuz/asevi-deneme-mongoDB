@@ -601,9 +601,11 @@ export default function SystemSettingsPage() {
                 <p className="text-slate-600 text-sm leading-relaxed">
                   TC Kimlik No, Hane No ve Telefon gibi hassas veriler veritabanına kaydedilmeden önce AES-256 standardı ile şifrelenir. 
                   Bu sayede veritabanına doğrudan erişim sağlansa bile hassas bilgiler okunamaz. 
-                  Şifreleme anahtarı güvenli bir şekilde sunucu tarafında saklanır.
+                  Şifreleme anahtarı güvenli bir şekilde sunucu tarafında saklanır. 
+                  (Veritaraklarının arka planda dönüşümü tamamlanmıştır.)
                 </p>
               </div>
+              {/*
               {!isDemo && (
                 <div className="flex flex-col gap-3">
                   <button
@@ -624,6 +626,7 @@ export default function SystemSettingsPage() {
                   </button>
                 </div>
               )}
+              */}
             </div>
           </div>
         </div>

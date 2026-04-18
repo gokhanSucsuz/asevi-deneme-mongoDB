@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Driver, Route, RouteStop } from '@/lib/db';
 import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { format, subMonths, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, subMonths, subWeeks, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
@@ -13,6 +13,8 @@ import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
+import html2canvas from 'html2canvas';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function DriversPage() {
   const { user, role, personnel } = useAuth();
@@ -21,11 +23,15 @@ export default function DriversPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [driverToReport, setDriverToReport] = useState<Driver | null>(null);
-  const [reportRange, setReportRange] = useState('1');
+  const [reportRange, setReportRange] = useState('m1'); // default 1 month
+  const [customStartDate, setCustomStartDate] = useState(safeFormat(subDays(new Date(), 7), 'yyyy-MM-dd'));
+  const [customEndDate, setCustomEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
+  const chartRef = useRef<HTMLDivElement>(null);
   
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   const addLog = async (action: string, details?: string) => {
@@ -131,9 +137,21 @@ export default function DriversPage() {
     
     try {
       const doc = await getTurkishPdf('portrait');
-      const months = parseInt(reportRange);
-      const endDate = new Date();
-      const startDate = subMonths(endDate, months);
+      let endDate = new Date();
+      let startDate = new Date();
+      
+      switch (reportRange) {
+        case 'd1': startDate = subDays(endDate, 1); break;
+        case 'w1': startDate = subWeeks(endDate, 1); break;
+        case 'm1': startDate = subMonths(endDate, 1); break;
+        case 'm3': startDate = subMonths(endDate, 3); break;
+        case 'm6': startDate = subMonths(endDate, 6); break;
+        case 'custom':
+          startDate = parseISO(customStartDate);
+          endDate = parseISO(customEndDate);
+          break;
+        default: startDate = subMonths(endDate, 1);
+      }
 
       const driverRoutes = routes?.filter((r: Route) => {
         const idMatch = String(r.driverId) === String(driverToReport.id!);
@@ -223,10 +241,30 @@ export default function DriversPage() {
         ];
       });
 
+      let currentY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // Add Chart to PDF
+      if (chartRef.current) {
+        try {
+          const canvas = await html2canvas(chartRef.current, { scale: 2 });
+          const imgData = canvas.toDataURL('image/png');
+          
+          if (currentY + 100 > 280) { // check if chart fits on page
+            doc.addPage();
+            currentY = 20;
+          }
+          
+          doc.addImage(imgData, 'PNG', 14, currentY, 180, 80);
+          currentY += 90;
+        } catch (chartErr) {
+          console.error("PDF chart adding failed", chartErr);
+        }
+      }
+
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: (doc as any).lastAutoTable.finalY + 10,
+        startY: currentY,
         styles: { font: 'Roboto', fontSize: 9 },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [52, 73, 94] }
       });
@@ -358,7 +396,7 @@ export default function DriversPage() {
               </button>
             </div>
             <div className="p-6 flex-1 overflow-y-auto">
-              <div className="mb-6 grid grid-cols-3 gap-4">
+              <div className="mb-6 grid grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-500">Araç Plakası</p>
                   <p className="font-bold text-gray-900">{driverToReport.vehiclePlate}</p>
@@ -367,48 +405,150 @@ export default function DriversPage() {
                   <p className="text-sm text-gray-500">Toplam Rota</p>
                   <p className="font-bold text-gray-900">{getDriverRoutes(driverToReport.id!, driverToReport.name).length}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="bg-gray-50 p-4 rounded-lg col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Rapor Dönemi</label>
-                  <select
-                    value={reportRange}
-                    onChange={(e) => setReportRange(e.target.value)}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-1"
-                  >
-                    <option value="1">Son 1 Ay</option>
-                    <option value="3">Son 3 Ay</option>
-                    <option value="6">Son 6 Ay</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={reportRange}
+                      onChange={(e) => setReportRange(e.target.value)}
+                      className="block flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                    >
+                      <option value="d1">Son 1 Gün</option>
+                      <option value="w1">Son 1 Hafta</option>
+                      <option value="m1">Son 1 Ay</option>
+                      <option value="m3">Son 3 Ay</option>
+                      <option value="m6">Son 6 Ay</option>
+                      <option value="custom">Özel Tarih Aralığı</option>
+                    </select>
+                    {reportRange === 'custom' && (
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        />
+                        <span className="text-gray-500">-</span>
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
-              <h4 className="font-bold text-gray-900 mb-4">Günlük KM ve Rota Kayıtları</h4>
+              <div className="mb-6" ref={chartRef}>
+                <h4 className="font-bold text-gray-900 mb-4">Teslimat İstatistikleri (Seçili Dönem)</h4>
+                <div className="bg-white p-4 border border-gray-200 rounded-lg h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={getDriverRoutes(driverToReport.id!, driverToReport.name)
+                            .filter(r => {
+                               let sd = new Date(); let ed = new Date();
+                               switch (reportRange) {
+                                 case 'd1': sd = subDays(ed, 1); break;
+                                 case 'w1': sd = subWeeks(ed, 1); break;
+                                 case 'm1': sd = subMonths(ed, 1); break;
+                                 case 'm3': sd = subMonths(ed, 3); break;
+                                 case 'm6': sd = subMonths(ed, 6); break;
+                                 case 'custom':
+                                   sd = parseISO(customStartDate);
+                                   ed = parseISO(customEndDate);
+                                   break;
+                                 default: sd = subMonths(ed, 1);
+                               }
+                               return isWithinInterval(new Date(r.date), { start: startOfDay(sd), end: endOfDay(ed) });
+                            })
+                            .slice(0, 30)
+                            .reverse()
+                            .map(route => {
+                              const stops = (routeStops || []).filter((s: RouteStop) => String(s.routeId) === String(route.id));
+                              const delivered = stops.filter((s: RouteStop) => s.status === 'delivered');
+                              const failedCount = stops.filter((s: RouteStop) => s.status === 'failed').length;
+                              
+                              const uniqueHouseholds = new Map();
+                              delivered.forEach((s: RouteStop) => {
+                                if (!uniqueHouseholds.has(s.householdId)) {
+                                  uniqueHouseholds.set(s.householdId, s.householdSnapshotMemberCount || 0);
+                                }
+                              });
+                              let deliveredPeople = 0;
+                              uniqueHouseholds.forEach(count => deliveredPeople += count);
+                              
+                              return {
+                                name: safeFormat(new Date(route.date), 'dd.MM'),
+                                'Ulaşılan Kişi': deliveredPeople,
+                                'Hane Teslimatı': uniqueHouseholds.size,
+                                'Başarısız': failedCount,
+                                km: (route.endKm || 0) - (route.startKm || 0)
+                              }
+                            })}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" fontSize={12} />
+                      <YAxis yAxisId="left" fontSize={12} />
+                      <RechartsTooltip />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="Ulaşılan Kişi" fill="#3b82f6" name="Kişi Sayısı" />
+                      <Bar yAxisId="left" dataKey="Hane Teslimatı" fill="#10b981" name="Hane Sayısı" />
+                      <Bar yAxisId="left" dataKey="Başarısız" fill="#ef4444" name="Başarısız Gidilen" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              <h4 className="font-bold text-gray-900 mb-4">Günlük Rota ve Teslimat Detayları</h4>
               <div className="bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Başlangıç KM</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bitiş KM</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yapılan KM</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kalan Yemek/Ekmek</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teslim (Hane / Kişi)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Başarısız</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kalan (Y/E)</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getDriverRoutes(driverToReport.id!, driverToReport.name).map((route) => (
-                      <tr key={route.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.startKm || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{route.endKm || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                          {(route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {route.remainingFood || 0} / {route.remainingBread || 0}
-                        </td>
-                      </tr>
-                    ))}
+                    {getDriverRoutes(driverToReport.id!, driverToReport.name).map((route) => {
+                      const stops = (routeStops || []).filter((s: RouteStop) => String(s.routeId) === String(route.id));
+                      const delivered = stops.filter((s: RouteStop) => s.status === 'delivered');
+                      const failedCount = stops.filter((s: RouteStop) => s.status === 'failed').length;
+                      
+                      const uniqueHouseholds = new Map();
+                      delivered.forEach((s: RouteStop) => {
+                         if (!uniqueHouseholds.has(s.householdId)) {
+                           uniqueHouseholds.set(s.householdId, s.householdSnapshotMemberCount || 0);
+                         }
+                      });
+                      let deliveredPeople = 0;
+                      uniqueHouseholds.forEach(count => deliveredPeople += count);
+
+                      return (
+                        <tr key={route.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {(route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            {uniqueHouseholds.size} / {deliveredPeople}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-red-500 font-medium">
+                            {failedCount}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {route.remainingFood || 0} / {route.remainingBread || 0}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {getDriverRoutes(driverToReport.id!, driverToReport.name).length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">

@@ -15,12 +15,9 @@ export default function GuidePage() {
     { name: 'Güvenlik Protokolü', id: 'guvenlik' },
     { name: 'Hane & Kurum Yönetimi', id: 'hane' },
     { name: 'Rota & Dağıtım', id: 'rota' },
-    { name: 'Vakıf Pickup Sistemi', id: 'pickup' },
-    { name: 'Ekmek Takip Sistemi', id: 'ekmek' },
-    { name: 'Performans & Önbellek', id: 'cache' },
-    { name: 'Raporlama & PDF', id: 'rapor' },
-    { name: 'Anket & Memnuniyet', id: 'anket' },
-    { name: 'Veri Şifreleme', id: 'sifreleme' }
+    { name: 'Vakıf Teslimatı', id: 'pickup' },
+    { name: 'Raporlama & İstatis.', id: 'rapor' },
+    { name: 'Güvenlik & Yedekleme', id: 'sifreleme' }
   ];
 
   const scrollToSection = (id: string) => {
@@ -42,9 +39,7 @@ export default function GuidePage() {
             </div>
             <span className="text-blue-300 font-bold tracking-widest uppercase text-xs md:text-sm">T.C. EDİRNE VALİLİĞİ - SYDV</span>
             <div className="hidden md:block w-1 h-1 bg-slate-500 rounded-full"></div>
-            <span className="text-slate-400 text-xs font-medium">Sürüm: 2.6.0</span>
-            <div className="hidden md:block w-1 h-1 bg-slate-500 rounded-full"></div>
-            <span className="text-slate-400 text-xs font-medium">Güncelleme: 14.04.2026</span>
+            <span className="text-slate-400 text-xs font-medium">Güncelleme: Nisan 2026</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-black mb-6 leading-tight tracking-tight">
             Aşevi Dağıtım <br className="hidden md:block" />
@@ -54,7 +49,7 @@ export default function GuidePage() {
           </h1>
           <p className="text-slate-300 text-base md:text-xl max-w-3xl leading-relaxed font-light">
             Bu kılavuz, vakıf bünyesindeki yemek dağıtım operasyonlarının dijitalleşme standartlarını, 
-            güvenlik protokollerini ve teknik kullanım detaylarını içeren resmi uygulama belgesidir.
+            kullanıcı rollerini ve sistem modüllerinin teknik detaylarını içeren resmi kullanım belgesidir.
           </p>
         </div>
         <div className="absolute -right-20 -top-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl"></div>
@@ -119,8 +114,7 @@ export default function GuidePage() {
                 Yasal Uyarı
               </h4>
               <p className="text-xs text-blue-100 leading-relaxed opacity-90">
-                Sistemdeki tüm veri hareketleri 6698 sayılı KVKK kapsamında loglanmaktadır. 
-                Yetkisiz erişim ve veri sızıntısı durumunda adli süreç başlatılacaktır.
+                Sitemiz, modern bulut veritabanı altyapısıyla çalışmaktadır. Tüm şifreler hashing yöntemleriyle, kişi tanımlayıcı bilgiler (TC, telefon) kriptografik olarak 256-bit AES ile saklanmaktadır. KVKK uyumlu loglama süreçleri devrededir.
               </p>
             </div>
           </div>
@@ -146,10 +140,9 @@ export default function GuidePage() {
                 <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                   <ShieldCheck className="text-blue-600" size={24} />
                 </div>
-                <h4 className="font-bold text-gray-900 text-xl mb-3">Çift Katmanlı Doğrulama</h4>
+                <h4 className="font-bold text-gray-900 text-xl mb-3">Rol Yönetimi</h4>
                 <p className="text-gray-600 leading-relaxed text-sm">
-                  Sisteme erişim için önce Google OAuth 2.0 kimlik doğrulaması, ardından SYDV personel veritabanı eşleşmesi gereklidir. 
-                  Onaylanmamış personeller sisteme giriş yapamaz.
+                  Personel, Şoför ve Sistem Yetkilisi (Admin) arasında kapalı devre kimlik doğrulama yapılmaktadır. Kullanıcıların erişim yetkileri modüller arası izolasyon sağlar. Demolarda dahi veritabanı ayrı bir MongoDB Cluster düzeyinde güvendedir. Kendi kendine kaydolan personeller ancak "Sistem Onayı" aldıktan sonra sisteme giriş yapabilir.
                 </p>
               </div>
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 hover:border-blue-200 transition-colors">
@@ -159,7 +152,7 @@ export default function GuidePage() {
                 <h4 className="font-bold text-gray-900 text-xl mb-3">İşlem Günlükleri (Audit)</h4>
                 <p className="text-gray-600 leading-relaxed text-sm">
                   Yapılan her ekleme, silme ve güncelleme işlemi; işlemi yapan personel, tarih, saat ve IP bilgisi ile 
-                  &quot;Sistem Logları&quot; modülünde kalıcı olarak saklanır.
+                  &quot;Sistem Günlükleri&quot; bölümünde kalıcı olarak saklanır.
                 </p>
               </div>
             </div>
@@ -204,18 +197,14 @@ export default function GuidePage() {
                 
                 <div className="border-t border-gray-100 pt-8">
                   <h4 className="font-bold text-gray-900 mb-4">Kayıt Durumları</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-sm font-bold text-green-800">Aktif</span>
+                      <span className="text-sm font-bold text-green-800">Aktif - Rotalara Dahil</span>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
                       <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                       <span className="text-sm font-bold text-red-800">Pasif / Durduruldu</span>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-bold text-blue-800">Vakıf Pickup</span>
                     </div>
                   </div>
                 </div>
@@ -287,71 +276,25 @@ export default function GuidePage() {
             </div>
           </section>
 
-          {/* Bölüm 4: Ekmek Takip */}
-          <section id="ekmek" className="space-y-6 scroll-mt-24">
-            <div className="flex items-center gap-4">
-              <div className="bg-amber-500/10 p-3 rounded-2xl">
-                <Calendar className="text-amber-600" size={32} />
-              </div>
-              <div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">4. Ekmek Takip ve Otomasyon</h2>
-                <p className="text-gray-500 font-medium">İsraf önleme ve lojistik verimlilik</p>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200">
-              <div className="prose prose-slate max-w-none">
-                <p className="text-gray-600 leading-relaxed">
-                  Sistem, her günün sonunda gerçekleşen teslimat sayılarını analiz ederek bir sonraki iş gününün ekmek ihtiyacını 
-                  <strong> dinamik olarak</strong> hesaplar.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                  <div className="space-y-4">
-                    <h5 className="font-black text-gray-900 flex items-center gap-2">
-                      <Zap size={18} className="text-amber-500" />
-                      Hesaplama Mantığı
-                    </h5>
-                    <ul className="text-sm text-gray-600 space-y-3">
-                      <li>• Aktif hanelerin toplam ekmek ihtiyacı toplanır.</li>
-                      <li>• Şoförlerden dönen &quot;Artan Ekmek&quot; miktarı düşülür.</li>
-                      <li>• Bir sonraki günün net sipariş miktarı belirlenir.</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-4">
-                    <h5 className="font-black text-gray-900 flex items-center gap-2">
-                      <ShieldCheck size={18} className="text-green-600" />
-                      Güvenlik Kuralları
-                    </h5>
-                    <ul className="text-sm text-gray-600 space-y-3">
-                      <li>• 2 günden fazla süren tatillerde dünden kalan ekmek 0 kabul edilir.</li>
-                      <li>• Tüm hesaplamalar yönetici onayına sunulur.</li>
-                      <li>• Geçmişe dönük tüm siparişler raporlanabilir.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Bölüm 5: Performans ve Önbellek */}
+          {/* Bölüm: Performans ve Önbellek */}
           <section id="cache" className="space-y-6 scroll-mt-24">
             <div className="flex items-center gap-4">
               <div className="bg-teal-500/10 p-3 rounded-2xl">
                 <Zap className="text-teal-600" size={32} />
               </div>
               <div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">5. Performans ve Önbellekleme</h2>
-                <p className="text-gray-500 font-medium">Yüksek hız ve düşük maliyet mimarisi</p>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">3. Performans ve Önbellekleme</h2>
+                <p className="text-gray-500 font-medium">Yüksek hız ve çevrimdışı destek mimarisi</p>
               </div>
             </div>
 
             <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 space-y-6">
               <div className="flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1 space-y-4">
-                  <h4 className="text-xl font-bold text-slate-900">Next.js unstable_cache Entegrasyonu</h4>
+                  <h4 className="text-xl font-bold text-slate-900">Tarayıcı İçi Veritabanı ve Senkronizasyon</h4>
                   <p className="text-sm text-slate-600 leading-relaxed">
-                    Sistemimiz, Firestore okuma maliyetlerini %80 oranında azaltan ve sayfa yükleme hızlarını 
-                    milisaniyelere düşüren gelişmiş bir önbellekleme (Caching) katmanına sahiptir.
+                    Sistemimiz, ağ bağlantısı olmadığında dahi çalışabilen IndexedDB teknolojisi üzerine kuruludur.
+                    Kullanıcı sahada (internet olmayan bölgelerde) teslimat onayı yaptığında, veriler öncelikle tarayıcıya (IndexedDB) yazılır, ardından internet geldiğinde merkezi veritabanı (MongoDB) ile anlık senkronize edilir. Bu sayede saha operasyonu asla sekteye uğramaz.
                   </p>
                   <div className="flex gap-4">
                     <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
@@ -359,25 +302,8 @@ export default function GuidePage() {
                       <span className="text-lg font-black text-teal-600">10x</span>
                     </div>
                     <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                      <span className="text-xs font-bold text-slate-400 block uppercase">Maliyet Tasarrufu</span>
-                      <span className="text-lg font-black text-blue-600">%80</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-full md:w-64 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                  <h5 className="font-bold text-xs text-slate-400 uppercase mb-4 tracking-widest">Çalışma Prensibi</h5>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      Veri Değişmediyse: Cache
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                      Veri Değiştiyse: Revalidate
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      Raporlama: On-Demand
+                      <span className="text-xs font-bold text-slate-400 block uppercase">İnternetsiz</span>
+                      <span className="text-lg font-black text-blue-600">Saha Onayı</span>
                     </div>
                   </div>
                 </div>
@@ -385,15 +311,15 @@ export default function GuidePage() {
             </div>
           </section>
 
-          {/* Bölüm 6: Raporlama */}
+          {/* Bölüm: Raporlama */}
           <section id="rapor" className="space-y-6 scroll-mt-24">
             <div className="flex items-center gap-4">
               <div className="bg-indigo-500/10 p-3 rounded-2xl">
                 <ClipboardList className="text-indigo-600" size={32} />
               </div>
               <div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">6. Raporlama ve PDF Çıktıları</h2>
-                <p className="text-gray-500 font-medium">Resmi evrak ve analiz araçları</p>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">4. Raporlama ve İstatistikler</h2>
+                <p className="text-gray-500 font-medium">Resmi evrak ve detaylı analiz araçları</p>
               </div>
             </div>
 
@@ -402,20 +328,19 @@ export default function GuidePage() {
                 <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
                   <h5 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                     <Download size={18} className="text-blue-600" />
-                    Hızlı PDF (Server-Side)
+                    Detaylı PDF Çıktıları
                   </h5>
                   <p className="text-sm text-gray-600">
-                    Sunucu tarafında önbelleğe alınmış verilerle saniyeler içinde PDF raporu üretilir. 
-                    Büyük veri setlerinde tarayıcıyı dondurmadan işlem yapar.
+                    Sistem "jspdf-autotable" altyapısıyla Türkçe karakter sorunsuz, tabloların ve istatistik grafiklerinin yansıtıldığı (html2canvas) resmi makamlar uyumlu PDF'ler üretir.
                   </p>
                 </div>
                 <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
                   <h5 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                     <BarChart size={18} className="text-indigo-600" />
-                    Excel Dışa Aktar
+                    Grafiksel Takip
                   </h5>
                   <p className="text-sm text-gray-600">
-                    Tüm listeler ve istatistikler, detaylı analiz için XLSX formatında bilgisayara indirilebilir.
+                    Şoför ve genel istatistik sayfalarında başarılı teslimat, ulaşılan kişi sayısı, yapılan KM gibi detaylar zaman aralığı (Günlük, Haftalık, Aylık vs.) seçilerek grafiklere dökülür ve PDF raporuna eklenir.
                   </p>
                 </div>
               </div>
@@ -425,15 +350,15 @@ export default function GuidePage() {
                 <ul className="text-sm text-indigo-800 space-y-2">
                   <li className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-indigo-600" />
-                    Kurum Logosu ve Resmi Başlık
+                    T.C. Edirne Valiliği Logosu ve Resmi Başlık
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-indigo-600" />
-                    Raporlayan Personel ve Zaman Damgası
+                    Raporlayan Personel Bilgisi ve Doğrulama Tarih / Saati
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-indigo-600" />
-                    Sayfa Numaralandırma ve Alt Bilgi
+                    İstatistik Grafiklerinin otomatik entegrasyonu
                   </li>
                 </ul>
               </div>
