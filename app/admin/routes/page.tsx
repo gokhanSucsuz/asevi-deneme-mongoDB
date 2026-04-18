@@ -1726,7 +1726,7 @@ export default function RoutesPage() {
             </div>
             
             {(() => {
-              const todaysRoutes = routes?.filter(r => r.date === selectedDateStr) || [];
+              const todaysRoutes = routes?.filter(r => r.date === selectedDate) || [];
               const totalRoutes = todaysRoutes.length;
               const completedRoutes = todaysRoutes.filter(r => r.status === 'completed' || r.status === 'approved').length;
               const ratio = totalRoutes > 0 ? Math.round((completedRoutes / totalRoutes) * 100) : 0;
@@ -1771,7 +1771,7 @@ export default function RoutesPage() {
               // Usually handled in a special way in this system
               const todaysStops = routeStops?.filter(s => {
                 const route = routes?.find(r => r.id === s.routeId);
-                return route?.date === selectedDateStr;
+                return route?.date === selectedDate;
               }) || [];
               
               const selfServiceCompleted = selfServiceHouseholds.filter(h => 
