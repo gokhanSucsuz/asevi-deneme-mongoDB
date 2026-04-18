@@ -141,6 +141,7 @@ export default function BreadTrackingPage() {
         const data = await Promise.all(dates.map(async (dateStr) => {
           // Check if there's an existing record
           const existing = breadTracking?.find(b => b.date === dateStr);
+          const isWorkingDay = await checkIsWorkingDay(new Date(dateStr));
           
           // Calculate dynamically to reflect household changes instantly
           const breadData = await calculateBreadForNextDay(dateStr);
@@ -149,7 +150,6 @@ export default function BreadTrackingPage() {
           const dayRoutes = routes?.filter(r => r.date === dateStr) || [];
           const allApproved = dayRoutes.length > 0 && dayRoutes.every(r => r.status === 'approved');
           
-          const isWorkingDay = await checkIsWorkingDay(new Date(dateStr));
           const deliveryDate = existing?.deliveryDate || (await getNextWorkingDay(new Date(dateStr))).toISOString().split('T')[0];
 
           return {
@@ -166,7 +166,7 @@ export default function BreadTrackingPage() {
             manualLeftoverAmount: breadData.manualLeftoverAmount,
             manualLeftoverNote: breadData.manualLeftoverNote
           };
-        }));
+        })).then(results => results.filter(item => item.isWorkingDay || item.status === 'ordered'));
         
         setReportData(data);
       } catch (error) {
