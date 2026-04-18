@@ -1,6 +1,5 @@
 import { db } from './db';
 import { User } from 'firebase/auth';
-import { encrypt } from './crypto';
 import { notifyDbChange } from './hooks';
 
 /**
@@ -18,11 +17,9 @@ export const addSystemLog = async (
     const personnelEmail = personnel?.email || user?.email || 'Bilinmeyen Email';
     const personnelName = personnel?.name || user?.displayName || user?.email?.split('@')[0] || 'Bilinmeyen Personel';
 
-    const encryptedDetails = details ? encrypt(details) : '';
-
     await db.system_logs.add({
       action,
-      details: encryptedDetails,
+      details,
       category,
       personnelEmail,
       personnelName,

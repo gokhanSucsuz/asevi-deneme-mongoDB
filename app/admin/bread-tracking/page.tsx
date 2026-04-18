@@ -187,11 +187,21 @@ export default function BreadTrackingPage() {
       const today = safeFormat(new Date(), 'yyyy-MM-dd');
       
       for (const item of reportData) {
+        // Tatil gününe ait sipariş kaydı varsa temizle (kullanıcı isteği)
+        if (!item.isWorkingDay) {
+          const existing = await db.breadTracking.where('date').equals(item.date).first();
+          if (existing) {
+            await db.breadTracking.delete(existing.id!);
+            continue;
+          }
+        }
+
         if (item.date < today && item.date >= '2026-04-14') {
           const existing = await db.breadTracking.where('date').equals(item.date).first();
-          if (!existing) {
+          if (!existing && item.isWorkingDay) {
             await db.breadTracking.add({
               date: item.date,
+              deliveryDate: item.deliveryDate,
               totalNeeded: item.totalNeeded,
               delivered: 0,
               leftoverAmount: item.leftoverAmount,
@@ -545,56 +555,56 @@ export default function BreadTrackingPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 text-[10px] uppercase font-bold tracking-tight text-gray-500">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teslimat Tarihi</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Toplam İhtiyaç</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Artan Ekmek</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sipariş Miktarı</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durum</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Not</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlem</th>
+                  <th className="px-3 py-3 text-left">Tarih</th>
+                  <th className="px-3 py-3 text-left">Teslimat Tarihi</th>
+                  <th className="px-3 py-3 text-left">Top. İhtiyaç</th>
+                  <th className="px-3 py-3 text-left">Artan Ekmek</th>
+                  <th className="px-3 py-3 text-left">Sipariş</th>
+                  <th className="px-3 py-3 text-left">Durum</th>
+                  <th className="px-3 py-3 text-left">Not</th>
+                  <th className="px-3 py-3 text-right">İşlem</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {reportData.map((b) => (
                     <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs font-bold text-gray-900">
                         <div className="flex flex-col">
                           <span>{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</span>
                           {!b.isWorkingDay && (
-                            <span className="text-[10px] text-red-500 font-bold uppercase">Tatil Günü</span>
+                            <span className="text-[9px] text-red-500 font-bold uppercase">Tatil</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
                         {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{b.totalNeeded}</td>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{b.totalNeeded}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500">
                       <div className="flex flex-col">
                         <span className="font-medium">{b.leftoverAmount}</span>
                         {b.manualLeftoverAmount && (
                           <span className="text-[10px] text-orange-600 font-bold">
-                            (Manuel: +{b.manualLeftoverAmount})
+                            (M: +{b.manualLeftoverAmount})
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-black text-blue-600">{b.finalOrderAmount}</td>
-                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                      <span className={`px-2 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase tracking-wider ${
+                    <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500">
+                      <span className={`px-2 py-0.5 inline-flex text-[9px] font-bold rounded-full uppercase tracking-wider ${
                         b.status === 'ordered'
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {b.status === 'ordered' ? 'Sipariş Verildi' : 'Bekliyor'}
+                        {b.status === 'ordered' ? 'BİTTİ' : 'BEKLİYOR'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={b.note}>{b.note || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate" title={b.note}>{b.note || '-'}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium">
+                      <div className="flex justify-end gap-1.5">
                         {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
                           <button
                             onClick={() => handleOrderBread(b)}

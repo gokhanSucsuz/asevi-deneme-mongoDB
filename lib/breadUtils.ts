@@ -69,18 +69,12 @@ export async function calculateBreadForNextDay(dateStr: string) {
     // Check if it's the last working day of the week (e.g., Friday)
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
     
-    // User special request logic:
-    // "2 günden fazla tatil günü var ise ekmek siparişinde toplam ihtiyaç sayısı geçerli olacak."
-    const { getNextWorkingDay } = await import('./route-utils');
-    const nextWorkDay = await getNextWorkingDay(new Date(dateStr));
-    const gapDays = differenceInDays(nextWorkDay, new Date(dateStr));
-
     // Formula: Total Needed - Today's Leftover = Ordered Bread
     let finalOrderAmount = Math.max(0, totalNeeded - leftoverAmount);
 
-    // If gap is more than 2 days (e.g. Fri -> Mon is 3 days gap), use totalNeeded instead of subtracting leftovers
-    // or if specifically requested "toplam ihtiyaç sayısı geçerli olacak"
-    if (gapDays > 2) {
+    // User special request logic:
+    // "ekmek takibi sayfasında içinde bulunulan haftanın son iş günü toplam ekmek ihtiyacını sipariş miktarı olarak verebilir, artan ekmek miktarı dahil edilmez."
+    if (isLastWorkingDay) {
       finalOrderAmount = totalNeeded;
     }
 
@@ -91,13 +85,6 @@ export async function calculateBreadForNextDay(dateStr: string) {
         .filter(h => !h.noBreakfast)
         .reduce((sum, h) => sum + (h.memberCount || 0), 0);
       
-      // We don't double totalNeeded (bread) anymore because "kahvaltı için ekmek verilmeyecek"
-      // totalNeeded = totalNeeded; // stays same
-
-      // But container count for the extra meal needs to be added?
-      // If they use containers for both meals, we need more containers.
-      // "biri yemek ve ekmek, diğeri de kahvaltı şeklinde ayrı kayıt olarak yer alsın"
-      // This implies two separate deliveries or two containers.
       const breakfastOwnContainerCount = activeHouseholds
         .filter(h => !h.noBreakfast && h.usesOwnContainer)
         .reduce((sum, h) => sum + (h.memberCount || 0), 0);

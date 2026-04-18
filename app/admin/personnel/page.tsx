@@ -217,78 +217,72 @@ export default function PersonnelPage() {
 
       <div className="bg-white shadow-sm rounded-lg overflow-x-auto border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 text-[10px] uppercase font-bold tracking-tight text-gray-500">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TC Kimlik No</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kullanıcı Adı</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-posta</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ad Soyad</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Onay</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Durum</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kayıt Tarihi</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+              <th className="px-3 py-3 text-left">TC Kimlik No</th>
+              <th className="px-3 py-3 text-left">Kullanıcı Adı</th>
+              <th className="px-3 py-3 text-left">Ad Soyad</th>
+              <th className="px-3 py-3 text-left">Rol</th>
+              <th className="px-3 py-3 text-left">Onay</th>
+              <th className="px-3 py-3 text-left">Durum</th>
+              <th className="px-3 py-3 text-right">İşlemler</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {personnelList?.map((personnel) => (
               <tr key={personnel.id}>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
+                  <div className="flex items-center gap-1.5">
                     {showSensitive[personnel.id!] ? personnel.tcNo : maskSensitive(personnel.tcNo)}
                     {personnel.tcNo && (
                       <button onClick={() => toggleSensitive(personnel.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[personnel.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showSensitive[personnel.id!] ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
+                <td className="px-3 py-4 whitespace-nowrap text-xs font-semibold text-gray-900">
                   {personnel.username}
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  {personnel.email}
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
                   {personnel.name}
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                <td className="px-3 py-4 whitespace-nowrap text-xs text-gray-500">
                   {personnel.role === 'admin' ? 'Yönetici' : 'Personel'}
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                <td className="px-3 py-4 whitespace-nowrap text-xs">
+                  <span className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-bold rounded-full uppercase ${
                     personnel.isApproved ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {personnel.isApproved ? 'Onaylı' : 'Bekliyor'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                <td className="px-3 py-4 whitespace-nowrap text-xs">
+                  <span className={`px-2 py-0.5 inline-flex text-[10px] leading-4 font-bold rounded-full uppercase ${
                     personnel.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                   }`}>
                     {personnel.isActive ? 'Aktif' : 'Pasif'}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  {safeFormat(new Date(personnel.createdAt), 'dd.MM.yyyy HH:mm')}
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
-                  {!isDemo && (
-                    <>
-                      <button onClick={() => toggleApproval(personnel)} className="text-blue-600 hover:text-blue-900 mr-3" title={personnel.isApproved ? "Onayı Kaldır" : "Onayla"}>
-                        {personnel.isApproved ? <AlertTriangle size={18} /> : <Check size={18} />}
-                      </button>
-                      <button onClick={() => toggleStatus(personnel)} className="text-gray-600 hover:text-gray-900 mr-3" title={personnel.isActive ? "Pasife Al" : "Aktifleştir"}>
-                        {personnel.isActive ? <X size={18} /> : <Check size={18} />}
-                      </button>
-                      <button onClick={() => openModal(personnel)} className="text-blue-600 hover:text-blue-900 mr-3" title="Düzenle">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => deletePersonnel(personnel.id!, personnel.username)} className="text-red-600 hover:text-red-900" title="Sil">
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
+                <td className="px-3 py-4 whitespace-nowrap text-right text-xs font-medium">
+                  <div className="flex justify-end gap-1.5">
+                    {!isDemo && (
+                      <>
+                        <button onClick={() => toggleApproval(personnel)} className="text-blue-600 hover:text-blue-900 p-1" title={personnel.isApproved ? "Onayı Kaldır" : "Onayla"}>
+                          {personnel.isApproved ? <AlertTriangle size={14} /> : <Check size={14} />}
+                        </button>
+                        <button onClick={() => toggleStatus(personnel)} className="text-gray-600 hover:text-gray-900 p-1" title={personnel.isActive ? "Pasife Al" : "Aktifleştir"}>
+                          {personnel.isActive ? <X size={14} /> : <Check size={14} />}
+                        </button>
+                        <button onClick={() => openModal(personnel)} className="text-blue-600 hover:text-blue-900 p-1" title="Düzenle">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => deletePersonnel(personnel.id!, personnel.username)} className="text-red-600 hover:text-red-900 p-1" title="Sil">
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

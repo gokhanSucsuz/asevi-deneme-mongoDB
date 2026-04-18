@@ -993,111 +993,104 @@ export default function HouseholdsPage() {
                 Ekmek {sortField === 'breadCount' && (sortOrder === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort('isActive')}
-              >
-                Durum {sortField === 'isActive' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
+                className="px-6 py-3 text-left text              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">İşlemler</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedHouseholds?.map((household, index) => (
               <tr key={household.id}>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500 font-medium">
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    {showSensitive[household.id!] ? household.tcNo : maskSensitive(household.tcNo)}
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[11px] tabular-nums">
+                      {showSensitive[household.id!] ? household.tcNo : maskSensitive(household.tcNo)}
+                    </span>
                     {household.tcNo && (
                       <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showSensitive[household.id!] ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words text-sm font-medium text-gray-900">
+                <td className="px-3 py-4 whitespace-normal break-words text-sm font-medium text-gray-900">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      <span>{household.headName}</span>
+                      <span className="text-xs">{household.headName}</span>
                       {household.isRetired && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
                           Emekli
                         </span>
                       )}
                     </div>
                     {household.type === 'institution' && (
-                      <span className="text-[10px] text-indigo-600 font-bold uppercase">Kurum</span>
+                      <span className="text-[9px] text-indigo-600 font-bold uppercase">Kurum</span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words text-sm text-gray-500 w-40">
-                  <div className="flex items-center gap-2">
-                    {showSensitive[household.id!] ? household.phone : maskSensitive(household.phone, 3)}
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500 w-32">
+                  <div className="flex items-center gap-1">
+                    <span className="text-[11px] tabular-nums">
+                      {showSensitive[household.id!] ? household.phone : maskSensitive(household.phone, 3)}
+                    </span>
                     {household.phone && (
                       <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showSensitive[household.id!] ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 w-40">
-                  <div className="flex items-center gap-2">
-                    {showSensitive[household.id!] ? household.address : maskSensitive(household.address, 10)}
+                <td className="px-3 py-4 text-sm text-gray-500 w-32">
+                  <div className="flex items-center gap-1 overflow-hidden">
+                    <span className="text-[11px] truncate max-w-[100px]" title={household.address}>
+                      {showSensitive[household.id!] ? household.address : maskSensitive(household.address, 10)}
+                    </span>
                     {household.address && (
-                      <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[household.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                      <button onClick={() => toggleSensitive(household.id!)} className="text-gray-400 hover:text-blue-600 flex-shrink-0">
+                        {showSensitive[household.id!] ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{household.memberCount}</td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{household.breadCount ?? household.memberCount}</td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  <div className="flex flex-col gap-1">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${household.isActive ? 'bg-green-100 text-green-800' : household.pausedUntil === '9999-12-31' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                      {household.isActive ? 'Aktif' : household.pausedUntil === '9999-12-31' ? 'SİLİNMİŞ (PASİF)' : `${household.pausedUntil}'e kadar Pasif`}
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-center text-gray-500">{household.memberCount}</td>
+                <td className="px-3 py-4 whitespace-nowrap text-sm text-center text-gray-500">{household.breadCount ?? household.memberCount}</td>
+                <td className="px-3 py-4 whitespace-normal break-words text-sm text-gray-500">
+                  <div className="flex flex-col gap-0.5">
+                    <span className={`px-1.5 py-0.5 inline-flex text-[9px] font-bold rounded-full uppercase ${household.isActive ? 'bg-green-100 text-green-800' : household.pausedUntil === '9999-12-31' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {household.isActive ? 'Aktif' : household.pausedUntil === '9999-12-31' ? 'SİLİNMİŞ' : 'Pasif'}
                     </span>
                     {household.isSelfService && (
-                      <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-purple-100 text-purple-800 uppercase">
-                        Kendi İmkanlarıyla
-                      </span>
-                    )}
-                    {household.usesOwnContainer && (
-                      <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-teal-100 text-teal-800 uppercase">
-                        Kendi Kabı
-                      </span>
-                    )}
-                    {household.noBreakfast && (
-                      <span className="px-2 inline-flex text-[10px] leading-4 font-bold rounded-full bg-orange-100 text-orange-800 uppercase">
-                        Kahvaltı Almıyor
+                      <span className="px-1.5 py-0.5 inline-flex text-[8px] font-bold rounded-full bg-purple-100 text-purple-800 uppercase">
+                        Vakıftan Alıyor
                       </span>
                     )}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
-                  {!isDemo && (
-                    <button onClick={() => handleOpenSurvey(household)} className="text-indigo-600 hover:text-indigo-900 mr-4" title="Anket Uygula">
-                      <ClipboardList size={18} />
+                <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex justify-end gap-1.5">
+                    {!isDemo && (
+                      <button onClick={() => handleOpenSurvey(household)} className="text-indigo-600 hover:text-indigo-900 p-1" title="Anket">
+                        <ClipboardList size={14} />
+                      </button>
+                    )}
+                    <button onClick={() => handleOpenReport(household)} className="text-green-600 hover:text-green-900 p-1" title="Rapor">
+                      <FileText size={14} />
                     </button>
-                  )}
-                  <button onClick={() => handleOpenReport(household)} className="text-green-600 hover:text-green-900 mr-4" title="Rapor Al">
-                    <FileText size={18} />
-                  </button>
-                  <button onClick={() => handleViewHistory(household)} className="text-gray-600 hover:text-gray-900 mr-4" title="İşlem Geçmişi">
-                    <Clock size={18} />
-                  </button>
-                  {!isDemo && (
-                    <>
-                      <button onClick={() => openModal(household)} className="text-blue-600 hover:text-blue-900 mr-4" title="Düzenle">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => handleDeleteClick(household)} className="text-red-600 hover:text-red-900" title="Sil / Pasife Al">
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
+                    <button onClick={() => handleViewHistory(household)} className="text-gray-600 hover:text-gray-900 p-1" title="Geçmiş">
+                      <Clock size={14} />
+                    </button>
+                    {!isDemo && (
+                      <>
+                        <button onClick={() => openModal(household)} className="text-blue-600 hover:text-blue-900 p-1" title="Düzenle">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteClick(household)} className="text-red-600 hover:text-red-900 p-1" title="Sil">
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
