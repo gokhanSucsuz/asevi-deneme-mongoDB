@@ -27,7 +27,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 export default function StatisticsPage() {
-  const { user } = useAuth();
+  const { user, personnel } = useAuth();
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
   const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
