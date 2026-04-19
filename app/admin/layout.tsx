@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // Don't do anything while Firebase auth is initializing
       if (authLoading) return;
 
-      const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com'];
+      const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com', 'demo@sydv.org.tr'];
       const isPublicPage = publicPages.some(page => pathname.startsWith(page));
 
       // 1. Check if there are any personnel at all (for first time setup)
@@ -83,13 +83,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           return;
         }
       } else {
-        // Logged in with Google, check if authorized email
+        // Logged in with Google or Demo, check if authorized email
         const isMainAdmin = authorizedEmails.includes(user.email || '');
+        const isDemo = user.email === 'demo@sydv.org.tr';
         
-        if (!isMainAdmin) {
-          // If not one of the 2 authorized emails, they shouldn't be here
+        if (!isMainAdmin && !isDemo) {
+          // If not one of the authorized emails, they shouldn't be here
           toast.error('Bu bölüme erişim yetkiniz bulunmamaktadır.');
           router.push('/');
+          setIsLoading(false);
+          return;
+        }
+
+        if (isDemo) {
+          setIsAuthorized(true);
           setIsLoading(false);
           return;
         }

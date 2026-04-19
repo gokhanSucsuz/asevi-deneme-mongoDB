@@ -130,7 +130,7 @@ export default function GuidePage() {
                   </div>
                   <h4 className="font-bold text-gray-900 text-xl mb-3">İki Kademeli Onay</h4>
                   <p className="text-gray-600 leading-relaxed text-sm">
-                    Yeni personel kayıtları sistemde varsayılan olarak "Pasif" başlar. Tam erişim için yönetici onayı şarttır. 
+                    Yeni personel kayıtları sistemde varsayılan olarak &quot;Pasif&quot; başlar. Tam erişim için yönetici onayı şarttır. 
                     Şifreler sistem tarafında tek yönlü hashing (kırılmaz) yöntemiyle saklanır.
                   </p>
                 </div>
@@ -269,7 +269,7 @@ export default function GuidePage() {
                     <h4 className="font-bold text-gray-900 text-xl mb-2">İşlem Yapan Personel Takibi</h4>
                     <p className="text-gray-600 text-sm leading-relaxed">
                       Sistemde üretilen tüm PDF ve Excel raporlarında, işlemi gerçekleştiren personelin Adı Soyadı otomatik olarak alt bilgiye işlenir. 
-                      "Bilinmeyen Personel" hatasını önlemek için aktif oturum yönetimi aktiftir.
+                      &quot;Bilinmeyen Personel&quot; hatasını önlemek için aktif oturum yönetimi aktiftir.
                     </p>
                   </div>
                 </div>

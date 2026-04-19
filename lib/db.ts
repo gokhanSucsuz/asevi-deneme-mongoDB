@@ -1,10 +1,16 @@
 import { auth } from '../firebase';
 import { notifyDbChange } from './hooks';
 import { revalidateData } from './cache-actions';
+import * as MOCK from './mock-data';
 
 // Helper to check demo mode
+const isDemoMode = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('isDemoUser') === 'true' || auth.currentUser?.email === 'demo@sydv.org.tr';
+};
+
 const checkDemoMode = () => {
-  if (typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true') {
+  if (isDemoMode()) {
     throw new Error('Demo sürümünde veri değişikliği yapılamaz');
   }
 };
@@ -364,10 +370,12 @@ async function callApi(collection: string, operation: string, params: any = {}) 
 export const db = {
   households: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS;
       const data = await callApi('households', 'list');
       return data.map(processData) as Household[];
     },
     get: async (id: string) => {
+      if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.find(h => h.id === id) || null;
       const data = await callApi('households', 'get', { id });
       return processData(data) as Household;
     },
@@ -399,10 +407,12 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.filter(h => (h as any)[field] === val);
           const data = await callApi('households', 'list', { query: { [field]: val } });
           return data.map(processData) as Household[];
         },
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.find(h => (h as any)[field] === val) || null;
           const data = await callApi('households', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Household : null;
         },
@@ -415,16 +425,19 @@ export const db = {
   },
   drivers: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_DRIVERS;
       const data = await callApi('drivers', 'list');
       return data.map(processData) as Driver[];
     },
     filter: (fn: (d: Driver) => boolean) => ({
       toArray: async () => {
+        if (isDemoMode()) return MOCK.MOCK_DRIVERS.filter(fn);
         const all = await db.drivers.toArray();
         return all.filter(fn);
       }
     }),
     get: async (id: string) => {
+      if (isDemoMode()) return MOCK.MOCK_DRIVERS.find(d => d.id === id) || null;
       const data = await callApi('drivers', 'get', { id });
       return processData(data) as Driver;
     },
@@ -456,16 +469,19 @@ export const db = {
   },
   routes: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_ROUTES;
       const data = await callApi('routes', 'list');
       return data.map(processData) as Route[];
     },
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_ROUTES.filter(r => (r as any)[field] === val);
           const data = await callApi('routes', 'list', { query: { [field]: val } });
           return data.map(processData) as Route[];
         },
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_ROUTES.find(r => (r as any)[field] === val) || null;
           const data = await callApi('routes', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Route : null;
         },
@@ -513,10 +529,12 @@ export const db = {
   },
   routeStops: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_ROUTE_STOPS;
       const data = await callApi('route_stops', 'list');
       return data.map(processData) as RouteStop[];
     },
     get: async (id: string) => {
+      if (isDemoMode()) return MOCK.MOCK_ROUTE_STOPS.find(s => s.id === id) || null;
       const data = await callApi('route_stops', 'get', { id });
       return processData(data) as RouteStop;
     },
@@ -525,10 +543,12 @@ export const db = {
         return {
           equals: (val: any) => ({
             toArray: async () => {
+              if (isDemoMode()) return MOCK.MOCK_ROUTE_STOPS.filter(s => (s as any)[queryArg] === val);
               const data = await callApi('route_stops', 'list', { query: { [queryArg]: val } });
               return data.map(processData) as RouteStop[];
             },
             sortBy: async (sortField: string) => {
+              if (isDemoMode()) return [...MOCK.MOCK_ROUTE_STOPS.filter(s => (s as any)[queryArg] === val)].sort((a, b) => (a as any)[sortField] - (b as any)[sortField]);
               const data = await callApi('route_stops', 'list', { query: { [queryArg]: val }, sort: { [sortField]: 1 } });
               return data.map(processData) as RouteStop[];
             },
@@ -656,20 +676,24 @@ export const db = {
   },
   personnel: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_PERSONNEL;
       const data = await callApi('personnel', 'list');
       return data.map(processData) as Personnel[];
     },
     get: async (id: string) => {
+      if (isDemoMode()) return MOCK.MOCK_PERSONNEL.find(p => p.id === id) || null;
       const data = await callApi('personnel', 'get', { id });
       return processData(data) as Personnel;
     },
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_PERSONNEL.filter(p => (p as any)[field] === val);
           const data = await callApi('personnel', 'list', { query: { [field]: val } });
           return data.map(processData) as Personnel[];
         },
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_PERSONNEL.find(p => (p as any)[field] === val) || null;
           const data = await callApi('personnel', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as Personnel : null;
         },
@@ -705,11 +729,12 @@ export const db = {
   },
   system_logs: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_LOGS;
       const data = await callApi('system_logs', 'list', { sort: { timestamp: -1 } });
       return data.map(processData) as SystemLog[];
     },
     add: async (data: SystemLog) => {
-      checkDemoMode();
+      if (isDemoMode()) return 'mock-log-id';
       const res = await callApi('system_logs', 'add', { data });
       notifyDbChange('system_logs');
       return res.id;
@@ -722,16 +747,19 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_LOGS.filter(l => (l as any)[field] === val);
           const data = await callApi('system_logs', 'list', { query: { [field]: val }, sort: { timestamp: -1 } });
           return data.map(processData) as SystemLog[];
         },
         count: async () => {
+          if (isDemoMode()) return MOCK.MOCK_LOGS.filter(l => (l as any)[field] === val).length;
           const data = await callApi('system_logs', 'list', { query: { [field]: val } });
           return data.length;
         }
       }),
       greaterThanOrEqual: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_LOGS.filter(l => (l as any)[field] >= val);
           const data = await callApi('system_logs', 'list', { query: { [field]: { $gte: val } }, sort: { [field]: -1 } });
           return data.map(processData) as SystemLog[];
         }
@@ -740,16 +768,19 @@ export const db = {
   },
   working_days: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_WORKING_DAYS;
       const data = await callApi('working_days', 'list');
       return data.map(processData) as WorkingDay[];
     },
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_WORKING_DAYS.filter(d => (d as any)[field] === val);
           const data = await callApi('working_days', 'list', { query: { [field]: val } });
           return data.map(processData) as WorkingDay[];
         },
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_WORKING_DAYS.find(d => (d as any)[field] === val) || null;
           const data = await callApi('working_days', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as WorkingDay : null;
         },
@@ -783,6 +814,7 @@ export const db = {
   },
   breadTracking: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_BREAD;
       const data = await callApi('bread_tracking', 'list');
       return data.map(processData) as BreadTracking[];
     },
@@ -795,6 +827,7 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_BREAD.find(b => (b as any)[field] === val) || null;
           const data = await callApi('bread_tracking', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as BreadTracking : null;
         },
@@ -817,6 +850,7 @@ export const db = {
   },
   leftover_food: {
     toArray: async () => {
+      if (isDemoMode()) return [];
       const data = await callApi('leftover_food', 'list');
       return data.map(processData) as LeftoverFood[];
     },
@@ -829,10 +863,12 @@ export const db = {
     where: (field: string) => ({
       equals: (val: any) => ({
         first: async () => {
+          if (isDemoMode()) return null;
           const data = await callApi('leftover_food', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as LeftoverFood : null;
         },
         toArray: async () => {
+          if (isDemoMode()) return [];
           const data = await callApi('leftover_food', 'list', { query: { [field]: val } });
           return data.map(processData) as LeftoverFood[];
         }
@@ -846,6 +882,7 @@ export const db = {
   },
   tenders: {
     toArray: async () => {
+      if (isDemoMode()) return [];
       const data = await callApi('tenders', 'list', { sort: { createdAt: -1 } });
       return data.map(processData) as Tender[];
     },
@@ -879,10 +916,12 @@ export const db = {
   },
   surveys: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_SURVEYS;
       const data = await callApi('surveys', 'list', { sort: { createdAt: -1 } });
       return data.map(processData) as Survey[];
     },
     get: async (id: string) => {
+      if (isDemoMode()) return MOCK.MOCK_SURVEYS.find(s => s.id === id) || null;
       const data = await callApi('surveys', 'get', { id });
       return processData(data) as Survey;
     },
@@ -908,16 +947,19 @@ export const db = {
   },
   surveyResponses: {
     toArray: async () => {
+      if (isDemoMode()) return MOCK.MOCK_SURVEY_RESPONSES;
       const data = await callApi('survey_responses', 'list', { sort: { createdAt: -1 } });
       return data.map(processData) as SurveyResponse[];
     },
     where: (field: string) => ({
       equals: (val: any) => ({
         toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_SURVEY_RESPONSES.filter(sr => (sr as any)[field] === val);
           const data = await callApi('survey_responses', 'list', { query: { [field]: val } });
           return data.map(processData) as SurveyResponse[];
         },
         first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_SURVEY_RESPONSES.find(sr => (sr as any)[field] === val) || null;
           const data = await callApi('survey_responses', 'list', { query: { [field]: val }, limit: 1 });
           return data.length > 0 ? processData(data[0]) as SurveyResponse : null;
         }

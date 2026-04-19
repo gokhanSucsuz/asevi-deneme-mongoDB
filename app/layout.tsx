@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css'; // Global styles
 import { AuthProvider } from '@/components/AuthProvider';
 import { Toaster } from 'sonner';
+import { DemoBanner } from '@/components/DemoBanner';
 
 export const metadata: Metadata = {
   title: 'Aşevi Modülü - Edirne SYDV',
@@ -16,6 +17,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
+          <DemoBanner />
           {children}
           <Toaster position="top-center" />
         </AuthProvider>
