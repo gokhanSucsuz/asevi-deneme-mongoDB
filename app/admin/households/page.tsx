@@ -1652,7 +1652,7 @@ export default function HouseholdsPage() {
                               const existingResponse = surveyResponses?.find(r => r.surveyId === survey.id && r.householdId === selectedHouseholdForSurvey.id);
                               if (existingResponse) {
                                 const answersObj: Record<string, any> = {};
-                                existingResponse.answers.forEach(a => {
+                                existingResponse.answers.forEach((a: any) => {
                                   answersObj[a.questionId] = a.value;
                                 });
                                 setSurveyAnswers(answersObj);
