@@ -82,7 +82,7 @@ export default function LeftoverFoodPage() {
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     const doc = new jsPDF();
     const today = new Date();
     let filteredRecords = records;
