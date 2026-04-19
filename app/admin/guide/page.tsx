@@ -17,10 +17,10 @@ export default function GuidePage() {
     { name: 'Hane & Kurum Yönetimi', id: 'hane', icon: Users },
     { name: 'Rota & Dağıtım', id: 'rota', icon: Map },
     { name: 'Vakıf Teslimatı', id: 'truck', icon: Truck },
-    { name: 'Hız & Altyapı', id: 'cache', icon: Zap },
-    { name: 'Raporlama & Veri', id: 'rapor', icon: ClipboardList },
     { name: 'Anket & Memnuniyet', id: 'anket', icon: Plus },
-    { name: 'KVKK & Şifreleme', id: 'sifreleme', icon: ShieldCheck }
+    { name: 'Raporlama & Veri', id: 'rapor', icon: ClipboardList },
+    { name: 'KVKK & Şifreleme', id: 'sifreleme', icon: ShieldCheck },
+    { name: 'Sistem Bakımı', id: 'bakim', icon: Database }
   ];
 
   const handleTabChange = (id: string) => {
@@ -45,12 +45,12 @@ export default function GuidePage() {
               Aşevi Dağıtım <span className="text-blue-400">Kılavuzu</span>
             </h1>
             <p className="text-slate-400 text-sm md:text-base mt-2 max-w-2xl">
-              Vakıf operasyonlarının dijitalleşme standartlarını ve kullanım detaylarını içeren resmi yardım dokümanıdır.
+              Vakıf operasyonlarının dijitalleşme standartlarını, üst düzey güvenlik protokollerini ve kullanım detaylarını içeren resmi teknik dokümandır.
             </p>
           </div>
           <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 hidden md:block">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Sistem Sürümü</p>
-            <p className="text-lg font-black text-white">v3.1.0 (Nisan 2026)</p>
+            <p className="text-lg font-black text-white">v3.5.0 (Nisan 2026)</p>
           </div>
         </div>
         <div className="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl"></div>
@@ -99,10 +99,10 @@ export default function GuidePage() {
             <div className="bg-slate-900 p-6 rounded-3xl text-white shadow-lg hidden lg:block">
               <div className="flex items-center gap-2 mb-3 text-amber-400">
                 <ShieldCheck size={20} />
-                <span className="font-bold text-sm">Kesintisiz Hizmet</span>
+                <span className="font-bold text-sm">Zırhlı Altyapı</span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed italic">
-                Sistemimiz 256-bit AES şifreleme ve IndexedDB altyapısıyla hem güvenli hem de saha koşullarına uygun çalışmaktadır.
+                Sistemimiz askeri düzey AES-256 GCM şifreleme ve gelişmiş oturum koruması ile donatılmıştır.
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function GuidePage() {
                 </div>
                 <div>
                   <h2 className="text-4xl font-black text-gray-900 tracking-tight">Güvenlik ve Erişim</h2>
-                  <p className="text-gray-500 font-medium">Yetkilendirme ve denetim standartları</p>
+                  <p className="text-gray-500 font-medium">Kurumsal erişim denetimi ve kimlik doğrulama</p>
                 </div>
               </div>
               
@@ -128,21 +128,20 @@ export default function GuidePage() {
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                     <ShieldCheck className="text-blue-600" size={28} />
                   </div>
-                  <h4 className="font-bold text-gray-900 text-xl mb-3">Hiyerarşik Rol Yönetimi</h4>
+                  <h4 className="font-bold text-gray-900 text-xl mb-3">İki Kademeli Onay</h4>
                   <p className="text-gray-600 leading-relaxed text-sm">
-                    Personeller, Şoförler ve Yöneticiler için ayrı ayrı erişim katmanları tanımlanmıştır. 
-                    Yeni personeller sisteme kaydolduğunda, bir yönetici onaylayana kadar pasif modda bekletilir. 
-                    Bu sayede sisteme sızmaların önüne geçilir.
+                    Yeni personel kayıtları sistemde varsayılan olarak "Pasif" başlar. Tam erişim için yönetici onayı şarttır. 
+                    Şifreler sistem tarafında tek yönlü hashing (kırılmaz) yöntemiyle saklanır.
                   </p>
                 </div>
                 <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-200">
                   <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
                     <History className="text-indigo-600" size={28} />
                   </div>
-                  <h4 className="font-bold text-gray-900 text-xl mb-3">Gelişmiş Denetim İzleri</h4>
+                  <h4 className="font-bold text-gray-900 text-xl mb-3">Güvenli Oturumlar</h4>
                   <p className="text-gray-600 leading-relaxed text-sm">
-                    Sistem üzerinde gerçekleştirilen her türlü veri değişikliği (Ekleme, Silme, Güncelleme, Rapor Alma) 
-                    &quot;İşlem Geçmişi&quot; modülüne kriptolu olarak kaydedilir. Bu kayıtlar yasal mevzuat gereği KVKK uyumludur.
+                    Oturum bilgileri tarayıcıda düz metin yerine karmaşık obfuscation yöntemleriyle saklanır. 
+                    TC Kimlik No gibi hassas alanlar hiçbir zaman localStorage üzerinde şifresiz olarak bulunmaz.
                   </p>
                 </div>
               </div>
@@ -166,39 +165,22 @@ export default function GuidePage() {
                   <div className="flex-1 space-y-4">
                     <div className="flex items-center gap-2 font-bold text-lg text-gray-900">
                       <Search className="text-blue-600" size={20} />
-                      Akıllı Kayıt Arama
+                      Gelişmiş Filtreleme
                     </div>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      Ekiplerimiz binlerce kayıt arasından TC No, isim, mahalle veya sokak bilgisiyle anlık filtreleme yapabilir. 
-                      Adreslerdeki hatalı veri girişlerini önlemek için mahalle/sokak bazlı asistanlar devrededir.
+                      Ekiplerimiz binlerce kayıt arasından TC No, isim, mahalle veya kurum tipiyle anlık filtreleme yapabilir. 
+                      Arama sonuçları, veri gizliliği esasına göre maskelenerek sunulur.
                     </p>
                   </div>
                   <div className="flex-1 space-y-4">
                     <div className="flex items-center gap-2 font-bold text-lg text-gray-900">
                       <Smartphone className="text-blue-600" size={20} />
-                      Kurum Entegrasyonu
+                      Toplu Veri Aktarımı
                     </div>
                     <p className="text-gray-600 text-sm leading-relaxed">
-                      Yatılı okullar, vakıf yurtları ve sosyal tesisler sisteme &quot;Kurum&quot; olarak tanımlanır. 
-                      Bu sayede toplu yemek çıkışları tek bir kayıt üzerinden profesyonelce yönetilir.
+                      Sisteme binlerce hane kaydı tek bir Excel dosyası üzerinden saniyeler içinde yüklenebilir. 
+                      Yükleme sırasında numara formatları ve TC doğrulamaları otomatik yapılmaktadır.
                     </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                  <h5 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Info size={18} className="text-blue-600" />
-                    Kritik Bilgi: Durum Yönetimi
-                  </h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-semibold">
-                    <div className="bg-green-100/50 p-3 rounded-xl border border-green-200 flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-green-800">Aktif: Rotalarda her gün görünür</span>
-                    </div>
-                    <div className="bg-red-100/50 p-3 rounded-xl border border-red-200 flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-                      <span className="text-red-800">Pasif: Yardımı durdurulan hane</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -217,37 +199,26 @@ export default function GuidePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { num: '01', title: 'Rota Şablonları', desc: 'Her şoför için önceden planlanmış, mahalle ve sokak sıralı dağıtım listeleridir.' },
-                  { num: '02', title: 'Canlı Atama', desc: 'Her sabah şablonlardan o güne ait taze listeler oluşturulur ve şoför paneline düşer.' },
-                  { num: '03', title: 'Saha Geri Bildirim', desc: 'Şoförler teslimat anında fotoğraf veya açıklama ekleyerek durumu anlık günceller.' }
-                ].map((item, i) => (
-                  <div key={i} className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <span className="text-4xl font-black text-gray-100 block mb-3">{item.num}</span>
-                    <h5 className="font-bold text-gray-900 mb-2">{item.title}</h5>
-                    <p className="text-gray-500 text-xs leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
+              <div className="bg-white p-10 rounded-[2.5rem] border border-gray-200">
+                <h4 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-3">
+                  <Zap className="text-orange-600" />
+                  Global Sistem Kilidi
+                </h4>
+                <p className="text-gray-600 text-sm leading-relaxed mb-8">
+                  Yöneticiler, &quot;Sistem Yönetimi&quot; panelinden saha operasyonlarını tek tuşla durdurabilir. 
+                  Bu durumda şoförlerin mobil cihazlarındaki teslimat ekranları kilitlenir ve yetkisiz veri girişi engellenir.
+                </p>
 
-              <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
-                  <div className="flex-1 space-y-4 text-center md:text-left">
-                    <h3 className="text-2xl font-bold flex items-center gap-3 justify-center md:justify-start">
-                      <Zap className="text-amber-400" />
-                      Akıllı Tahsis Altyapısı
-                    </h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">
-                      Sistem, rotadaki hane sayılarını ve yemek porsiyonlarını otomatik toplayarak şoförün araca alması gereken &quot;Toplam Yemek&quot; ve &quot;Toplam Ekmek&quot; miktarını tek tıkla hesaplar. Bu sayede aşevinde hazırlık hataları sıfıra indirilmiştir.
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                    <h5 className="font-bold text-gray-900 mb-2">Rota Şablonları</h5>
+                    <p className="text-xs text-gray-500 leading-relaxed">Haneler için önceden hazırlanan sabit listelerdir.</p>
                   </div>
-                  <div className="bg-white/10 p-6 rounded-2xl border border-white/20 backdrop-blur-md">
-                    <div className="text-center font-bold text-3xl text-amber-400">%100</div>
-                    <div className="text-xs uppercase tracking-widest text-slate-300 font-bold mt-1">Hata Payı Engelleme</div>
+                  <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                    <h5 className="font-bold text-gray-900 mb-2">Canlı Listeler</h5>
+                    <p className="text-xs text-gray-500 leading-relaxed">Günlük olarak türetilen anlık çalışma kağıtlarıdır.</p>
                   </div>
                 </div>
-                <Database className="absolute -right-20 -bottom-20 text-white/5" size={250} />
               </div>
             </div>
           )}
@@ -264,64 +235,15 @@ export default function GuidePage() {
                 </div>
               </div>
 
-              <div className="bg-white p-10 rounded-[2.5rem] border border-gray-200 shadow-sm space-y-8">
-                <p className="text-gray-600 leading-relaxed font-medium text-lg">
-                  Bazı haneler ve tüm resmi kurumlar, yemeklerini vakıf binasına gelerek kendileri teslim almaktadır. Bu sürecin yönetimi şu adımları izler:
+              <div className="bg-white p-10 rounded-[2.5rem] border border-gray-200">
+                <p className="text-gray-600 leading-relaxed font-medium">
+                  Vakfa gelerek yemek alan haneler &quot;Piyanos (Pickup)&quot; listesi üzerinden yönetilir. 
+                  Bu teslimatlar şoför rotasından bağımsızdır ancak günlük ekmek sayımına dahildir.
                 </p>
-                
-                <div className="space-y-4">
-                  {[
-                    "Kategorizasyon: Bu kayıtlar 'Vakıf'tan Yemek Alanlar' olarak işaretlenir.",
-                    "Bağımsız Liste: Bu kayıtlar şoför rotalarında görünmez, operasyonu karıştırmaz.",
-                    "Toplu Onay: Rotalar sayfasındaki 'Piyanos (Pickup) Listesi' butonuyla tüm liste saniyeler içinde onaylanır.",
-                    "Ekmek Faktörü: Elden teslimat onayı verildiği an, o gün merkezden çıkacak ekmek sayısı da otomatik güncellenir."
-                  ].map((text, i) => (
-                    <div key={i} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-black shrink-0 text-sm">{i+1}</div>
-                      <span className="text-gray-800 font-semibold">{text}</span>
-                    </div>
-                  ))}
+                <div className="mt-6 flex items-center gap-4 p-5 bg-blue-50 rounded-2xl border border-blue-100 italic text-sm text-blue-800">
+                  <Info size={20} />
+                  Toplu yemek alan kurumlar da bu liste üzerinden saniyeler içinde onaylanır.
                 </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'cache' && (
-            <div className="space-y-8">
-              <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
-                <div className="bg-teal-500/10 p-4 rounded-2xl">
-                  <Zap className="text-teal-600" size={36} />
-                </div>
-                <div>
-                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Hız ve Altyapı</h2>
-                  <p className="text-gray-500 font-medium">IndexedDB ve Çevrimdışı Çalışma Mimarisi</p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-teal-600 to-indigo-800 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
-                <div className="relative z-10 space-y-6">
-                  <h3 className="text-2xl font-bold italic">Neden Bu Sistem Beklemez?</h3>
-                  <p className="text-teal-50 text-lg leading-relaxed font-light">
-                    Sistemimizde her bir hane kaydı, personelin tarayıcısına (IndexedDB) bir kez indirilir ve orada saklanır. 
-                    İnternet kopsa dahi arama yapabilir ve teslimat onaylayabilirsiniz. İnternet geldiği anda tüm işlemler 
-                    arka planda sunucuya senkronize edilir.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6">
-                    <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                      <div className="text-4xl font-black text-white">0 ms</div>
-                      <p className="text-xs font-bold text-teal-200 mt-2 uppercase tracking-tighter">Gecikme Süresi</p>
-                    </div>
-                    <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                      <div className="text-4xl font-black text-white">100%</div>
-                      <p className="text-xs font-bold text-teal-200 mt-2 uppercase tracking-tighter">Çevrimdışı Destek</p>
-                    </div>
-                    <div className="bg-white/10 p-6 rounded-2xl border border-white/20">
-                      <div className="text-4xl font-black text-white">Anlık</div>
-                      <p className="text-xs font-bold text-teal-200 mt-2 uppercase tracking-tighter">Sync Yeteneği</p>
-                    </div>
-                  </div>
-                </div>
-                <Smartphone className="absolute -right-16 -bottom-16 text-white/5" size={300} />
               </div>
             </div>
           )}
@@ -333,36 +255,27 @@ export default function GuidePage() {
                   <ClipboardList className="text-indigo-600" size={36} />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Raporlama ve Veri Analizi</h2>
-                  <p className="text-gray-500 font-medium">Profesyonel çıktı ve istatistik araçları</p>
+                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Raporlama ve Analiz</h2>
+                  <p className="text-gray-500 font-medium">Şeffaf ve denetlenebilir veri akışı</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-[2rem] border border-gray-200 space-y-6">
-                  <h4 className="text-xl font-bold flex items-center gap-3">
-                    <Download className="text-blue-600" />
-                    Resmi PDF Çıktıları
-                  </h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Valilik ve SYDV standartlarına uygun, antetli ve mühür alanlı PDF raporları üretilir. 
-                    PDF&apos;lerdeki Türkçe karakter sorunları özel font kütüphanelerimizle tamamen çözülmüştür.
-                  </p>
-                  <ul className="text-xs space-y-2 text-gray-500 font-medium">
-                    <li className="flex items-center gap-2 decoration-blue-500 underline underline-offset-4">Hane döküm listeleri</li>
-                    <li className="flex items-center gap-2 decoration-blue-500 underline underline-offset-4">Personel işlem günlükleri</li>
-                    <li className="flex items-center gap-2 decoration-blue-500 underline underline-offset-4">Yemek dağıtım sayıları</li>
-                  </ul>
+              <div className="bg-white p-8 rounded-[2rem] border border-gray-200 space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-indigo-50 p-3 rounded-xl shrink-0">
+                    <Users className="text-indigo-600" size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-xl mb-2">İşlem Yapan Personel Takibi</h4>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      Sistemde üretilen tüm PDF ve Excel raporlarında, işlemi gerçekleştiren personelin Adı Soyadı otomatik olarak alt bilgiye işlenir. 
+                      "Bilinmeyen Personel" hatasını önlemek için aktif oturum yönetimi aktiftir.
+                    </p>
+                  </div>
                 </div>
-                <div className="bg-white p-8 rounded-[2rem] border border-gray-200 space-y-6">
-                  <h4 className="text-xl font-bold flex items-center gap-3">
-                    <BarChart className="text-indigo-600" />
-                    Grafiksel Gösterim
-                  </h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Sayısal veriler sıkıcı olmaktan çıkarılarak pasta, sütun ve çizgi grafiklerine dönüştürülür. 
-                    Bu grafikler PDF raporlarına &quot;yüksek çözünürlüklü görsel&quot; olarak otomatik eklenir.
-                  </p>
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 mt-4">
+                  <h5 className="font-bold text-gray-900 mb-2 underline underline-offset-4 decoration-indigo-500">Resmi Formlar</h5>
+                  <p className="text-xs text-gray-500 leading-relaxed">Valilik standartlarına uygun antetli kağıt çıktıları saniyeler içinde hazırlanır.</p>
                 </div>
               </div>
             </div>
@@ -380,19 +293,19 @@ export default function GuidePage() {
                 </div>
               </div>
 
-              <div className="bg-white p-10 rounded-[3rem] border border-gray-200 space-y-8">
+              <div className="bg-white p-10 rounded-[3rem] border border-gray-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-4">
                     <h5 className="font-bold text-gray-900 text-lg">Hizmet Analizi</h5>
                     <p className="text-sm text-gray-600 leading-relaxed">
                       Saha ekipleri, haneleri ziyaret ettiğinde tabletler üzerinden anlık memnuniyet anketi uygulayabilir. 
-                      Yemek lezzeti, hijyen ve şoför davranışı gibi krallar gerçek verilerle ölçülür.
+                      Yemek lezzeti, hijyen and şoför davranışı gerçek verilerle ölçülür.
                     </p>
                   </div>
                   <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100">
-                    <h5 className="font-bold text-purple-900 mb-3">Soru Tipleri</h5>
+                    <h5 className="font-bold text-purple-900 mb-3 text-xs uppercase tracking-widest">Soru Tipleri</h5>
                     <div className="flex flex-wrap gap-2">
-                      {['Yıldız Puan', 'Çoktan Seçmeli', 'Video Onay', 'Açık Uçlu Metin'].map(t => (
+                      {['Yıldız Puan', 'Çoktan Seçmeli', 'Video Onay', 'Açık Uçlu'].map(t => (
                         <span key={t} className="bg-white text-purple-700 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">{t}</span>
                       ))}
                     </div>
@@ -402,7 +315,7 @@ export default function GuidePage() {
             </div>
           )}
 
-          {activeTab === 'sifreleme' && (activeTab === 'sifreleme') && (
+          {activeTab === 'sifreleme' && (
             <div className="space-y-8">
               <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
                 <div className="bg-amber-500/10 p-4 rounded-2xl">
@@ -410,39 +323,54 @@ export default function GuidePage() {
                 </div>
                 <div>
                   <h2 className="text-4xl font-black text-gray-900 tracking-tight">KVKK & Şifreleme</h2>
-                  <p className="text-gray-500 font-medium">Gelişmiş veri güvenliği protokolü</p>
+                  <p className="text-gray-500 font-medium">Askeri düzeyde veri güvenliği</p>
                 </div>
               </div>
 
               <div className="bg-slate-900 text-white p-10 md:p-14 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
                 <div className="relative z-10 space-y-10">
-                  <div className="inline-flex items-center gap-3 bg-amber-400 px-6 py-2 rounded-full text-slate-900 font-black uppercase tracking-widest text-xs">
-                    Askeri Standart (AES-256)
+                  <div className="inline-flex items-center gap-3 bg-blue-500 px-6 py-2 rounded-full text-white font-black uppercase tracking-widest text-xs">
+                    AES-256 GCM Şifreleme
                   </div>
                   
                   <h3 className="text-3xl md:text-5xl font-black leading-tight tracking-tighter">
-                    Kişisel Verileriniz, Bizde <br className="hidden md:block" />
-                    <span className="text-amber-400">Okunamaz</span> Şekilde Saklanır.
+                    Veritabanı Seviyesinde <br className="hidden md:block" />
+                    <span className="text-blue-400">Tam Koruma</span>
                   </h3>
                   
                   <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">
-                    TC Kimlik Numarası, Telefon Hattı ve Özel Notlar gibi hassas bilgiler; 
-                    veritabanına kaydedilirken rastgele karakterli şifreli bloklara dönüştürülür. 
-                    Bu verilerin anahtarı fiziksel olarak ayrı yerlerde saklanan sistem değişkenleridir.
+                    TC Kimlik Numarası, Telefon Hattı ve Hane Bilgileri; 
+                    veritabanına kaydedilirken AES-256 GCM metodu ile rastgele karakterli bloklara dönüştürülür. 
+                    Bu verilerin anahtarları sistem çekirdeğinde gizlidir.
                   </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
-                      <h5 className="font-bold text-white mb-2 uppercase text-xs tracking-widest text-amber-500">Tam Erişilemezlik</h5>
-                      <p className="text-xs text-slate-400 leading-normal">Bir veri tabanı yöneticisi dahi sizin bilginiz olmadan şifreli kolonlardaki TC dökümlerini göremez.</p>
-                    </div>
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-colors">
-                      <h5 className="font-bold text-white mb-2 uppercase text-xs tracking-widest text-amber-500">Loglanmış Erişim</h5>
-                      <p className="text-xs text-slate-400 leading-normal">Dataların decrypted (çözülmüş) haline sadece yetkili arayüzden ulaşılabilir ve bu her ulaşım loglanır.</p>
-                    </div>
-                  </div>
                 </div>
                 <Database className="absolute -right-20 -bottom-20 text-white/5" size={450} />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'bakim' && (
+            <div className="space-y-8">
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
+                <div className="bg-teal-500/10 p-4 rounded-2xl">
+                  <Database className="text-teal-600" size={36} />
+                </div>
+                <div>
+                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Sistem Bakımı</h2>
+                  <p className="text-gray-500 font-medium">Veri bütünlüğü ve yedekleme denetimi</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-[2rem] border border-gray-200">
+                <div className="space-y-6">
+                  <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                    <h4 className="font-bold text-gray-900 mb-2">10 Günlük Yedekleme Kuralı</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed italic">
+                      Yasal mevzuat ve veri güvenliği gereği, sistem yapılan her büyük operasyondan sonra manuel yedekleme ister. 
+                      Eğer 10 gün boyunca yedek alınmazsa sistem &quot;KRİTİK&quot; uyarı durumuna geçer.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -453,15 +381,15 @@ export default function GuidePage() {
       {/* Footer Branding */}
       <div className="mt-10 py-12 bg-white border-t border-gray-100 text-center">
         <div className="flex justify-center gap-3 mb-6">
-          <div className="w-10 h-1 bg-blue-600 rounded-full"></div>
           <div className="w-10 h-1 bg-red-600 rounded-full"></div>
           <div className="w-10 h-1 bg-blue-600 rounded-full"></div>
+          <div className="w-10 h-1 bg-red-600 rounded-full"></div>
         </div>
-        <p className="text-gray-900 font-black uppercase tracking-widest text-[10px] mb-2">
-          T.C. EDİRNE SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI
+        <p className="text-gray-900 font-black uppercase tracking-widest text-[10px] mb-2 px-4">
+          T.C. EDİRNE MERKEZ SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKIF BAŞKANLIĞI
         </p>
         <p className="text-gray-400 text-[10px] font-medium tracking-tight">
-          Aşevi Otomasyon Belgeleme v3.1 | © 2026 Tüm Hakları Saklıdır.
+          Aşevi Otomasyon Belgeleme v3.5 | © 2026 Tüm Hakları Saklıdır.
         </p>
       </div>
 

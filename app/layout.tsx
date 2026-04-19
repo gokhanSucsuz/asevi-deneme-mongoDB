@@ -4,13 +4,16 @@ import { AuthProvider } from '@/components/AuthProvider';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'Aşevi Modülü - SYDV',
-  description: 'Sosyal Yardımlaşma ve Dayanışma Vakfı Aşevi Yönetim Sistemi',
+  title: 'Aşevi Modülü - Edirne SYDV',
+  description: 'Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakıf Başkanlığı Aşevi Yönetim Sistemi',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en">
+    <html lang="tr">
+      <head>
+        <link rel="icon" href="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" />
+      </head>
       <body suppressHydrationWarning>
         <AuthProvider>
           {children}
