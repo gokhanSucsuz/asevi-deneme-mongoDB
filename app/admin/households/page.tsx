@@ -66,19 +66,19 @@ export default function HouseholdsPage() {
   // Summary Stats
   const stats = React.useMemo(() => {
     if (!allHouseholds) return { totalHouseholds: 0, totalPeople: 0, totalBread: 0, selfServiceHouseholds: 0, totalInstitutions: 0, householdPeople: 0, institutionPeople: 0, totalContainers: 0 };
-    const activeHouseholds = allHouseholds.filter(h => h.isActive);
-    const householdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household');
-    const institutionsOnly = activeHouseholds.filter(h => h.type === 'institution');
+    const activeHouseholds = allHouseholds.filter((h: Household) => h.isActive);
+    const householdsOnly = activeHouseholds.filter((h: Household) => !h.type || h.type === 'household');
+    const institutionsOnly = activeHouseholds.filter((h: Household) => h.type === 'institution');
     
-    const inRouteHouseholds = householdsOnly.filter(h => !h.isSelfService);
-    const selfServiceHouseholds = householdsOnly.filter(h => h.isSelfService);
+    const inRouteHouseholds = householdsOnly.filter((h: Household) => !h.isSelfService);
+    const selfServiceHouseholds = householdsOnly.filter((h: Household) => h.isSelfService);
     
     // Calculate containers: 
     // Households: If usesOwnContainer AND NOT isSelfService, add to ownContainerCount
     // Vakıf Container Count = Total People - Own Container Count
-    const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+    const totalPeople = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
     
-    const ownContainerCount = activeHouseholds.reduce((sum, h) => {
+    const ownContainerCount = activeHouseholds.reduce((sum: number, h: Household) => {
       if (h.usesOwnContainer) {
         return sum + (h.memberCount || 0);
       }
@@ -88,25 +88,25 @@ export default function HouseholdsPage() {
     const totalContainers = totalPeople - ownContainerCount;
     
     // Calculate total bread: Kahvaltı için ayrıca ekmek verilmiyor
-    const totalBread = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
+    const totalBread = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.breadCount || 0), 0);
     
-    const wantsBreakfastHouseholds = householdsOnly.filter(h => !h.noBreakfast);
-    const wantsBreakfastInstitutions = institutionsOnly.filter(h => !h.noBreakfast);
-    const noBreakfastHouseholds = householdsOnly.filter(h => h.noBreakfast);
-    const noBreakfastInstitutions = institutionsOnly.filter(h => h.noBreakfast);
+    const wantsBreakfastHouseholds = householdsOnly.filter((h: Household) => !h.noBreakfast);
+    const wantsBreakfastInstitutions = institutionsOnly.filter((h: Household) => !h.noBreakfast);
+    const noBreakfastHouseholds = householdsOnly.filter((h: Household) => h.noBreakfast);
+    const noBreakfastInstitutions = institutionsOnly.filter((h: Household) => h.noBreakfast);
     
     const wantsBreakfastTotal = wantsBreakfastHouseholds.length + wantsBreakfastInstitutions.length;
     const noBreakfastTotal = noBreakfastHouseholds.length + noBreakfastInstitutions.length;
     
-    const wantsBreakfastPeople = wantsBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + wantsBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
-    const noBreakfastPeople = noBreakfastHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0) + noBreakfastInstitutions.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+    const wantsBreakfastPeople = wantsBreakfastHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0) + wantsBreakfastInstitutions.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
+    const noBreakfastPeople = noBreakfastHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0) + noBreakfastInstitutions.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
     
     return {
       totalHouseholds: householdsOnly.length,
       totalInstitutions: institutionsOnly.length,
       totalPeople,
-      householdPeople: householdsOnly.reduce((sum, h) => sum + (h.memberCount || 0), 0),
-      institutionPeople: institutionsOnly.reduce((sum, h) => sum + (h.memberCount || 0), 0),
+      householdPeople: householdsOnly.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0),
+      institutionPeople: institutionsOnly.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0),
       totalBread,
       inRouteHouseholds: inRouteHouseholds.length,
       selfServiceHouseholds: selfServiceHouseholds.length,
@@ -119,7 +119,7 @@ export default function HouseholdsPage() {
     };
   }, [allHouseholds]);
 
-  const filteredHouseholds = allHouseholds?.filter(h => {
+  const filteredHouseholds = allHouseholds?.filter((h: Household) => {
     const search = normalizeTurkish(searchTerm);
     const matchesSearch = normalizeTurkish(h.headName).includes(search) || 
                           normalizeTurkish(h.address).includes(search) ||
@@ -251,7 +251,7 @@ export default function HouseholdsPage() {
       return;
     }
 
-    const found = allHouseholds?.find(h => 
+    const found = allHouseholds?.find((h: Household) => 
       (searchTcNo && h.tcNo === searchTcNo) || 
       (searchHouseholdNo && h.householdNo === searchHouseholdNo)
     );
@@ -475,7 +475,7 @@ export default function HouseholdsPage() {
 
     const loadingToast = toast.loading('Cevaplar kaydediliyor...');
     try {
-      const existingResponse = surveyResponses?.find(r => r.surveyId === activeSurvey.id && r.householdId === selectedHouseholdForSurvey.id);
+      const existingResponse = surveyResponses?.find((r: SurveyResponse) => r.surveyId === activeSurvey.id && r.householdId === selectedHouseholdForSurvey.id);
 
       const responseData = {
         surveyId: activeSurvey.id!,

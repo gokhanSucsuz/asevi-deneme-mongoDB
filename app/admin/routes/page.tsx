@@ -109,9 +109,9 @@ export default function RoutesPage() {
   useEffect(() => {
     const fixVakifCompletion = async () => {
       const targetDate = '2026-04-17';
-      const vakifRoute = (routes || []).find(r => r.date === targetDate && r.driverId === 'vakif_pickup');
+      const vakifRoute = (routes || []).find((r: Route) => r.date === targetDate && r.driverId === 'vakif_pickup');
       if (vakifRoute) {
-        const activeVakifHouseholds = households?.filter(h => h.isSelfService && h.isActive) || [];
+        const activeVakifHouseholds = households?.filter((h: Household) => h.isSelfService && h.isActive) || [];
         const stops = await db.routeStops.where('routeId').equals(vakifRoute.id!).toArray();
         let changed = false;
 
@@ -174,7 +174,7 @@ export default function RoutesPage() {
     return true;
   });
 
-  const filteredAvailableHouseholds = availableHouseholds?.filter(h => {
+  const filteredAvailableHouseholds = availableHouseholds?.filter((h: Household) => {
     if (!templateSearchTerm) return true;
     const search = normalizeTurkish(templateSearchTerm);
     return (
@@ -183,7 +183,7 @@ export default function RoutesPage() {
       (h.tcNo || '').includes(templateSearchTerm) ||
       (h.householdNo || '').toLowerCase().includes(search)
     );
-  }).sort((a, b) => {
+  }).sort((a: Household, b: Household) => {
     const fieldA = normalizeTurkish((a[templateSortField] || '').toString());
     const fieldB = normalizeTurkish((b[templateSortField] || '').toString());
     
@@ -194,7 +194,7 @@ export default function RoutesPage() {
     }
   });
 
-  const filteredDailyHouseholds = availableHouseholds?.filter(h => {
+  const filteredDailyHouseholds = availableHouseholds?.filter((h: Household) => {
     if (!dailySearchTerm) return true;
     const search = normalizeTurkish(dailySearchTerm);
     return (
@@ -203,7 +203,7 @@ export default function RoutesPage() {
       (h.tcNo || '').includes(dailySearchTerm) ||
       (h.householdNo || '').toLowerCase().includes(search)
     );
-  }).sort((a, b) => {
+  }).sort((a: Household, b: Household) => {
     const fieldA = normalizeTurkish((a[dailySortField] || '').toString());
     const fieldB = normalizeTurkish((b[dailySortField] || '').toString());
     
@@ -231,9 +231,9 @@ export default function RoutesPage() {
     if (template) {
       setEditingTemplate(template);
       setSelectedDriverId(template.driverId);
-      const tStops = routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || [];
-      const sortedStops = [...tStops].sort((a, b) => a.order - b.order);
-      setSelectedHouseholds(sortedStops.map(ts => ({ householdId: ts.householdId, order: ts.order })));
+      const tStops = routeTemplateStops?.filter((ts: RouteTemplateStop) => String(ts.templateId) === String(template.id)) || [];
+      const sortedStops = [...tStops].sort((a: RouteTemplateStop, b: RouteTemplateStop) => a.order - b.order);
+      setSelectedHouseholds(sortedStops.map((ts: RouteTemplateStop) => ({ householdId: ts.householdId, order: ts.order })));
     } else {
       setEditingTemplate(null);
       setSelectedDriverId('');

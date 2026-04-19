@@ -378,8 +378,8 @@ export default function SurveysPage() {
 
       {activeTab === 'list' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {surveys?.map(survey => {
-            const surveyResponses = responses?.filter(r => r.surveyId === survey.id) || [];
+          {surveys?.map((survey: Survey) => {
+            const surveyResponses = responses?.filter((r: SurveyResponse) => r.surveyId === survey.id) || [];
             return (
               <div key={survey.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="p-6">
@@ -462,7 +462,7 @@ export default function SurveysPage() {
               className="w-full md:w-96 rounded-xl border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-3"
             >
               <option value="">Anket Seçiniz...</option>
-              {surveys?.map(s => (
+              {surveys?.map((s: Survey) => (
                 <option key={s.id} value={s.id}>{s.title}</option>
               ))}
             </select>
@@ -499,7 +499,7 @@ export default function SurveysPage() {
                   <div className="flex items-end gap-2">
                     <span className="text-3xl font-black text-green-600">
                       {statsData.questionStats.length > 0 
-                        ? (statsData.questionStats.filter(q => q.type === 'rating').reduce((sum, q) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter(q => q.type === 'rating').length || 0).toFixed(1)
+                        ? (statsData.questionStats.filter((q: any) => q.type === 'rating').reduce((sum: number, q: any) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter((q: any) => q.type === 'rating').length || 0).toFixed(1)
                         : '0.0'
                       }
                     </span>
@@ -520,7 +520,7 @@ export default function SurveysPage() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {statsData.questionStats.map((q, idx) => (
+                {statsData.questionStats.map((q: any, idx: number) => (
                   <div key={q.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex justify-between items-start mb-6">
                       <h4 className="font-bold text-gray-900 pr-4">{idx + 1}. {q.text}</h4>
@@ -568,7 +568,7 @@ export default function SurveysPage() {
                               paddingAngle={5}
                               dataKey="value"
                             >
-                              {q.data.map((entry, index) => (
+                              {q.data.map((entry: any, index: number) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Pie>
@@ -584,7 +584,7 @@ export default function SurveysPage() {
                     {q.type === 'text' && (
                       <div className="space-y-3">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Son Cevaplar</p>
-                        {q.recentAnswers?.map((ans, i) => (
+                        {q.recentAnswers?.map((ans: any, i: number) => (
                           <div key={i} className="p-3 bg-gray-50 rounded-xl text-sm text-gray-700 border border-gray-100 italic">
                             &quot;{ans}&quot;
                           </div>

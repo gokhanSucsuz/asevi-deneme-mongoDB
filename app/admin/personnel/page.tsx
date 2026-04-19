@@ -90,14 +90,14 @@ export default function PersonnelPage() {
       }
 
       // Check if tcNo exists
-      const existingTcNo = personnelList?.find(p => p.tcNo === formData.tcNo && p.id !== editingPersonnel?.id);
+      const existingTcNo = personnelList?.find((p: Personnel) => p.tcNo === formData.tcNo && p.id !== editingPersonnel?.id);
       if (existingTcNo) {
         toast.error('Bu TC Kimlik No ile kayıtlı başka bir personel var.', { id: loadingToast });
         return;
       }
 
       // Check if email exists
-      const existingEmail = personnelList?.find(p => p.email === formData.email && p.id !== editingPersonnel?.id);
+      const existingEmail = personnelList?.find((p: Personnel) => p.email === formData.email && p.id !== editingPersonnel?.id);
       if (existingEmail) {
         toast.error('Bu e-posta adresi zaten kullanılıyor.', { id: loadingToast });
         return;
