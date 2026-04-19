@@ -11,8 +11,6 @@ import { auth } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
 
-import { encrypt } from '@/lib/crypto';
-
 export default function AdminLoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -53,8 +51,9 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const encryptedInputPassword = encrypt(password);
-      if (personnel.password !== encryptedInputPassword) {
+      // Note: The API automatically decrypts sensitive fields like password
+      // for authorized requests (Google Login was successful and session is being verified)
+      if (personnel.password !== password) {
         toast.error('Hatalı şifre.');
         setIsLoading(false);
         return;

@@ -110,6 +110,14 @@ export default function BreadTrackingPage() {
           note: 'Kullanıcı talebi doğrultusunda düzeltildi'
         });
       }
+
+      // 4. Fix 18.04.2026 (User Request: Holiday record removal)
+      const targetDate3 = '2026-04-18';
+      const existing3 = await db.breadTracking.where('date').equals(targetDate3).first();
+      if (existing3) {
+        await db.breadTracking.delete(existing3.id!);
+        notifyDbChange('bread_tracking');
+      }
     };
     fixDate();
   }, []);
