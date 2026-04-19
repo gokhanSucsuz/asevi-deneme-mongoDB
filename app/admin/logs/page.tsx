@@ -112,7 +112,7 @@ export default function SystemLogsPage() {
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       doc.text(`Rapor Dönemi: ${periodLabel}`, 14, finalY + 20);
-      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 283, finalY + 20, { align: 'right' });
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 283, 15, { align: 'right' });
       doc.text(`Filtreler: Kategori(${categoryFilter})`, 14, finalY + 25);
 
       const tableData = filteredLogs?.map((log) => [

@@ -195,6 +195,43 @@ export default function StatisticsPage() {
     }
   };
 
+  const [timeGroup, setTimeGroup] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+
+  // Time Series Aggregation
+  const timeSeriesData: Record<string, { name: string, y: number, food: number, bread: number }> = {};
+  
+  const getGroupKey = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (timeGroup === 'weekly') {
+      const start = startOfWeek(d, { weekStartsOn: 1 });
+      return safeFormat(start, 'dd MMM yyyy') + ' Haftası';
+    } else if (timeGroup === 'monthly') {
+      const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+      return months[d.getMonth()] + ' ' + d.getFullYear();
+    } else {
+      return d.getFullYear().toString();
+    }
+  };
+
+  deliveredStops.forEach(stop => {
+    const route = routes.find(r => r.id === stop.routeId);
+    if (!route?.date) return;
+    
+    const key = getGroupKey(route.date);
+    if (!timeSeriesData[key]) {
+      timeSeriesData[key] = { name: key, y: new Date(route.date).getTime(), food: 0, bread: 0 };
+    }
+    
+    const household = households.find(h => h.id === stop.householdId);
+    const count = stop.householdSnapshotMemberCount || household?.memberCount || 0;
+    const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? count;
+    
+    timeSeriesData[key].food += count;
+    timeSeriesData[key].bread += breadCount;
+  });
+
+  const chartData = Object.values(timeSeriesData).sort((a, b) => a.y - b.y);
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -309,6 +346,55 @@ export default function StatisticsPage() {
               <div className="h-full w-full flex items-center justify-center text-gray-400">Veri yok</div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="mt-8 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-bold text-gray-800">Zaman İçinde Teslimat Analizi</h3>
+          <div className="flex border rounded-lg overflow-hidden text-sm">
+            <button 
+              onClick={() => setTimeGroup('weekly')}
+              className={`px-4 py-2 ${timeGroup === 'weekly' ? 'bg-blue-600 text-white font-medium' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+            >
+              Haftalık
+            </button>
+            <button 
+              onClick={() => setTimeGroup('monthly')}
+              className={`px-4 py-2 border-l border-r ${timeGroup === 'monthly' ? 'bg-blue-600 text-white font-medium' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+            >
+              Aylık
+            </button>
+            <button 
+              onClick={() => setTimeGroup('yearly')}
+              className={`px-4 py-2 ${timeGroup === 'yearly' ? 'bg-blue-600 text-white font-medium' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+            >
+              Yıllık
+            </button>
+          </div>
+        </div>
+        
+        <div className="h-[400px] w-full">
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any, name: string) => [value, name === 'food' ? 'Dağıtılan Yemek' : 'Dağıtılan Ekmek']}
+                />
+                <Legend />
+                <Bar dataKey="food" name="Yemek Porsiyonu" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="bread" name="Ekmek" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-gray-400">
+              Bu zaman dilimi için yeterli veri bulunamadı.
+            </div>
+          )}
         </div>
       </div>
     </div>

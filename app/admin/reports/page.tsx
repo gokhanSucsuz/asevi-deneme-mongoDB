@@ -279,7 +279,7 @@ export default function ReportsPage() {
       
       doc.setFontSize(10);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 22, { align: 'right' });
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
       
       const startStr = safeFormat(effectiveStartDate, 'dd.MM.yyyy');
       const endStr = safeFormat(effectiveEndDate, 'dd.MM.yyyy');

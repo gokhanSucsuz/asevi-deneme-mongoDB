@@ -227,7 +227,7 @@ export default function DriversPage() {
       doc.setFontSize(10);
       doc.text(`Araç Plakası: ${driverToReport.vehiclePlate}`, 40, 31);
       doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${periodLabel})`, 40, 37);
-      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 43);
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 35);
 
       // Summary Table
       autoTable(doc, {
