@@ -125,7 +125,7 @@ export default function RoutesPage() {
 
         // 2. Add missing stops as delivered
         for (const h of activeVakifHouseholds) {
-          const hasStop = stops.some(s => s.householdId === h.id);
+          const hasStop = stops.some((s: RouteStop) => s.householdId === h.id);
           if (!hasStop) {
             await db.routeStops.add({
               routeId: vakifRoute.id!,
