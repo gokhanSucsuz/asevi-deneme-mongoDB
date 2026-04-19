@@ -13,6 +13,7 @@ import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/components/AuthProvider';
 import { toPng } from 'html-to-image';
+import { addSystemLog } from '@/lib/logger';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -21,7 +22,7 @@ import {
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function ReportsPage() {
-  const { user } = useAuth();
+  const { user, personnel } = useAuth();
   const [reportType, setReportType] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | 'failed'>('daily');
   const [startDate, setStartDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
@@ -390,7 +391,7 @@ export default function ReportsPage() {
       }
 
       addReportFooter(doc, personnelName);
-      await addLog('Rapor İndirme', `${effectiveStartDate} - ${effectiveEndDate} tarihleri arasını kapsayan Detaylı İstatistik Raporu (PDF) indirildi.`);
+      await addSystemLog(user, personnel, 'Rapor İndirme', `${effectiveStartDate} - ${effectiveEndDate} tarihleri arasını kapsayan Detaylı İstatistik Raporu (PDF) indirildi.`, 'report');
       doc.save(`Asevi_Istatistik_Raporu_${effectiveStartDate}_${effectiveEndDate}.pdf`);
       toast.success('PDF raporu başarıyla oluşturuldu', { id: loadingToast });
     } catch (error) {
