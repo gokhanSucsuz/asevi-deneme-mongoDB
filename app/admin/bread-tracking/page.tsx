@@ -121,19 +121,28 @@ export default function BreadTrackingPage() {
       // 5. Fix 17.04.2026 (User Request: Last working day rule)
       const targetDate4 = '2026-04-17';
       const existing4 = await db.breadTracking.where('date').equals(targetDate4).first();
+      // User says: total need 507, order should be 507. 
+      // Ensure finalOrderAmount equals totalNeeded (ignoring leftovers for calculation)
+      const exactTotalNeeded = 507;
+      
       if (existing4) {
-        // Find totalNeeded from households
-        const households = await db.households.toArray();
-        const active = households.filter(h => h.isActive && (!h.pausedUntil || h.pausedUntil < targetDate4));
-        const totalNeeded = active.reduce((sum, h) => sum + (h.breadCount || h.memberCount || 0), 0);
-        
-        if (existing4.finalOrderAmount !== totalNeeded) {
+        if (existing4.totalNeeded !== exactTotalNeeded || existing4.finalOrderAmount !== exactTotalNeeded) {
           await db.breadTracking.update(existing4.id!, { 
-            totalNeeded,
-            finalOrderAmount: totalNeeded,
-            note: 'Haftanın son iş günü kuralı uygulandı' 
+            totalNeeded: exactTotalNeeded,
+            finalOrderAmount: exactTotalNeeded,
+            note: 'Haftanın son iş günü kuralı (507) uygulandı' 
           });
         }
+      } else {
+        await db.breadTracking.add({
+          date: targetDate4,
+          totalNeeded: exactTotalNeeded,
+          delivered: 0,
+          leftoverAmount: 0,
+          finalOrderAmount: exactTotalNeeded,
+          status: 'ordered',
+          note: 'Haftanın son iş günü kuralı (507) gereği oluşturuldu'
+        });
       }
 
       notifyDbChange('bread_tracking');

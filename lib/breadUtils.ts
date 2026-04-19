@@ -52,7 +52,7 @@ export async function calculateBreadForNextDay(dateStr: string) {
     });
 
     const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
-    totalNeeded = activeHouseholds.reduce((sum, h) => sum + (h.breadCount || 0), 0);
+    totalNeeded = activeHouseholds.reduce((sum, h) => sum + (h.breadCount ?? h.memberCount ?? 0), 0);
 
     // Calculate ownContainerCount
     const ownContainerCount = activeHouseholds.reduce((sum, h) => {
