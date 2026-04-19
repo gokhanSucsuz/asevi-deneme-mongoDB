@@ -11,6 +11,7 @@ import { normalizeTurkish } from '@/lib/utils';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
+import { addSystemLog } from '@/lib/logger';
 
 export default function SystemLogsPage() {
   const { user, personnel } = useAuth();
