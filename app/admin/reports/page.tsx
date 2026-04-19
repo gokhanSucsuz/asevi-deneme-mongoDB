@@ -390,6 +390,7 @@ export default function ReportsPage() {
       }
 
       addReportFooter(doc, personnelName);
+      await addLog('Rapor İndirme', `${effectiveStartDate} - ${effectiveEndDate} tarihleri arasını kapsayan Detaylı İstatistik Raporu (PDF) indirildi.`);
       doc.save(`Asevi_Istatistik_Raporu_${effectiveStartDate}_${effectiveEndDate}.pdf`);
       toast.success('PDF raporu başarıyla oluşturuldu', { id: loadingToast });
     } catch (error) {

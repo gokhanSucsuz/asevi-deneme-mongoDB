@@ -5,10 +5,11 @@ import { useAppQuery } from '@/lib/hooks';
 import { db } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
 import { BarChart as BarChartIcon, Users, Truck, CheckCircle, XCircle, FileText } from 'lucide-react';
-import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
+import { addReportFooter, addVakifLogo, getTurkishPdf } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
+import { addSystemLog } from '@/lib/logger';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { safeFormat } from '@/lib/date-utils';
 
@@ -36,6 +37,8 @@ export default function StatisticsPage() {
   const leftoverFood = useAppQuery(() => db.leftover_food.toArray(), [], 'leftover_food');
 
   const [isMounted, setIsMounted] = useState(false);
+  const [timeGroup, setTimeGroup] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
@@ -187,6 +190,7 @@ export default function StatisticsPage() {
       });
 
       addReportFooter(doc, personnelName);
+      await addSystemLog(user, personnel, 'Rapor İndirme', 'Genel Aşevi Dağıtım İstatistikleri (PDF) indirildi.', 'report');
       doc.save(`Asevi_Genel_Istatistikler_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
     } catch (error) {
@@ -194,8 +198,6 @@ export default function StatisticsPage() {
       toast.error('Rapor oluşturulurken bir hata oluştu', { id: loadingToast });
     }
   };
-
-  const [timeGroup, setTimeGroup] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Time Series Aggregation
   const timeSeriesData: Record<string, { name: string, y: number, food: number, bread: number }> = {};
@@ -374,9 +376,9 @@ export default function StatisticsPage() {
           </div>
         </div>
         
-        <div className="h-[400px] w-full">
+        <div className="h-[400px] w-full min-h-[400px]">
           {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={400}>
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} dy={10} />

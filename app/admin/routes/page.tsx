@@ -1005,6 +1005,7 @@ export default function RoutesPage() {
     doc.text('İmza', doc.internal.pageSize.width - 40, finalY + 10, { align: 'center' });
 
     addReportFooter(doc, personnelName);
+    await addLog('Rapor İndirme', `${safeFormat(route.date, 'yyyy-MM-dd')} tarihli ${driverName} Dağıtım Listesi (PDF) indirildi.`);
     doc.save(`Dagitim_Listesi_${safeFormat(route.date, 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
   };
 
@@ -1163,6 +1164,7 @@ export default function RoutesPage() {
     doc.text("İmza", doc.internal.pageSize.width - 60, signatureY + 12, { align: 'center' });
 
     addReportFooter(doc, personnelName);
+    await addLog('Rapor İndirme', `${safeFormat(route.date, 'yyyy-MM-dd')} tarihli ${driverName} Günlük Yemek Dağıtım Tutanağı (PDF) indirildi.`);
     doc.save(`Gunluk_Yemek_Dagitim_Tutanagi_${safeFormat(route.date, 'yyyy-MM-dd')}_${driverName.replace(/\s+/g, '_')}.pdf`);
   };
 
@@ -1292,6 +1294,7 @@ export default function RoutesPage() {
     });
 
     addReportFooter(doc, personnelName);
+    await addLog('Rapor İndirme', `${startDateStr} haftasına ait ${driver.name} Haftalık Çizelge (PDF) indirildi.`);
     doc.save(`Haftalik_Cizelge_${driver.name.replace(/\s+/g, '_')}_${startDateStr}.pdf`);
   };
 
@@ -1332,6 +1335,7 @@ export default function RoutesPage() {
     });
 
     addReportFooter(doc, personnelName);
+    await addLog('Rapor İndirme', `Son ${months} aylık İşlem Geçmişi Raporu (PDF) indirildi.`);
     doc.save(`Islem_Gecmisi_Son_${months}_Ay.pdf`);
   };
 

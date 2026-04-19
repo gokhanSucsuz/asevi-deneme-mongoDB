@@ -128,7 +128,8 @@ export default function LeftoverFoodPage() {
     
     doc.setFont('helvetica', 'bold');
     doc.text(`Toplam Artan Yemek: ${totalQuantity} Porsiyon`, 14, finalY + 10);
-
+    
+    await addSystemLog(user, personnel, 'Rapor İndirme', `${reportType === 'monthly' ? 'Aylık' : reportType === 'weekly' ? 'Haftalık' : 'Günlük'} Artan Yemek Raporu (PDF) indirildi.`, 'report');
     doc.save(`artan_yemek_raporu_${safeFormat(today, 'yyyy-MM-dd')}.pdf`);
   };
 

@@ -329,6 +329,7 @@ export default function DriversPage() {
       }
 
       addReportFooter(doc, personnelName);
+      await addLog('Rapor İndirme', `${driverToReport.name} şoförüne ait performans ve faaliyet raporu (PDF) indirildi.`);
       doc.save(`Sofor_Performans_${driverToReport.name.replace(/\s+/g, '_')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
       setReportModalOpen(false);

@@ -22,6 +22,9 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
+import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -210,6 +213,69 @@ export default function SurveysPage() {
     };
   }, [selectedSurveyForStats, responses, surveys, households]);
 
+  const exportSurveyPDF = async () => {
+    if (!statsData || !statsData.survey) return;
+    const loadingToast = toast.loading('Anket PDF\'i hazırlanıyor (grafikler işleniyor)...');
+    
+    try {
+      const doc = await getTurkishPdf('portrait');
+      let finalY = await addVakifLogo(doc, 14, 10, 20);
+
+      doc.setFontSize(12);
+      doc.setFont('Roboto', 'bold');
+      doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+      doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+      
+      doc.setFontSize(14);
+      doc.text('ANKET SONUÇ RAPORU', doc.internal.pageSize.width / 2, 35, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
+
+      doc.text(`Anket: ${statsData.survey.title}`, 14, 45);
+      doc.text(`Katılan Hane: ${statsData.totalHouseholds}`, 14, 50);
+      doc.text(`Ulaşılan Kişi (Porsiyon): ${statsData.totalPeopleReached}`, 14, 55);
+
+      finalY = 65;
+
+      const chartElements = document.querySelectorAll('.survey-chart-container');
+      for (let i = 0; i < chartElements.length; i++) {
+        const el = chartElements[i] as HTMLElement;
+        const qTitle = el.getAttribute('data-title');
+        
+        // Take a snapshot
+        const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/png');
+        
+        if (finalY > 230) {
+          doc.addPage();
+          finalY = 20;
+        }
+
+        doc.setFont('Roboto', 'bold');
+        doc.text(`${i + 1}. ${qTitle}`, 14, finalY);
+        finalY += 5;
+        
+        // Calculate dynamic dimensions
+        const imgProps = doc.getImageProperties(imgData);
+        const pdfWidth = doc.internal.pageSize.getWidth() - 28; // 14 margin each side
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        doc.addImage(imgData, 'PNG', 14, finalY, pdfWidth, pdfHeight);
+        finalY += pdfHeight + 15;
+      }
+      
+      await addLog('Anket Raporu', `${statsData.survey.title} anketinin PDF raporu indirildi.`);
+      addReportFooter(doc, personnelName);
+      doc.save(`Anket_Rapor_PDF_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
+      toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
+    } catch (e) {
+      console.error(e);
+      toast.error('Rapor oluşturulamadı.', { id: loadingToast });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -389,6 +455,16 @@ export default function SurveysPage() {
                   <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Ortalama Memnuniyet</p>
                 </div>
               </div>
+              
+              <div className="flex justify-end w-full mb-4">
+                <button
+                  onClick={exportSurveyPDF}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 flex items-center shadow-sm transition-all"
+                >
+                  <BarChart3 size={18} className="mr-2" />
+                  PDF Rapor İndir
+                </button>
+              </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {statsData.questionStats.map((q, idx) => (
@@ -401,7 +477,7 @@ export default function SurveysPage() {
                     </div>
 
                     {q.type === 'rating' && (
-                      <div className="space-y-6">
+                      <div className="space-y-6 survey-chart-container" data-title={q.text}>
                         <div className="flex items-center gap-4">
                           <div className="text-4xl font-black text-indigo-600">{q.average}</div>
                           <div className="text-sm text-gray-500">
@@ -427,7 +503,7 @@ export default function SurveysPage() {
                     )}
 
                     {(q.type === 'select' || q.type === 'radio') && (
-                      <div className="h-64">
+                      <div className="h-64 survey-chart-container" data-title={q.text}>
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie

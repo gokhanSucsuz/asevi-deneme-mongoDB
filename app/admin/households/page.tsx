@@ -570,6 +570,7 @@ export default function HouseholdsPage() {
       });
 
       addReportFooter(doc, personnelName);
+      await addLog('Rapor İndirme', `${householdToReport.headName} hanesinin faaliyet raporu (PDF) indirildi.`);
       doc.save(`Hane_Raporu_${householdToReport.headName.replace(/\s+/g, '_')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });
       setReportModalOpen(false);

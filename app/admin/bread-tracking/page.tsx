@@ -412,6 +412,7 @@ export default function BreadTrackingPage() {
       });
 
       addReportFooter(doc, user?.displayName || 'Sistem Yöneticisi');
+      await addSystemLog(user, personnel, 'Rapor İndirme', `${startDate} - ${endDate} dönemi Ekmek ve Kap Takip Raporu (PDF) indirildi.`, 'report');
       doc.save(`ekmek-takip-raporu-${startDate}-${endDate}.pdf`);
       toast.success('Rapor başarıyla indirildi.', { id: loadingToast });
     } catch (error) {
