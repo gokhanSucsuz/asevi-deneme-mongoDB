@@ -145,14 +145,14 @@ export default function SurveysPage() {
 
     const totalPeopleReached = surveyResponses.reduce((sum, r) => sum + getWeights(r), 0);
 
-    const questionStats = survey.questions.map(q => {
+    const questionStats = survey.questions.map((q: SurveyQuestion) => {
       if (q.type === 'rating') {
         const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         let totalWeightedScore = 0;
         let totalWeightedResponses = 0;
 
-        surveyResponses.forEach(r => {
-          const val = r.answers.find(a => a.questionId === q.id)?.value;
+        surveyResponses.forEach((r: SurveyResponse) => {
+          const val = r.answers.find((a: any) => a.questionId === q.id)?.value;
           const weight = getWeights(r);
           if (val !== undefined && counts[val] !== undefined) {
             counts[val] += weight;
