@@ -221,19 +221,31 @@ export default function DriversPage() {
       }
 
       doc.setFontSize(14);
-      doc.text('Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı', 40, 18);
+      doc.setFont('Roboto', 'bold');
+      doc.text('T.C.', doc.internal.pageSize.width / 2, 15, { align: 'center' });
+      doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 22, { align: 'center' });
+      
       doc.setFontSize(12);
-      doc.text(`${driverToReport.name} - Şoför Performans Raporu`, 40, 25);
+      doc.text('ŞOFÖR PERFORMANS VE DAĞITIM RAPORU', doc.internal.pageSize.width / 2, 32, { align: 'center' });
+
+      doc.setFont('Roboto', 'bold');
       doc.setFontSize(10);
-      doc.text(`Araç Plakası: ${driverToReport.vehiclePlate}`, 40, 31);
-      doc.text(`Dönem: ${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${periodLabel})`, 40, 37);
-      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, 40, 35);
+      doc.text('Personel / Şoför:', 14, 45);
+      doc.text('Araç Plakası:', 14, 51);
+      doc.text('Rapor Dönemi:', 14, 57);
+      
+      doc.setFont('Roboto', 'normal');
+      doc.text(driverToReport.name || '-', 42, 45);
+      doc.text(driverToReport.vehiclePlate || '-', 42, 51);
+      doc.text(`${safeFormat(startDate, 'dd.MM.yyyy')} - ${safeFormat(endDate, 'dd.MM.yyyy')} (${periodLabel})`, 42, 57);
+      
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 45, { align: 'right' });
 
       // Summary Table
       autoTable(doc, {
         head: [['Toplam KM', 'Hane Teslimatı', 'Ulaşılan Kişi', 'Başarısız Gidilen', 'Toplam Rota']],
         body: [[totalKm, totalHouseholdDeliveries, totalDeliveredPeople, totalFailedStops, driverRoutes.length]],
-        startY: 50,
+        startY: 65,
         styles: { font: 'Roboto', fontSize: 10, halign: 'center' },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [41, 128, 185] }
       });

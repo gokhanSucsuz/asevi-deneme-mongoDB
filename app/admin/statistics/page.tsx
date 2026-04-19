@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db } from '@/lib/db';
 import { format, startOfMonth, endOfMonth, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { addSystemLog } from '@/lib/logger';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { safeFormat } from '@/lib/date-utils';
+import { toPng } from 'html-to-image';
 
 const RADIAN = Math.PI / 180;
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, value }: any) => {
@@ -38,6 +39,7 @@ export default function StatisticsPage() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [timeGroup, setTimeGroup] = useState<'weekly' | 'monthly' | 'yearly'>('monthly');
+  const chartRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -189,6 +191,56 @@ export default function StatisticsPage() {
         headStyles: { fillColor: [79, 70, 229] }
       });
 
+      if (chartRef.current) {
+        try {
+          const originalStyle = chartRef.current.style.backgroundColor;
+          chartRef.current.style.backgroundColor = 'white';
+          
+          const imgData = await toPng(chartRef.current, { 
+            quality: 0.95,
+            backgroundColor: '#ffffff',
+            pixelRatio: 2,
+            filter: (node) => {
+              if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
+              return true;
+            }
+          });
+          
+          chartRef.current.style.backgroundColor = originalStyle;
+          
+          let finalY = (doc as any).lastAutoTable.finalY + 10;
+          if (finalY + 100 > doc.internal.pageSize.height) {
+            doc.addPage();
+            finalY = 20;
+          }
+          
+          doc.setFont('Roboto', 'bold');
+          doc.text('GÖRSEL ANALİZ (TÜM İSTATİSTİKLER)', 14, finalY);
+          
+          const imgWidth = doc.internal.pageSize.width - 28;
+          const img = new Image();
+          img.src = imgData;
+          await new Promise((resolve) => { img.onload = resolve; });
+          const imgHeight = (img.height * imgWidth) / img.width;
+          
+          // If image is too tall for current page, add new page
+          if (finalY + 5 + imgHeight > doc.internal.pageSize.height) {
+            doc.addPage();
+            finalY = 20;
+            doc.setFont('Roboto', 'bold');
+            doc.text('GÖRSEL ANALİZ (Devamı)', 14, finalY);
+          }
+          
+          doc.addImage(imgData, 'PNG', 14, finalY + 5, imgWidth, imgHeight);
+        } catch (chartError) {
+          console.error('Error capturing charts for PDF:', chartError);
+          // fall back gracefully
+          doc.addPage();
+          doc.setFont('Roboto', 'bold');
+          doc.text('GÖRSEL ANALİZ (Grafikler yüklenemedi)', 14, 20);
+        }
+      }
+
       addReportFooter(doc, personnelName);
       await addSystemLog(user, personnel, 'Rapor İndirme', 'Genel Aşevi Dağıtım İstatistikleri (PDF) indirildi.', 'report');
       doc.save(`Asevi_Genel_Istatistikler_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
@@ -241,6 +293,7 @@ export default function StatisticsPage() {
         <button onClick={exportToPDF} className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">PDF İndir</button>
       </div>
 
+      <div ref={chartRef} className="p-2 -m-2 bg-transparent">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Toplam Yemek (Porsiyon)</h3>
@@ -398,6 +451,7 @@ export default function StatisticsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
