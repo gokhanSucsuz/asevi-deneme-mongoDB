@@ -1,20 +1,45 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Edirne SYDV Aşevi Yönetim Sistemi - Teknik Kılavuz & Kurulum
 
-# Run and deploy your AI Studio app
+Bu doküman, T.C. Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı için geliştirilen Aşevi Modülü'nün (v3.5) teknik mimarisini, güvenlik protokollerini ve lojistik işleyişini içermektedir.
 
-This contains everything you need to run your app locally.
+## 🚀 Proje Hakkında
+Sistem; Edirne genelindeki ihtiyaç sahibi hanelere ve resmi kurumlara günlük sıcak yemek dağıtım sürecini dijitalize etmek, rotaları akıllı algoritmalarla optimize etmek ve tam denetlenebilir bir raporlama ekosistemi oluşturmak amacıyla geliştirilmiştir.
 
-View your app in AI Studio: https://ai.studio/apps/4dd031de-6ffd-4ede-bfcf-8bda88c030dc
+## 🛠 Teknik Altyapı (Full-Stack)
+- **Framework:** Next.js 15+ (App Router) & React 19
+- **Veritabanı:** Firestore (Cloud) & Dexie.js (Client-side IndexedDB Cache)
+- **Güvenlik Çekirdeği:** AES-256 GCM Veri Şifreleme, HMAC-SHA256 Integrity
+- **Stil Yönetimi:** Tailwind CSS (Modern Utility-First)
+- **İkon Seti:** Lucide React (Professional SVG)
+- **Raporlama:** jsPDF (Custom UTF-8 Fonts), XLSX, Recharts (Data Viz)
 
-## Run Locally
+## 🔒 Güvenlik Standartları
 
-**Prerequisites:**  Node.js
+### 1. Askeri Düzey AES-256 Şifreleme (KVKK)
+Kişisel Verilerin Korunması Kanunu çerçevesinde; TC Kimlik No, İsim ve Telefon numaraları gibi hassas veriler veritabanına asla düz metin olarak kaydedilmez. Tüm hassas kolonlar **AES-256 GCM** ile şifrelenir.
 
+### 2. Akıllı Oturum Denetimi & Obfuscation
+Oturum verileri (Personel bilgileri, Yetki seviyeleri) tarayıcı hafızasında düz metin yerine çok katmanlı karartma (obfuscation) yöntemleriyle saklanır. TC Kimlik No gibi alanlar bellek üzerinde şifresiz tutulmaz.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 3. Global Sistem Kilidi
+Acil durumlarda veya operasyonel molalarda, yöneticiler tüm saha teslimatlarını tek merkezden pasifize edebilir. Bu kilit aktif olduğunda şoför cihazları anlık olarak kilitlenir.
+
+## 📦 Lojistik ve Dağıtım Modülleri
+- **Akıllı Rota Planlama:** Mahalle bazlı hane dökümleri ve statik/dinamik rota şablonları.
+- **Vakıf Elden Teslimat (Piyanos):** Bina içinden yapılan teslimatların bağımsız ve hızlı yönetimi.
+- **Dijital Dağıtım Çetelesi:** Şoförlerin mobil cihazlarından anlık teslimat onayı ve ekmek sayımı.
+
+## 📊 Raporlama ve Personel Takibi
+- **Denetlenebilir Kayıtlar:** Her rapor ve işlem, işlemi yapan personelin kimlik bilgileriyle (Ad Soyad) mühürlenir.
+- **Resmi PDF Çıktıları:** Valilik standartlarında, antetli ve yüksek çözünürlüklü grafiklerle desteklenen raporlar.
+
+## 📂 Geliştirici Yol Haritası
+- `/app/admin`: İdari yönetim ve denetim modülleri.
+- `/app/driver`: Saha ekipleri için optimize edilmiş mobil arayüz.
+- `/lib/crypto.ts`: End-to-end şifreleme motoru.
+- `/lib/db.ts`: Çevrimdışı öncelikli veritabanı senkronizasyonu.
+
+Tasarım ve Geliştirme => Gökhan SUÇSUZ
+---
+Edirne Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı
+*Vakıf Standartlarında Güvenli ve Hızlı Dijital Dönüşüm.*
