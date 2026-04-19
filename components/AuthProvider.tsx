@@ -5,6 +5,8 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { db, normalizeDatabaseTypes } from '@/lib/db';
+import { deobfuscate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -45,40 +47,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         photoURL: null,
         providerId: 'demo'
       } as any);
+      const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };
+      setPersonnel(demoP);
       setRole('demo');
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      setUser(fbUser);
       
-      if (user) {
-        // Only normalize data when we have a real user
+      if (fbUser) {
         normalizeDatabaseTypes();
-
-        // Try to find personnel record
-        try {
-          const p = await db.personnel.where('email').equals(user.email).first();
-          if (p) {
-            setPersonnel(p);
-            // Update session in localStorage for legacy compatibility
-            localStorage.setItem('personnel-session', JSON.stringify(p));
-          } else {
-            // Check for demo user
-            if (user.email === 'demo@sydv.org.tr') {
+        
+        // Priority 1: Check Local Session (Explicit TC/Pass Login)
+        const session = localStorage.getItem('personnel-session');
+        let sessionPersonnel = null;
+        
+        if (session) {
+          try {
+            const deobfuscated = deobfuscate(session);
+            const sessionData = JSON.parse(deobfuscated);
+            if (sessionData.id) {
+              sessionPersonnel = await db.personnel.get(sessionData.id);
+            }
+          } catch (e) {
+            console.error('Error parsing session:', e);
+          }
+        }
+        
+        if (sessionPersonnel && sessionPersonnel.isActive && sessionPersonnel.isApproved) {
+          setPersonnel(sessionPersonnel);
+        } else {
+          // Priority 2: Fallback to Email Lookup (Google Login only)
+          try {
+            const p = await db.personnel.where('email').equals(fbUser.email).first();
+            if (p) {
+              setPersonnel(p);
+            } else if (fbUser.email === 'demo@sydv.org.tr') {
               const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };
               setPersonnel(demoP);
-              localStorage.setItem('personnel-session', JSON.stringify(demoP));
             } else {
               setPersonnel(null);
             }
+          } catch (e) {
+            console.error('Error fetching personnel:', e);
+            setPersonnel(null);
           }
-        } catch (e) {
-          console.error('Error fetching personnel:', e);
         }
 
-        if (user.email === 'demo@sydv.org.tr') {
+        if (fbUser.email === 'demo@sydv.org.tr') {
           setRole('demo');
         } else if (pathname.startsWith('/admin')) {
           setRole('admin');
@@ -89,11 +107,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else {
         setRole(null);
+        setPersonnel(null);
       }
       
       setLoading(false);
       
-      if (!user && !pathname.startsWith('/admin') && pathname !== '/' && pathname !== '/login') {
+      if (!fbUser && !pathname.startsWith('/admin') && pathname !== '/' && pathname !== '/login') {
         router.push('/login');
       }
     });

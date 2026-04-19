@@ -30,3 +30,25 @@ export function normalizeTurkish(text: string): string {
     .replace(/[üu]/g, "u")
     .replace(/[öo]/g, "o");
 }
+
+/**
+ * Simple obfuscation for local storage to prevent plain text reading of sensitive data
+ */
+export function obfuscate(text: string): string {
+  if (typeof window === 'undefined' || !text) return text;
+  try {
+    return btoa(encodeURIComponent(text)).split('').reverse().join('');
+  } catch (e) {
+    return text;
+  }
+}
+
+export function deobfuscate(text: string): string {
+  if (typeof window === 'undefined' || !text) return text;
+  try {
+    const reversed = text.split('').reverse().join('');
+    return decodeURIComponent(atob(reversed));
+  } catch (e) {
+    return text;
+  }
+}

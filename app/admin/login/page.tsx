@@ -10,6 +10,7 @@ import { ArrowLeft, LogIn } from 'lucide-react';
 import { auth } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
+import { obfuscate } from '@/lib/utils';
 
 export default function AdminLoginPage() {
   const [identifier, setIdentifier] = useState('');
@@ -72,11 +73,11 @@ export default function AdminLoginPage() {
       }
 
       // Success
-      localStorage.setItem('personnel-session', JSON.stringify({
-        id: personnel.id,
-        tcNo: personnel.tcNo,
-        name: personnel.name
-      }));
+      const sessionData = JSON.stringify({
+        id: personnel.id
+      });
+      
+      localStorage.setItem('personnel-session', obfuscate(sessionData));
 
       toast.success('Başarıyla giriş yapıldı.');
       // Force reload to trigger AdminLayout auth check reliably

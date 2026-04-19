@@ -13,6 +13,7 @@ import { getNextWorkingDay, generateRouteFromTemplate } from '@/lib/route-utils'
 import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
+import { deobfuscate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
@@ -98,7 +99,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const session = localStorage.getItem('personnel-session');
       if (session) {
         try {
-          const sessionData = JSON.parse(session);
+          const deobfuscatedSession = deobfuscate(session);
+          const sessionData = JSON.parse(deobfuscatedSession);
           const personnel = await db.personnel.get(sessionData.id);
           
           if (personnel && personnel.isActive && personnel.isApproved) {
