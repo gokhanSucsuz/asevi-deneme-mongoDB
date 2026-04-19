@@ -234,7 +234,7 @@ export default function SurveysPage() {
       
       const participationRate = ((statsData.totalHouseholds / (households?.length || 1)) * 100).toFixed(1);
       const overallSatisfaction = statsData.questionStats.length > 0 
-        ? (statsData.questionStats.filter(q => q.type === 'rating').reduce((sum, q) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter(q => q.type === 'rating').length || 0).toFixed(1)
+        ? (statsData.questionStats.filter((q: any) => q.type === 'rating').reduce((sum: number, q: any) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter((q: any) => q.type === 'rating').length || 0).toFixed(1)
         : '0.0';
 
       // Summary Stats Section in PDF
