@@ -50,8 +50,7 @@ export default function StatisticsPage() {
     return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
   }
 
-  const currentPersonnel = personnelList?.find(p => p.email === user?.email);
-  const personnelName = currentPersonnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+  const activePersonnelName = personnel?.name || 'Bilinmeyen Personel';
 
   // Metrics calculation
   const completedRoutes = routes.filter(r => r.status === 'completed' || r.status === 'approved');
@@ -241,7 +240,7 @@ export default function StatisticsPage() {
         }
       }
 
-      addReportFooter(doc, personnelName);
+      addReportFooter(doc, activePersonnelName);
       await addSystemLog(user, personnel, 'Rapor İndirme', 'Genel Aşevi Dağıtım İstatistikleri (PDF) indirildi.', 'report');
       doc.save(`Asevi_Genel_Istatistikler_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });

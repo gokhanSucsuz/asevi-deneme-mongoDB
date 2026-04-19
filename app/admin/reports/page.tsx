@@ -38,8 +38,7 @@ export default function ReportsPage() {
   const breadTrackings = useAppQuery(() => db.breadTracking.toArray(), [], 'bread_tracking');
   const personnelList = useAppQuery(() => db.personnel.toArray(), [], 'personnel');
   
-  const currentPersonnel = personnelList?.find(p => p.email === user?.email);
-  const personnelName = currentPersonnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   // Calculate date range based on report type
   let effectiveStartDate = startDate;

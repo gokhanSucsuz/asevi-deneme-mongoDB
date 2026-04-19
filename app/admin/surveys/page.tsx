@@ -277,7 +277,7 @@ export default function SurveysPage() {
       }
       
       await addLog('Anket Raporu', `${statsData.survey.title} anketinin PDF raporu indirildi.`);
-      const currentPersonnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+      const currentPersonnelName = personnel?.name || 'Bilinmeyen Personel';
       addReportFooter(doc, currentPersonnelName);
       doc.save(`Anket_Rapor_PDF_${safeFormat(new Date(), 'dd_MM_yyyy')}.pdf`);
       toast.success('Rapor başarıyla oluşturuldu', { id: loadingToast });

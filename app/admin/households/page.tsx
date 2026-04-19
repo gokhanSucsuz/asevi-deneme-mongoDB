@@ -61,7 +61,7 @@ export default function HouseholdsPage() {
     checkLastDay();
   }, []);
 
-  const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   // Summary Stats
   const stats = React.useMemo(() => {

@@ -130,7 +130,7 @@ export default function LeftoverFoodPage() {
     doc.setFont('helvetica', 'bold');
     doc.text(`Toplam Artan Yemek: ${totalQuantity} Porsiyon`, 14, finalY + 10);
     
-    const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+    const personnelName = personnel?.name || 'Bilinmeyen Personel';
     addReportFooter(doc, personnelName);
 
     await addSystemLog(user, personnel, 'Rapor İndirme', `${reportType === 'monthly' ? 'Aylık' : reportType === 'weekly' ? 'Haftalık' : 'Günlük'} Artan Yemek Raporu (PDF) indirildi.`, 'report');
