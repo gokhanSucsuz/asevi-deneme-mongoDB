@@ -383,7 +383,7 @@ export default function StatisticsPage() {
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#6b7280', fontSize: 12}} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: any, name: string) => [value, name === 'food' ? 'Dağıtılan Yemek' : 'Dağıtılan Ekmek']}
+                  formatter={(value: any, name: any) => [value, name === 'food' ? 'Dağıtılan Yemek' : 'Dağıtılan Ekmek']}
                 />
                 <Legend />
                 <Bar dataKey="food" name="Yemek Porsiyonu" fill="#3b82f6" radius={[4, 4, 0, 0]} />
