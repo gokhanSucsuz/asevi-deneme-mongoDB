@@ -116,8 +116,27 @@ export default function BreadTrackingPage() {
       const existing3 = await db.breadTracking.where('date').equals(targetDate3).first();
       if (existing3) {
         await db.breadTracking.delete(existing3.id!);
-        notifyDbChange('bread_tracking');
       }
+
+      // 5. Fix 17.04.2026 (User Request: Last working day rule)
+      const targetDate4 = '2026-04-17';
+      const existing4 = await db.breadTracking.where('date').equals(targetDate4).first();
+      if (existing4) {
+        // Find totalNeeded from households
+        const households = await db.households.toArray();
+        const active = households.filter(h => h.isActive && (!h.pausedUntil || h.pausedUntil < targetDate4));
+        const totalNeeded = active.reduce((sum, h) => sum + (h.breadCount || h.memberCount || 0), 0);
+        
+        if (existing4.finalOrderAmount !== totalNeeded) {
+          await db.breadTracking.update(existing4.id!, { 
+            totalNeeded,
+            finalOrderAmount: totalNeeded,
+            note: 'Haftanın son iş günü kuralı uygulandı' 
+          });
+        }
+      }
+
+      notifyDbChange('bread_tracking');
     };
     fixDate();
   }, []);

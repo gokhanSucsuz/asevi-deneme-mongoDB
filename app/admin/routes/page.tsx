@@ -105,6 +105,30 @@ export default function RoutesPage() {
       fixOrders();
     }
   }, [routeTemplates, routeTemplateStops]);
+  // Auto-fix for 17.04.2026 Vakıf completion as requested by user
+  useEffect(() => {
+    const fixVakifCompletion = async () => {
+      const targetDate = '2026-04-17';
+      const vakifRoute = (routes || []).find(r => r.date === targetDate && r.driverId === 'vakif_pickup');
+      if (vakifRoute && vakifRoute.status === 'pending') {
+        const stops = await db.routeStops.where('routeId').equals(vakifRoute.id!).toArray();
+        let changed = false;
+        for (const stop of stops) {
+          if (stop.status === 'pending') {
+            await db.routeStops.update(stop.id!, { status: 'delivered' });
+            changed = true;
+          }
+        }
+        if (changed) {
+          await db.routes.update(vakifRoute.id!, { status: 'completed' });
+          notifyDbChange('route_stops');
+          notifyDbChange('routes');
+        }
+      }
+    };
+    if (routes) fixVakifCompletion();
+  }, [routes]);
+
   const routesOnDate = routes?.filter((r: Route) => r.date === selectedDate) || [];
   const routeIdsOnDate = routesOnDate.map((r: Route) => r.id);
   const stopsOnDate = routeStops?.filter((rs: RouteStop) => routeIdsOnDate.includes(rs.routeId)) || [];
@@ -1765,10 +1789,12 @@ export default function RoutesPage() {
 
             {(() => {
               const selfServiceHouseholds = households?.filter(h => h.isSelfService && h.isActive) || [];
-              const totalHouseholds = selfServiceHouseholds.length;
+              const totalEntities = selfServiceHouseholds.length;
               
+              const householdCount = selfServiceHouseholds.filter(h => !h.type || h.type === 'household').length;
+              const institutionCount = selfServiceHouseholds.filter(h => h.type === 'institution').length;
+
               // Find deliveries for self-service households today
-              // Usually handled in a special way in this system
               const todaysStops = routeStops?.filter(s => {
                 const route = routes?.find(r => r.id === s.routeId);
                 return route?.date === selectedDate;
@@ -1778,14 +1804,23 @@ export default function RoutesPage() {
                 todaysStops.some(s => s.householdId === h.id && (s.status === 'delivered' || s.status === 'failed'))
               ).length;
 
-              const ratio = totalHouseholds > 0 ? Math.round((selfServiceCompleted / totalHouseholds) * 100) : 0;
+              const ratio = totalEntities > 0 ? Math.round((selfServiceCompleted / totalEntities) * 100) : 0;
 
               return (
                 <div>
                   <div className="flex items-end gap-2 mb-2">
                     <span className="text-4xl font-black text-gray-900">%{ratio}</span>
-                    <span className="text-sm font-bold text-gray-500 pb-1">{selfServiceCompleted} / {totalHouseholds} Hane</span>
+                    <span className="text-sm font-bold text-gray-500 pb-1">
+                      {selfServiceCompleted} / {totalEntities} {institutionCount > 0 ? 'Kayıt' : 'Hane'}
+                    </span>
                   </div>
+                  {institutionCount > 0 && (
+                    <div className="flex gap-2 mb-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <span>{householdCount} HANE</span>
+                      <span>•</span>
+                      <span className="text-blue-600">{institutionCount} KURUM</span>
+                    </div>
+                  )}
                   <div className="w-full bg-gray-100 rounded-full h-3">
                     <div 
                       className="bg-green-600 h-3 rounded-full transition-all duration-1000" 
@@ -1793,7 +1828,7 @@ export default function RoutesPage() {
                     />
                   </div>
                   <p className="mt-4 text-sm text-gray-500 font-medium">
-                    {totalHouseholds === 0 ? 'Bugün için vakıf teslimatı bekleyen hane yok.' : selfServiceCompleted === totalHouseholds ? 'Tüm vakıf teslimatları tamamlandı.' : 'Bazı vakıf teslimatları henüz işlenmedi.'}
+                    {totalEntities === 0 ? 'Bugün için vakıf teslimatı bekleyen kayıt yok.' : selfServiceCompleted === totalEntities ? 'Tüm vakıf teslimatları tamamlandı.' : 'Bazı vakıf teslimatları henüz işlenmedi.'}
                   </p>
                 </div>
               );
