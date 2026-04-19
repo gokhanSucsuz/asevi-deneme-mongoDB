@@ -71,7 +71,7 @@ export default function RoutesPage() {
   const households = useAppQuery(() => db.households.toArray(), [], 'households');
   const systemLogs = useAppQuery(() => db.system_logs.toArray(), [], 'system_logs');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
-  const personnelName = personnel?.name || 'Bilinmeyen Personel';
+  const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
 
   const addLog = async (action: string, details?: string, category: string = 'route') => {
     await addSystemLog(user, personnel, action, details, category);

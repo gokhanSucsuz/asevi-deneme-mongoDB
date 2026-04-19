@@ -148,7 +148,8 @@ export default function SystemLogsPage() {
         }
       });
 
-      addReportFooter(doc, personnel?.name || 'Bilinmeyen Personel');
+      const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+      addReportFooter(doc, personnelName);
       
       await addSystemLog(user, personnel, 'Rapor İndirme', 'Sistem işleyiş tarihçesi raporu (PDF) indirildi.', 'report');
       doc.save(`sistem_gecmisi_${safeFormat(new Date(), 'yyyy-MM-dd_HH-mm')}.pdf`);

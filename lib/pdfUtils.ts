@@ -73,7 +73,7 @@ export function addReportFooter(doc: jsPDF, personnelName: string) {
     const pageHeight = pageSize.height;
     
     doc.text(
-      `Raporlayan: ${personnelName} | Tarih: ${dateStr} | Sayfa: ${i} / ${pageCount}`,
+      `Raporlayan Personel: ${personnelName} | Rapor Tarihi: ${dateStr} | Sayfa: ${i} / ${pageCount}`,
       pageWidth / 2,
       pageHeight - 10,
       { align: 'center' }

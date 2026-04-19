@@ -411,7 +411,8 @@ export default function BreadTrackingPage() {
         headStyles: { fillColor: [59, 130, 246] }
       });
 
-      addReportFooter(doc, user?.displayName || 'Sistem Yöneticisi');
+      const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+      addReportFooter(doc, personnelName);
       await addSystemLog(user, personnel, 'Rapor İndirme', `${startDate} - ${endDate} dönemi Ekmek ve Kap Takip Raporu (PDF) indirildi.`, 'report');
       doc.save(`ekmek-takip-raporu-${startDate}-${endDate}.pdf`);
       toast.success('Rapor başarıyla indirildi.', { id: loadingToast });

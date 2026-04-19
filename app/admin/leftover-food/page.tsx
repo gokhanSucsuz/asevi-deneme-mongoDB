@@ -9,6 +9,7 @@ import { Save, FileText, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
 
@@ -129,6 +130,9 @@ export default function LeftoverFoodPage() {
     doc.setFont('helvetica', 'bold');
     doc.text(`Toplam Artan Yemek: ${totalQuantity} Porsiyon`, 14, finalY + 10);
     
+    const personnelName = personnel?.name || user?.displayName || user?.email || 'Bilinmeyen Personel';
+    addReportFooter(doc, personnelName);
+
     await addSystemLog(user, personnel, 'Rapor İndirme', `${reportType === 'monthly' ? 'Aylık' : reportType === 'weekly' ? 'Haftalık' : 'Günlük'} Artan Yemek Raporu (PDF) indirildi.`, 'report');
     doc.save(`artan_yemek_raporu_${safeFormat(today, 'yyyy-MM-dd')}.pdf`);
   };

@@ -24,7 +24,7 @@ import {
 } from 'recharts';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -245,8 +245,18 @@ export default function SurveysPage() {
         const qTitle = el.getAttribute('data-title');
         
         // Take a snapshot
-        const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
-        const imgData = canvas.toDataURL('image/png');
+        const canvasOriginalBg = el.style.backgroundColor;
+        el.style.backgroundColor = 'white';
+        const imgData = await toPng(el, { 
+          quality: 0.95,
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          filter: (node) => {
+            if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
+            return true;
+          }
+        });
+        el.style.backgroundColor = canvasOriginalBg;
         
         if (finalY > 230) {
           doc.addPage();
@@ -487,7 +497,7 @@ export default function SurveysPage() {
                           </div>
                         </div>
                         <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
                             <BarChart data={q.data}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
@@ -505,7 +515,7 @@ export default function SurveysPage() {
 
                     {(q.type === 'select' || q.type === 'radio') && (
                       <div className="h-64 survey-chart-container" data-title={q.text}>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={250}>
                           <PieChart>
                             <Pie
                               data={q.data}
