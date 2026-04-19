@@ -47,9 +47,6 @@ export default function SurveysPage() {
     isActive: true
   });
 
-  const session = typeof window !== 'undefined' ? localStorage.getItem('personnel-session') : null;
-  const sessionUser = session ? JSON.parse(session) : null;
-
   const addLog = async (action: string, details?: string) => {
     await addSystemLog(user, personnel, action, details, 'survey');
   };
