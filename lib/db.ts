@@ -339,8 +339,9 @@ async function callApi(collection: string, operation: string, params: any = {}) 
   if (!user) throw new Error('User not authenticated');
   
   const token = await user.getIdToken();
-  const response = await fetch('/api/db', {
+  const response = await fetch('/api/db?t=' + Date.now(), {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`

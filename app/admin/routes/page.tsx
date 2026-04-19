@@ -110,24 +110,47 @@ export default function RoutesPage() {
     const fixVakifCompletion = async () => {
       const targetDate = '2026-04-17';
       const vakifRoute = (routes || []).find(r => r.date === targetDate && r.driverId === 'vakif_pickup');
-      if (vakifRoute && vakifRoute.status === 'pending') {
+      if (vakifRoute) {
+        const activeVakifHouseholds = households?.filter(h => h.isSelfService && h.isActive) || [];
         const stops = await db.routeStops.where('routeId').equals(vakifRoute.id!).toArray();
         let changed = false;
+
+        // 1. Update existing stops to delivered
         for (const stop of stops) {
-          if (stop.status === 'pending') {
+          if (stop.status !== 'delivered') {
             await db.routeStops.update(stop.id!, { status: 'delivered' });
             changed = true;
           }
         }
+
+        // 2. Add missing stops as delivered
+        for (const h of activeVakifHouseholds) {
+          const hasStop = stops.some(s => s.householdId === h.id);
+          if (!hasStop) {
+            await db.routeStops.add({
+              routeId: vakifRoute.id!,
+              householdId: h.id!,
+              householdSnapshotName: h.headName,
+              householdSnapshotMemberCount: h.memberCount,
+              householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+              status: 'delivered',
+              order: stops.length + 1
+            });
+            changed = true;
+          }
+        }
+
         if (changed) {
-          await db.routes.update(vakifRoute.id!, { status: 'completed' });
+          if (vakifRoute.status !== 'completed' && vakifRoute.status !== 'approved') {
+            await db.routes.update(vakifRoute.id!, { status: 'completed' });
+          }
           notifyDbChange('route_stops');
           notifyDbChange('routes');
         }
       }
     };
-    if (routes) fixVakifCompletion();
-  }, [routes]);
+    if (routes && households) fixVakifCompletion();
+  }, [routes, households]);
 
   const routesOnDate = routes?.filter((r: Route) => r.date === selectedDate) || [];
   const routeIdsOnDate = routesOnDate.map((r: Route) => r.id);
@@ -1540,7 +1563,8 @@ export default function RoutesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
-                        {route.driverId === 'vakif_pickup' && route.status === 'pending' && (
+                        {route.driverId === 'vakif_pickup' && route.status === 'pending' && 
+                          (safeFormat(new Date(), 'yyyy-MM-dd') > route.date || (safeFormat(new Date(), 'yyyy-MM-dd') === route.date && new Date().getHours() >= 11)) && (
                           <button
                             onClick={async () => {
                               setRouteForLeftover(route);
