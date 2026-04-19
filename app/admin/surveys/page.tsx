@@ -173,8 +173,8 @@ export default function SurveysPage() {
         const counts: Record<string, number> = {};
         q.options?.forEach(opt => counts[opt] = 0);
         
-        surveyResponses.forEach(r => {
-          const val = r.answers.find(a => a.questionId === q.id)?.value;
+        surveyResponses.forEach((r: SurveyResponse) => {
+          const val = r.answers.find((a: any) => a.questionId === q.id)?.value;
           const weight = getWeights(r);
           if (val !== undefined && counts[val] !== undefined) {
             counts[val] += weight;
@@ -188,8 +188,8 @@ export default function SurveysPage() {
           data: Object.entries(counts).map(([name, value]) => ({ name, value }))
         };
       } else {
-        const answers = surveyResponses.map(r => ({
-          value: r.answers.find(a => a.questionId === q.id)?.value,
+        const answers = surveyResponses.map((r: SurveyResponse) => ({
+          value: r.answers.find((a: any) => a.questionId === q.id)?.value,
           weight: getWeights(r)
         })).filter(v => v.value !== undefined);
 
