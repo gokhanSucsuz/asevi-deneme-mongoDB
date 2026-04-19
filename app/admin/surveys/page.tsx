@@ -231,10 +231,55 @@ export default function SurveysPage() {
       doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
 
       doc.text(`Anket: ${statsData.survey.title}`, 14, 45);
-      doc.text(`Katılan Hane: ${statsData.totalHouseholds}`, 14, 50);
-      doc.text(`Ulaşılan Kişi (Porsiyon): ${statsData.totalPeopleReached}`, 14, 55);
+      
+      const participationRate = ((statsData.totalHouseholds / (households?.length || 1)) * 100).toFixed(1);
+      const overallSatisfaction = statsData.questionStats.length > 0 
+        ? (statsData.questionStats.filter(q => q.type === 'rating').reduce((sum, q) => sum + parseFloat(q.average as string), 0) / statsData.questionStats.filter(q => q.type === 'rating').length || 0).toFixed(1)
+        : '0.0';
 
-      finalY = 65;
+      // Summary Stats Section in PDF
+      doc.setFontSize(11);
+      doc.setFont('Roboto', 'bold');
+      doc.setTextColor(79, 70, 229); // Indigo-600
+      doc.text('GENEL ÖZET VE İSTATİSTİKLER', 14, 55);
+      doc.line(14, 57, 196, 57);
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      
+      // Card 1: Participation
+      doc.setFont('Roboto', 'bold');
+      doc.text('Toplam Hane Katılımı:', 14, 65);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`${statsData.totalHouseholds}`, 65, 65);
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128); // Gray-500
+      doc.text(`(Hane katılım oranı: %${participationRate})`, 80, 65);
+      
+      // Card 2: People Reached
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'bold');
+      doc.text('Toplam Ulaşılan Kişi:', 14, 73);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`${statsData.totalPeopleReached}`, 65, 73);
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Hane temsilcilerinin cevapları, hanelerindeki tüm bireyler baz alınarak ağırlıklandırılmıştır.', 14, 78);
+      
+      // Card 3: Satisfaction
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'bold');
+      doc.text('Genel Verimlilik:', 14, 86);
+      doc.setFont('Roboto', 'normal');
+      doc.text(`${overallSatisfaction} / 5.0`, 65, 86);
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.text('Ortalama Memnuniyet', 85, 86);
+
+      doc.setTextColor(0, 0, 0);
+      finalY = 100;
 
       const chartElements = document.querySelectorAll('.survey-chart-container');
       for (let i = 0; i < chartElements.length; i++) {
