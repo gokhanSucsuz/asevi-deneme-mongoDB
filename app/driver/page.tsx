@@ -334,7 +334,7 @@ export default function DriverPage() {
   };
 
   const handleTogglePause = async () => {
-    if (!todayRoute) return;
+    if (!todayRoute || todayRoute.driverId === 'vakif_pickup') return;
     setIsSaving(true);
     const newPausedState = !isPausedLocal;
     try {
@@ -916,18 +916,20 @@ export default function DriverPage() {
                </div>
             </div>
             
-            <button
-              onClick={handleTogglePause}
-              disabled={isPanelPassive || isDemo}
-              className={`shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl border-2 transition-all shadow-sm ${
-                isPausedLocal 
-                  ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 hover:scale-105' 
-                  : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-orange-500 hover:border-orange-200'
-              }`}
-              title={isPausedLocal ? "Teslimata Dön" : "Mola Ver"}
-            >
-              {isPausedLocal ? <Navigation fill="currentColor" size={20} /> : <Clock size={20} />}
-            </button>
+            {todayRoute?.driverId !== 'vakif_pickup' && (
+              <button
+                onClick={handleTogglePause}
+                disabled={isPanelPassive || isDemo}
+                className={`shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl border-2 transition-all shadow-sm ${
+                  isPausedLocal 
+                    ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 hover:scale-105' 
+                    : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-orange-500 hover:border-orange-200'
+                }`}
+                title={isPausedLocal ? "Teslimata Dön" : "Mola Ver"}
+              >
+                {isPausedLocal ? <Navigation fill="currentColor" size={20} /> : <Clock size={20} />}
+              </button>
+            )}
           </div>
           
           {isPausedLocal ? (
