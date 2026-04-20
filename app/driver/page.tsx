@@ -337,11 +337,20 @@ export default function DriverPage() {
     setIsSaving(true);
     const newPausedState = !isPausedLocal;
     try {
+      const now = new Date();
+      const newHistory = todayRoute.history || [];
+      newHistory.push({
+        action: newPausedState ? 'paused' : 'resumed',
+        date: now,
+        note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
+      });
+
       await db.routes.update(todayRoute.id!, {
-        isPaused: newPausedState
+        isPaused: newPausedState,
+        history: newHistory
       });
       setIsPausedLocal(newPausedState);
-      setTodayRoute({ ...todayRoute, isPaused: newPausedState });
+      setTodayRoute({ ...todayRoute, isPaused: newPausedState, history: newHistory });
       toast.info(newPausedState ? 'Rota duraklatıldı (Mola)' : 'Rota devam ettiriliyor');
     } catch (error) {
       console.error(error);
@@ -552,6 +561,8 @@ export default function DriverPage() {
   };
 
   if (!selectedDriverId) {
+    const isDriverRole = user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+
     return (
       <div className="max-w-md mx-auto mt-10 space-y-4">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
@@ -567,15 +578,21 @@ export default function DriverPage() {
           <div className="space-y-4 w-full">
             <label className="block text-sm font-medium text-gray-700">Lütfen isminizi seçin</label>
             <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3 disabled:opacity-50 disabled:bg-gray-100"
               onChange={(e) => setSelectedDriverId(e.target.value)}
               defaultValue=""
+              disabled={isDriverRole}
             >
               <option value="" disabled>Şoför Seçiniz</option>
-              {drivers?.map(d => (
+              {drivers?.filter(d => !isDriverRole || d.googleEmail?.toLowerCase() === user?.email?.toLowerCase()).map(d => (
                 <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
               ))}
             </select>
+            {isDriverRole && (
+              <p className="text-xs text-orange-600 mt-2">
+                * Şoför olarak giriş yaptığınız için sadece kendi rotanızı görebilirsiniz. Seçim sistem tarafından otomatik yapılmıştır.
+              </p>
+            )}
           </div>
         </div>
         
@@ -593,6 +610,8 @@ export default function DriverPage() {
     );
   }
 
+  const isDriverRole = user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+
   if (!todayRoute) {
     return (
       <div className="text-center mt-20">
@@ -602,10 +621,10 @@ export default function DriverPage() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Bugün için atanmış rotanız bulunmuyor.</h2>
         <p className="text-gray-500">Lütfen yönetim birimi ile iletişime geçin.</p>
         <button 
-          onClick={() => setSelectedDriverId(null)}
+          onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
           className="mt-6 text-green-600 hover:text-green-800 font-medium"
         >
-          Farklı bir şoför seç
+          {isDriverRole ? 'Çıkış Yap' : 'Farklı bir şoför seç'}
         </button>
       </div>
     );
@@ -626,10 +645,10 @@ export default function DriverPage() {
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Rota Görüntüleme Kapalı</h2>
         <p className="text-gray-500">Günlük rotanızı sadece rotanın ait olduğu gün 08:30 ile 17:30 saatleri arasında görebilirsiniz.</p>
         <button 
-          onClick={() => setSelectedDriverId(null)}
+          onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
           className="mt-6 text-green-600 hover:text-green-800 font-medium"
         >
-          Farklı bir şoför seç
+          {isDriverRole ? 'Çıkış Yap' : 'Farklı bir şoför seç'}
         </button>
       </div>
     );
@@ -999,10 +1018,11 @@ export default function DriverPage() {
           <h2 className="text-2xl font-bold text-green-900 mb-2">Bugünkü göreviniz tamamlandı.</h2>
           <p className="text-green-700">Elinize sağlık!</p>
           <button 
-            onClick={() => setSelectedDriverId(null)}
-            className="mt-6 text-green-700 hover:text-green-900 font-medium underline"
+            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            className="mt-6 inline-flex items-center gap-2 text-white bg-green-600 hover:bg-green-700 px-6 py-2.5 rounded-lg shadow-sm font-medium transition-colors"
           >
-            Çıkış Yap
+            <LogOut size={18} />
+            {isDriverRole ? 'Güvenle Çıkış Yap' : 'Farklı bir şoför seç'}
           </button>
         </div>
       )}

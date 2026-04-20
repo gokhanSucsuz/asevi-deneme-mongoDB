@@ -76,10 +76,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
         
+        // Priority 2: Google Email Restrictions
+        // If not demo and not specific authorized hardcoded admin emails, check DB
+        const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com', 'demo@sydv.org.tr'];
+        
+        if (fbUser && fbUser.email && !authorizedEmails.includes(fbUser.email)) {
+           // Not a developer/demo email, so they MUST be in personnel or drivers table.
+           try {
+             const p = await db.personnel.where('email').equals(fbUser.email).first();
+             const d = await db.drivers.toArray().then(arr => arr.find(dr => dr.googleEmail?.toLowerCase() === fbUser.email?.toLowerCase()));
+             
+             if (!p && !d) {
+               // Unauthorized Google login
+               import('firebase/auth').then(({ signOut }) => {
+                 signOut(auth);
+               });
+               toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
+               setUser(null);
+               setPersonnel(null);
+               setRole(null);
+               setLoading(false);
+               router.push('/login');
+               return; // exit the callback
+             }
+           } catch (e) {
+             console.error('Validation error:', e);
+           }
+        }
+
         if (sessionPersonnel && sessionPersonnel.isActive && sessionPersonnel.isApproved) {
           setPersonnel(sessionPersonnel);
         } else {
-          // Priority 2: Fallback to Email Lookup (Google Login only)
+          // Priority 3: Fallback to Email Lookup (Google Login only)
           try {
             const p = await db.personnel.where('email').equals(fbUser.email).first();
             if (p) {

@@ -2169,8 +2169,9 @@ export default function RoutesPage() {
               </div>
               
               <h4 className="font-medium text-gray-900 mb-4">Teslimat Noktaları</h4>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto mb-6">
                 <table className="min-w-full divide-y divide-gray-200 border">
+                  {/* ... Delivery points table ... */}
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Hane</th>
@@ -2242,6 +2243,37 @@ export default function RoutesPage() {
                 </tbody>
               </table>
               </div>
+              
+              {/* Route History (Pauses/Resumes) */}
+              {viewRouteDetails.history && viewRouteDetails.history.length > 0 && (
+                <div className="mt-8">
+                  <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <History className="text-blue-600" size={20} />
+                    Rota Geçmişi (Mola ve Duraklamalar)
+                  </h4>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <ul className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-300 before:to-transparent">
+                      {viewRouteDetails.history.map((record, idx) => (
+                        <li key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm ${
+                            record.action === 'paused' ? 'bg-orange-500 text-white' : 'bg-green-500 text-white'
+                          } z-10`}>
+                            {record.action === 'paused' ? <Clock size={16} /> : <CheckCircle size={16} />}
+                          </div>
+                          <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
+                            <span className="font-bold text-gray-900 text-sm">
+                              {record.action === 'paused' ? 'Mola Verildi' : 'Göreve Devam Edildi'}
+                            </span>
+                            <span className="text-xs text-gray-500 mt-1">
+                              {safeFormat(record.date, 'dd.MM.yyyy HH:mm:ss')}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
               {viewRouteDetails.status === 'completed' && differenceInDays(new Date(), new Date(viewRouteDetails.date)) <= 2 && (

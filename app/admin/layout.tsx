@@ -87,10 +87,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         const isMainAdmin = authorizedEmails.includes(user.email || '');
         const isDemo = user.email === 'demo@sydv.org.tr';
         
-        if (!isMainAdmin && !isDemo) {
-          // If not one of the authorized emails, they shouldn't be here
+        // Also check if they are an active personnel but not a regular driver
+        let isPersonnelAdmin = false;
+        try {
+          if (user.email) {
+            const p = await db.personnel.where('email').equals(user.email).first();
+            if (p && p.isActive && p.isApproved && p.role === 'admin') {
+              isPersonnelAdmin = true;
+            }
+          }
+        } catch (e) {
+          console.error("Error checking personnel auth", e);
+        }
+
+        if (!isMainAdmin && !isDemo && !isPersonnelAdmin) {
+          // If not one of the authorized emails and not an admin personnel, they shouldn't be here
           toast.error('Bu bölüme erişim yetkiniz bulunmamaktadır.');
-          router.push('/');
+          router.push('/driver');
           setIsLoading(false);
           return;
         }
