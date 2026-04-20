@@ -97,10 +97,13 @@ export async function POST(req: NextRequest) {
         isApproved = p.isApproved;
       } else {
         // Check if user is an active driver
-        const d = await db.collection('drivers').findOne({ googleEmail: userEmail });
-        if (d && d.isActive) {
+        // Note: Some drivers might not have the isActive field set, or we just want to check existence
+        const d = await db.collection('dr_drivers').findOne({ googleEmail: userEmail }) || 
+                  await db.collection('drivers').findOne({ googleEmail: userEmail });
+        
+        if (d) {
           userRole = 'driver';
-          isActive = true;
+          isActive = d.isActive !== false; // Default to true if missing
           isApproved = true;
         }
       }
@@ -113,6 +116,8 @@ export async function POST(req: NextRequest) {
       // Allow only self-fetching of personnel record for approval status check
       if (collection === 'personnel' && operation === 'list' && queryObj?.email === userEmail) {
         // Continue
+      } else if (collection === 'dr_drivers' || collection === 'drivers') {
+        // Continue if they are trying to check their own driver status
       } else {
         return NextResponse.json({ error: 'Access Denied: Account not active or approved' }, { status: 403 });
       }

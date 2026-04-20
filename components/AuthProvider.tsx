@@ -83,8 +83,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (fbUser && fbUser.email && !authorizedEmails.includes(fbUser.email)) {
            // Not a developer/demo email, so they MUST be in personnel or drivers table.
            try {
-             const p = await db.personnel.where('email').equals(fbUser.email).first();
-             const d = await db.drivers.toArray().then(arr => arr.find(dr => dr.googleEmail?.toLowerCase() === fbUser.email?.toLowerCase()));
+             // Instead of using dexie queries directly, fetch all and filter to avoid API errors
+             // since some versions or offline states might block specific queries
+             const allPersonnel = await db.personnel.toArray();
+             const p = allPersonnel.find(p => p.email?.toLowerCase() === fbUser.email?.toLowerCase());
+
+             const allDrivers = await db.drivers.toArray();
+             const d = allDrivers.find(dr => dr.googleEmail?.toLowerCase() === fbUser.email?.toLowerCase());
              
              if (!p && !d) {
                // Unauthorized Google login
@@ -101,6 +106,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
              }
            } catch (e) {
              console.error('Validation error:', e);
+             toast.error('Bağlantı veya veri erişim hatası: ' + (e as Error).message);
+             import('firebase/auth').then(({ signOut }) => {
+                signOut(auth);
+             });
+             setUser(null);
+             setPersonnel(null);
+             setRole(null);
+             setLoading(false);
+             router.push('/login');
+             return;
            }
         }
 
