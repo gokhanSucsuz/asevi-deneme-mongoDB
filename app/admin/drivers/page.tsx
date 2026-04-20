@@ -638,7 +638,7 @@ export default function DriversPage() {
                                         <span className={`text-[10px] uppercase font-bold tracking-wider ${record.action === 'paused' ? 'text-orange-600' : 'text-green-600'}`}>
                                           {record.action === 'paused' ? 'Duraklatıldı' : 'Devam Edildi'}
                                         </span>
-                                        <span className="font-medium">{safeFormatTRT(record.date, 'HH:mm:ss')}</span>
+                                        <span className="font-medium">{safeFormatTRT(record.timestamp || record.date, 'HH:mm:ss')}</span>
                                       </li>
                                     ))}
                                   </ul>

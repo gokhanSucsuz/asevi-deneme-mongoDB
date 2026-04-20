@@ -171,34 +171,45 @@ export async function POST(req: NextRequest) {
       if (obj === null || obj === undefined) return obj;
       
       if (Array.isArray(obj)) {
-         return obj.map(item => {
-             if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item)) {
-                 return new ObjectId(item);
-             }
-             if (typeof item === 'object') {
-                 return convertIncomingObjectIds(item);
-             }
-             return item;
-         });
+         return obj.map(item => convertIncomingObjectIds(item));
       }
       
       if (typeof obj === 'object') {
         if (obj instanceof ObjectId || obj instanceof Date) return obj;
         
         const newObj: any = {};
+        const dateFields = [
+          'createdAt', 'updatedAt', 'timestamp', 'submittedAt', 
+          'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
+        ];
+
         for (const [key, value] of Object.entries(obj)) {
-          if (key === 'id') {
+          if (key === 'id' || key === '_id') {
+            if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+              newObj[key] = new ObjectId(value);
+            } else {
               newObj[key] = value;
-          } else if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
-              if (key === '_id' || key.endsWith('Id') || key === 'defaultDriverId') {
-                  newObj[key] = new ObjectId(value);
+            }
+          } else if (typeof value === 'string') {
+            // Check if it's an ID
+            if (/^[0-9a-fA-F]{24}$/.test(value) && (key.endsWith('Id') || key === 'defaultDriverId')) {
+              newObj[key] = new ObjectId(value);
+            } 
+            // Check if it's a date string that should be a Date object
+            else if (key.endsWith('At') || dateFields.includes(key)) {
+              const d = new Date(value);
+              if (!isNaN(d.getTime())) {
+                newObj[key] = d;
               } else {
-                  newObj[key] = value;
+                newObj[key] = value;
               }
-          } else if (typeof value === 'object' && value !== null) {
-              newObj[key] = convertIncomingObjectIds(value);
-          } else {
+            } else {
               newObj[key] = value;
+            }
+          } else if (typeof value === 'object' && value !== null) {
+            newObj[key] = convertIncomingObjectIds(value);
+          } else {
+            newObj[key] = value;
           }
         }
         return newObj;

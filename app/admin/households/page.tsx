@@ -600,7 +600,7 @@ export default function HouseholdsPage() {
           const history = existing.history || [];
           history.push({
             action: 'deleted',
-            date: new Date(),
+            timestamp: new Date(),
             note: `Hane tamamen silindi. Sebep: ${actionReason}`
           });
           await db.households.update(existing.id!, {

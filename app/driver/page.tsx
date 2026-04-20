@@ -189,7 +189,7 @@ export default function DriverPage() {
             pausedUntil: '',
             history: [...(h.history || []), {
               action: 'activated',
-              date: new Date(),
+              timestamp: new Date(),
               note: 'Pasif süresi dolduğu için otomatik aktifleştirildi'
             }]
           });

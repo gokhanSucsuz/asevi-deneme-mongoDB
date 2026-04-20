@@ -2270,7 +2270,7 @@ export default function RoutesPage() {
                                record.action === 'manual_completion' ? 'Manuel Tamamlandı' : 'Tamamlandı'}
                             </span>
                             <span className="text-xs text-slate-500 mt-1.5 font-bold uppercase tracking-wider">
-                              {safeFormatTRT(new Date(record.timestamp || record.date), 'HH:mm')}
+                              {safeFormatTRT(record.timestamp || record.date, 'HH:mm')}
                             </span>
                           </div>
                         </div>
