@@ -18,9 +18,9 @@ export const safeFormatTRT = (date: any, formatStr: string = 'dd.MM.yyyy HH:mm:s
     if (!date) return '-';
     const d = new Date(date);
     if (isNaN(d.getTime())) return '-';
-    // Format explicitly in Europe/Istanbul timezone and append TRT
+    // Format explicitly in Europe/Istanbul timezone
     const formatted = formatInTimeZone(d, 'Europe/Istanbul', formatStr, { locale: tr });
-    return `${formatted} (TRT)`;
+    return formatted;
   } catch (e) {
     return '-';
   }

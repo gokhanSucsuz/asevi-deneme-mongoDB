@@ -9,7 +9,7 @@ import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRo
 import { safeFormat } from '@/lib/date-utils';
 import { getTurkishPdf, addVakifLogo } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
-import { CheckCircle, XCircle, AlertTriangle, Navigation, MapPin, LogOut, Clock, FileText, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Navigation, MapPin, LogOut, Clock, FileText, Wifi, WifiOff, RefreshCw, Info, User, Phone, Edit2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -564,47 +564,72 @@ export default function DriverPage() {
     const isDriverRole = !!(user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase()));
 
     return (
-      <div className="max-w-md mx-auto mt-10 space-y-4">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
-          <Image 
-            src="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" 
-            alt="Vakıf Logosu" 
-            width={80} 
-            height={80} 
-            className="rounded-full mb-6 shadow-md"
-            referrerPolicy="no-referrer"
-          />
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Şoför Girişi</h2>
-          <div className="space-y-4 w-full">
-            <label className="block text-sm font-medium text-gray-700">Lütfen isminizi seçin</label>
-            <select
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3 disabled:opacity-50 disabled:bg-gray-100"
-              onChange={(e) => setSelectedDriverId(e.target.value)}
-              defaultValue=""
-              disabled={isDriverRole}
-            >
-              <option value="" disabled>Şoför Seçiniz</option>
-              {drivers?.filter(d => !isDriverRole || d.googleEmail?.toLowerCase() === user?.email?.toLowerCase()).map(d => (
-                <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate})</option>
-              ))}
-            </select>
-            {isDriverRole && (
-              <p className="text-xs text-orange-600 mt-2">
-                * Şoför olarak giriş yaptığınız için sadece kendi rotanızı görebilirsiniz. Seçim sistem tarafından otomatik yapılmıştır.
-              </p>
-            )}
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-10 bg-slate-50">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="bg-white px-6 py-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col items-center">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50"></div>
+              <Image 
+                src="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" 
+                alt="Vakıf Logosu" 
+                width={90} 
+                height={90} 
+                className="relative rounded-full shadow-lg border-4 border-white"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-black text-slate-800 tracking-tight">Şoför Portalı</h1>
+              <p className="text-sm text-slate-500 font-medium mt-1">Sosyal Yardımlaşma ve Dayanışma Vakfı</p>
+            </div>
+            
+            <div className="w-full space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label className="text-sm font-bold text-slate-600 px-1">Lütfen isminizi seçiniz</label>
+                <select
+                  className="w-full bg-slate-50 border-0 rounded-2xl ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-inset focus:ring-blue-600 text-slate-900 text-base font-medium py-4 px-4 appearance-none shadow-sm disabled:opacity-60 disabled:bg-slate-100 transition-all"
+                  onChange={(e) => setSelectedDriverId(e.target.value)}
+                  defaultValue=""
+                  disabled={isDriverRole}
+                >
+                  <option value="" disabled>Şoför Seçiniz</option>
+                  {drivers?.filter(d => !isDriverRole || d.googleEmail?.toLowerCase() === user?.email?.toLowerCase()).map(d => (
+                    <option key={d.id} value={d.id}>{d.name} • {d.vehiclePlate}</option>
+                  ))}
+                </select>
+              </div>
+
+              {isDriverRole && (
+                <div className="flex items-start gap-2 bg-blue-50/50 p-3 rounded-2xl border border-blue-100/50">
+                  <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                    Güvenli giriş yapılmıştır. Sadece kendinize atanmış aktif rotaları görüntüleyebilirsiniz.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
-          <span className="text-sm text-gray-500 truncate max-w-[200px]">{user?.email}</span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center text-sm font-medium text-red-600 hover:text-red-800"
-          >
-            <LogOut size={16} className="mr-1" />
-            Çıkış Yap
-          </button>
+          
+          {/* Active Account Info at Bottom */}
+          <div className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                <User size={16} className="text-slate-500" />
+              </div>
+              <div className="flex flex-col truncate">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mevcut Hesap</span>
+                <span className="text-sm font-semibold text-slate-700 truncate">{user?.email}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors shrink-0"
+              title="Çıkış Yap"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -614,18 +639,22 @@ export default function DriverPage() {
 
   if (!todayRoute) {
     return (
-      <div className="text-center mt-20">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-          <Navigation className="h-8 w-8 text-gray-400" />
+      <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center max-w-sm w-full">
+          <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
+            <MapPin className="h-10 w-10 text-slate-300" />
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">Aktif Rota Bulunamadı</h2>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
+            Bugün için size atanmış herhangi bir dağıtım rotası görünmüyor. Lütfen yönetim birimi ile iletişime geçiniz.
+          </p>
+          <button 
+            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+          >
+            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Farklı Şoför Seç'}
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Bugün için atanmış rotanız bulunmuyor.</h2>
-        <p className="text-gray-500">Lütfen yönetim birimi ile iletişime geçin.</p>
-        <button 
-          onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
-          className="mt-6 text-green-600 hover:text-green-800 font-medium"
-        >
-          {isDriverRole ? 'Çıkış Yap' : 'Farklı bir şoför seç'}
-        </button>
       </div>
     );
   }
@@ -638,18 +667,22 @@ export default function DriverPage() {
 
   if (!isRouteToday || !isWithinWorkingHours) {
     return (
-      <div className="text-center mt-20">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-          <Clock className="h-8 w-8 text-gray-400" />
+      <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center max-w-sm w-full">
+          <div className="h-20 w-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-orange-50/50">
+            <Clock className="h-10 w-10 text-orange-400" />
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">Mesai Saatleri Dışındayız</h2>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
+            Günlük rotanızı ve teslimat programınızı sadece mesai saatleri içerisinde (08:30 - 17:30) ve ilgili günde görüntüleyebilirsiniz.
+          </p>
+          <button 
+            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+          >
+            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Farklı Şoför Seç'}
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Rota Görüntüleme Kapalı</h2>
-        <p className="text-gray-500">Günlük rotanızı sadece rotanın ait olduğu gün 08:30 ile 17:30 saatleri arasında görebilirsiniz.</p>
-        <button 
-          onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
-          className="mt-6 text-green-600 hover:text-green-800 font-medium"
-        >
-          {isDriverRole ? 'Çıkış Yap' : 'Farklı bir şoför seç'}
-        </button>
       </div>
     );
   }
@@ -721,115 +754,138 @@ export default function DriverPage() {
   const nextHousehold = nextStop ? (households?.find(hh => hh?.id === nextStop.householdId) as Household | null) : null;
 
   return (
-    <div className="flex flex-col pb-10">
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm mb-6 rounded-lg">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-12 font-sans selection:bg-blue-100">
+      {/* Sticky Mobile App Header */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 truncate">
           <Image 
             src="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" 
             alt="Vakıf Logosu" 
-            width={40} 
-            height={40} 
-            className="rounded-full"
+            width={38} 
+            height={38} 
+            className="rounded-full shadow-sm border border-slate-100 shrink-0"
             referrerPolicy="no-referrer"
           />
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-gray-900 leading-none">Aktif Şoför</h2>
+          <div className="flex flex-col truncate">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-[13px] font-black text-slate-900 leading-none truncate max-w-[120px] sm:max-w-xs">
+                {drivers?.find(d => d.id === selectedDriverId)?.name || 'Şoför'}
+              </h2>
               {isOnline ? (
-                <span title="Çevrimiçi"><Wifi size={14} className="text-green-500" /></span>
+                <span className="flex h-2 w-2 relative shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
               ) : (
-                <span title="Çevrimdışı"><WifiOff size={14} className="text-red-500" /></span>
-              )}
-              {offlineUpdates.length > 0 && (
-                <div className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
-                  <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
-                  {offlineUpdates.length} Bekleyen
-                </div>
+                <span className="h-2 w-2 rounded-full bg-red-500 relative shrink-0"></span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {drivers?.find(d => d.id === selectedDriverId)?.name || 'Şoför Seçilmedi'}
+            <p className="text-[11px] font-semibold text-slate-500 mt-0.5 uppercase tracking-wide truncate">
+              {drivers?.find(d => d.id === selectedDriverId)?.vehiclePlate || 'SYDV ROTA'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSelectedDriverId(null)}
-            className="text-xs font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
-          >
-            Şoför Değiştir
-          </button>
+        
+        <div className="flex items-center gap-2 shrink-0">
+          {offlineUpdates.length > 0 && (
+            <div className="flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full font-bold shadow-sm">
+              <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
+              {offlineUpdates.length}
+            </div>
+          )}
+          {!isDriverRole && (
+            <button
+              onClick={() => setSelectedDriverId(null)}
+              className="text-[11px] font-bold uppercase tracking-wide text-slate-600 bg-slate-100 px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors"
+            >
+              Değiştir
+            </button>
+          )}
           <button
             onClick={handleLogout}
-            className="text-xs font-medium text-red-600 bg-red-50 p-2 rounded-lg hover:bg-red-100 transition-colors border border-red-100 flex items-center"
-            title="Güvenli Çıkış Yap"
+            className="h-9 w-9 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center border border-red-100/50"
+            title="Güvenli Çıkış"
           >
-            <LogOut size={18} />
+            <LogOut size={16} />
           </button>
         </div>
-      </div>
+      </header>
 
-      <main className="flex-1 space-y-6 max-w-3xl mx-auto w-full">
+      <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-6 space-y-6">
         {isPanelPassive && (
-          <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-start gap-3 shadow-sm">
-            <AlertTriangle className="text-red-600 shrink-0" size={24} />
+          <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-4 shadow-sm">
+            <div className="bg-red-100 p-2 rounded-full shrink-0 mt-0.5">
+               <AlertTriangle className="text-red-600" size={20} />
+            </div>
             <div>
-              <h3 className="font-bold text-red-900">Dağıtım Paneli Kapalı</h3>
-              <p className="text-sm text-red-800 leading-relaxed">
-                Yönetim tarafından yemek dağıtım paneli geçici olarak kapatılmıştır. 
-                Şu an için teslimat girişi yapamazsınız. Lütfen merkez ile iletişime geçiniz.
+              <h3 className="font-bold text-red-900 font-sans">Sistem Geçici Olarak Kapalı</h3>
+              <p className="text-xs font-medium text-red-800 leading-relaxed mt-1">
+                Yönetim tarafından dağıtım paneli durdurulmuştur. Şu an teslimat girişi yapamazsınız. Merkezle iletişime geçiniz.
               </p>
             </div>
           </div>
         )}
-        {/* Status Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 text-center">
-          <p className="text-sm text-gray-500 mb-1">Toplam Yemek</p>
-          <p className="text-2xl font-bold text-gray-900">{totalFood}</p>
+        
+        {/* Status Overview Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500"></div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Kalan Hane</p>
+            <p className="text-4xl font-black text-slate-800 tracking-tight">{pendingCount}</p>
+          </div>
+          
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-500"></div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Teslim Edilen</p>
+            <p className="text-4xl font-black text-green-600 tracking-tight">{deliveredCount}</p>
+          </div>
+          
+          <div className="col-span-2 bg-slate-900 p-4 rounded-3xl shadow-md border border-slate-800 flex items-center justify-around text-center">
+             <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Yemek</p>
+                <p className="text-xl font-black text-white">{totalFood} <span className="text-xs font-semibold text-slate-500">kap</span></p>
+             </div>
+             <div className="w-px h-8 bg-slate-700"></div>
+             <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Ekmek</p>
+                <p className="text-xl font-black text-white">{totalBread} <span className="text-xs font-semibold text-slate-500">adet</span></p>
+             </div>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 text-center">
-          <p className="text-sm text-gray-500 mb-1">Toplam Ekmek</p>
-          <p className="text-2xl font-bold text-gray-900">{totalBread}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 text-center">
-          <p className="text-sm text-gray-500 mb-1">Teslim Edilen</p>
-          <p className="text-2xl font-bold text-green-600">{deliveredCount}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 text-center">
-          <p className="text-sm text-gray-500 mb-1">Kalan Hane</p>
-          <p className="text-2xl font-bold text-blue-600">{pendingCount}</p>
-        </div>
-      </div>
 
       {todayRoute.status === 'pending' && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Dağıtıma Başla</h3>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 text-center relative overflow-hidden">
+          <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500"></div>
+          <div className="bg-blue-50 h-16 w-16 mx-auto rounded-full flex items-center justify-center mb-4">
+             <MapPin className="text-blue-500" size={32} />
+          </div>
+          <h3 className="text-xl font-black text-slate-800 mb-2">Dağıtıma Başlayabilirsiniz</h3>
+          <p className="text-sm text-slate-500 mb-6 px-4">Lütfen aracınızın başlangıç KM bilgisini girerek bugünkü rotanızı başlatın.</p>
           <div className="max-w-xs mx-auto space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 text-left mb-1">Başlangıç KM</label>
+            <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Başlangıç KM</label>
               <input
                 type="number"
                 value={startKm}
                 onChange={(e) => setStartKm(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3"
+                className="block w-full bg-white rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-blue-500 text-lg font-bold text-slate-800 p-3 text-center shadow-sm"
                 placeholder="Örn: 125000"
               />
             </div>
             <button
               onClick={handleStartRoute}
               disabled={isSaving || isDemo}
-              className={`w-full px-4 py-3 rounded-md font-medium text-lg ${
-                isDemo ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'
+              className={`w-full py-4 rounded-2xl font-bold text-lg shadow-md transition-all flex items-center justify-center gap-2 ${
+                isDemo ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-slate-900 text-white hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-xl'
               }`}
             >
-              {isDemo ? 'Demo Modunda Başlatılamaz' : 'Rotayı Başlat'}
+              {isDemo ? 'Demoda Başlatılamaz' : <><Navigation size={20} /> Rotayı Başlat</>}
             </button>
             <button
               onClick={exportMarkingFormPDF}
-              className="w-full bg-blue-50 text-blue-700 border border-blue-200 px-4 py-3 rounded-md hover:bg-blue-100 font-medium text-lg flex items-center justify-center mt-2"
+              className="w-full bg-white text-slate-700 border border-slate-200 py-3.5 rounded-2xl hover:bg-slate-50 font-bold text-sm flex items-center justify-center shadow-sm transition-all"
             >
-              <FileText className="mr-2" size={20} />
+              <FileText className="mr-2 text-slate-400" size={18} />
               İşaretleme Formu İndir
             </button>
           </div>
@@ -837,43 +893,67 @@ export default function DriverPage() {
       )}
 
       {todayRoute.status === 'in_progress' && nextStop && nextHousehold && (
-        <div className={`p-6 rounded-lg shadow-sm border transition-all ${isPausedLocal ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`text-xl font-bold flex items-center ${isPausedLocal ? 'text-orange-900' : 'text-blue-900'}`}>
-              {isPausedLocal ? <Clock className="mr-2" /> : <MapPin className="mr-2" />}
-              {isPausedLocal ? 'Mola Verildi' : 'Sıradaki Teslimat'}
-            </h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleTogglePause}
-                className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-colors flex items-center gap-1.5 ${
-                  isPausedLocal 
-                    ? 'bg-white text-orange-700 border-orange-300 hover:bg-orange-50 shadow-sm' 
-                    : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                }`}
-              >
-                {isPausedLocal ? (
-                  <><Navigation size={14} /> Teslimata Dön</>
-                ) : (
-                  <><Clock size={14} /> Mola Ver</>
-                )}
-              </button>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPausedLocal ? 'bg-orange-200 text-orange-800' : 'bg-blue-200 text-blue-800'}`}>
-                {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek / {(nextStop.householdSnapshotBreadCount ?? nextHousehold.breadCount ?? nextHousehold.memberCount) * (isLastWorkingDay ? 2 : 1)} Ekmek
-              </span>
+        <div className={`p-5 sm:p-6 rounded-3xl shadow-lg border transition-all ${isPausedLocal ? 'bg-white border-orange-200 shadow-orange-100/50 relative overflow-hidden' : 'bg-white border-blue-200 shadow-blue-100/50 relative overflow-hidden'}`}>
+          <div className={`absolute top-0 w-full h-1.5 left-0 right-0 ${isPausedLocal ? 'bg-gradient-to-r from-orange-400 to-orange-500' : 'bg-gradient-to-r from-blue-400 to-cyan-500'}`}></div>
+          
+          <div className="flex items-start justify-between mb-6 pt-2">
+            <div>
+               <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2 ${isPausedLocal ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                 {isPausedLocal ? <Clock size={12} /> : <MapPin size={12} />}
+                 {isPausedLocal ? 'Mola Verildi' : 'Sıradaki Teslimat'}
+               </div>
+               
+               <div className="flex gap-2">
+                 <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
+                   <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                   {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
+                 </span>
+                 <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
+                   <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                   {(nextStop.householdSnapshotBreadCount ?? nextHousehold.breadCount ?? nextHousehold.memberCount) * (isLastWorkingDay ? 2 : 1)} Ekmek
+                 </span>
+               </div>
             </div>
+            
+            <button
+              onClick={handleTogglePause}
+              disabled={isPanelPassive || isDemo}
+              className={`shrink-0 flex items-center justify-center h-12 w-12 rounded-2xl border-2 transition-all shadow-sm ${
+                isPausedLocal 
+                  ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 hover:scale-105' 
+                  : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50 hover:text-orange-500 hover:border-orange-200'
+              }`}
+              title={isPausedLocal ? "Teslimata Dön" : "Mola Ver"}
+            >
+              {isPausedLocal ? <Navigation fill="currentColor" size={20} /> : <Clock size={20} />}
+            </button>
           </div>
           
           {isPausedLocal ? (
-            <div className="bg-white p-6 rounded-md mb-6 text-center shadow-inner border border-orange-100">
-               <p className="text-orange-900 font-bold text-lg italic">Şu an mola modundasınız.</p>
-               <p className="text-orange-700 mt-2 text-sm italic">Teslimatlara devam etmek için &quot;Teslimata Dön&quot; butonuna tıklayınız.</p>
+            <div className="bg-orange-50/50 p-6 rounded-2xl mb-6 text-center border border-orange-100/50">
+               <div className="bg-orange-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                 <Clock className="text-orange-500 h-8 w-8" />
+               </div>
+               <h3 className="text-orange-900 font-black text-xl mb-1 tracking-tight">Şu an mola modundasınız</h3>
+               <p className="text-orange-700 text-sm font-medium leading-relaxed">Yeni teslimatlara başlamak için yukarıdaki butona tıklayarak devam edin.</p>
             </div>
           ) : (
-            <div className="bg-white p-4 rounded-md mb-6 shadow-sm border border-blue-100">
-              <p className="font-bold text-lg text-gray-900">{nextHousehold.headName}</p>
-              <p className="text-gray-600 mt-1">{nextHousehold.address}</p>
-              <p className="text-gray-800 font-medium mt-2">Tel: {nextHousehold.phone}</p>
+            <div className="bg-slate-50 p-5 rounded-2xl mb-6 border border-slate-100">
+              <h2 className="font-black text-2xl text-slate-800 tracking-tight leading-tight mb-2">
+                 {nextHousehold.headName}
+              </h2>
+              <div className="flex items-start gap-2 text-slate-600 font-medium text-[15px] leading-relaxed">
+                 <MapPin className="shrink-0 mt-0.5 text-slate-400" size={18} />
+                 <p className="line-clamp-3">{nextHousehold.address}</p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-200 flex items-center gap-2">
+                 <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center">
+                    <Phone className="text-slate-500" size={14} />
+                 </div>
+                 <a href={`tel:${nextHousehold.phone}`} className="text-blue-600 font-bold text-lg hover:underline decoration-2 underline-offset-4">
+                    {nextHousehold.phone}
+                 </a>
+              </div>
             </div>
           )}
 
@@ -881,47 +961,51 @@ export default function DriverPage() {
             <button
               onClick={() => setConfirmAction({ type: 'delivered', stopId: nextStop.id! })}
               disabled={isPanelPassive || isDemo || isPausedLocal}
-              className={`flex-1 px-4 py-4 rounded-md font-medium text-lg flex items-center justify-center transition-colors ${
-                isPanelPassive || isDemo || isPausedLocal ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-green-600 text-white hover:bg-green-700 shadow-md'
+              className={`flex-1 relative overflow-hidden py-4 rounded-2xl font-black text-lg flex items-center justify-center transition-all ${
+                isPanelPassive || isDemo || isPausedLocal 
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-none' 
+                  : 'bg-green-500 text-white hover:bg-green-600 shadow-[0_4px_20px_-4px_rgba(34,197,94,0.4)] hover:-translate-y-0.5'
               }`}
             >
-              <CheckCircle className="mr-2" />
-              {isPausedLocal ? 'Mola Devam Ediyor' : 'Teslim Edildi'}
+              <CheckCircle className="mr-2 h-6 w-6" />
+              {isPausedLocal ? 'Mola Verildi' : 'Teslim Edildi'}
             </button>
             <button
               onClick={() => setActiveStopId(nextStop.id!)}
               disabled={isPanelPassive || isDemo || isPausedLocal}
-              className={`flex-1 px-4 py-4 rounded-md font-medium text-lg flex items-center justify-center transition-colors ${
-                isPanelPassive || isDemo || isPausedLocal ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-red-600 text-white hover:bg-red-700 shadow-md'
+              className={`sm:w-auto w-full px-6 py-4 rounded-2xl font-bold text-base flex items-center justify-center transition-all ${
+                isPanelPassive || isDemo || isPausedLocal 
+                  ? 'bg-slate-50 text-slate-300 cursor-not-allowed border-none' 
+                  : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 hover:-translate-y-0.5'
               }`}
             >
-              <XCircle className="mr-2" />
-              {isPausedLocal ? 'Mola Devam Ediyor' : 'Teslim Edilemedi'}
+              <XCircle className="mr-2 h-5 w-5" />
+              Teslim Edilemedi
             </button>
           </div>
 
           {activeStopId === nextStop.id && (
-            <div className="mt-4 bg-white p-4 rounded-md border border-red-200">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Sorun Bildir (Neden teslim edilemedi?)</label>
+            <div className="mt-4 bg-red-50/50 p-4 rounded-2xl border border-red-200">
+              <label className="block text-xs font-bold uppercase tracking-wider text-red-800 mb-2">Kuruma İletilecek Sorun / Neden</label>
               <textarea
                 value={issueText}
                 onChange={(e) => setIssueText(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm border p-2 mb-3"
+                className="block w-full rounded-xl border-red-200 bg-white shadow-sm focus:border-red-500 focus:ring-red-500 text-sm p-3 mb-3"
                 rows={3}
-                placeholder="Örn: Evde yoktular, adres yanlış..."
+                placeholder="Örn: Kapıyı açmadılar, adresten taşınmışlar..."
               ></textarea>
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setActiveStopId(null)}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-sm"
                 >
                   İptal
                 </button>
                 <button
                   onClick={() => setConfirmAction({ type: 'failed', stopId: nextStop.id! })}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  className="px-5 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-sm flex items-center gap-1.5 shadow-sm"
                 >
-                  Kaydet ve Geç
+                  <XCircle size={16} /> Kaydet
                 </button>
               </div>
             </div>
@@ -930,109 +1014,114 @@ export default function DriverPage() {
       )}
 
       {todayRoute.status === 'in_progress' && !nextStop && (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-            <CheckCircle className="h-8 w-8 text-green-600" />
+        <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/60 text-center relative overflow-hidden">
+          <div className="absolute top-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-50 mb-4 ring-8 ring-emerald-50/50">
+            <CheckCircle className="h-10 w-10 text-emerald-500" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Tüm teslimatlar tamamlandı!</h3>
-          <p className="text-gray-500 mb-6">Lütfen gün sonu bilgilerini girerek rotayı bitirin.</p>
+          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Görev Tamamlandı!</h3>
+          <p className="text-sm font-medium text-slate-500 mb-8 px-2">Tüm teslimatlar bitti. Lütfen gün sonu bilgilerinizi girerek rotayı kapatın.</p>
           
-          <div className="max-w-md mx-auto space-y-4 text-left">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bitiş KM</label>
+          <div className="max-w-md mx-auto space-y-5 text-left">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Bitiş KM</label>
               <input
                 type="number"
                 value={endKm}
                 onChange={(e) => setEndKm(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3"
+                className="block w-full bg-white rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-emerald-500 text-lg font-bold text-slate-800 p-3 text-center shadow-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Otomatik Kalan Yemek</label>
-                <input
-                  type="text"
-                  disabled
-                  value={autoRemainingFood}
-                  className="block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-lg border p-3"
-                />
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-300"></div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 pl-2">Kalan Yemek</label>
+                <div className="flex pl-2 items-center gap-1">
+                  <span className="text-xl font-black text-slate-700">{autoRemainingFood}</span>
+                  <span className="text-xs font-semibold text-slate-400 mt-1">otomatik</span>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Kalan Yemek</label>
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-inner">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Ekstra Kalan Yemek</label>
                 <input
                   type="number"
                   value={extraFood}
                   onChange={(e) => setExtraFood(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3"
+                  className="block w-full rounded-xl border border-slate-200 bg-white shadow-sm focus:border-emerald-500 text-center font-bold text-lg p-2"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Otomatik Kalan Ekmek</label>
-                <input
-                  type="text"
-                  disabled
-                  value={autoRemainingBread}
-                  className="block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm sm:text-lg border p-3"
-                />
+              
+              <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-300"></div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 pl-2">Kalan Ekmek</label>
+                <div className="flex pl-2 items-center gap-1">
+                  <span className="text-xl font-black text-slate-700">{autoRemainingBread}</span>
+                  <span className="text-xs font-semibold text-slate-400 mt-1">otomatik</span>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Kalan Ekmek</label>
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-inner">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Ekstra Kalan Ekmek</label>
                 <input
                   type="number"
                   value={extraBread}
                   onChange={(e) => setExtraBread(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-lg border p-3"
+                  className="block w-full rounded-xl border border-slate-200 bg-white shadow-sm focus:border-emerald-500 text-center font-bold text-lg p-2"
                 />
               </div>
             </div>
-            {(!isDemo && (safeFormat(new Date(), 'yyyy-MM-dd') > todayRoute.date || new Date().getHours() >= 11)) ? (
-              <button
-                onClick={handleEndRoute}
-                className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-green-600 text-white hover:bg-green-700 shadow-sm"
-              >
-                Günü Tamamla
-              </button>
-            ) : !isDemo && (
-              <div className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-gray-50 text-gray-500 border-2 border-dashed border-gray-300 text-center">
-                {safeFormat(new Date(), 'yyyy-MM-dd') === todayRoute.date ? 'Saat 11:00\'den Sonra Tamamlanabilir' : 'Bu Rota Gelecek Tarihlidir'}
-              </div>
-            )}
-            
-            {isDemo && (
-              <button
-                disabled
-                className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-gray-300 text-gray-500 cursor-not-allowed"
-              >
-                Demo Modunda Tamamlanamaz
-              </button>
-            )}
+
+            <div className="pt-2">
+              {(!isDemo && (safeFormat(new Date(), 'yyyy-MM-dd') > todayRoute.date || new Date().getHours() >= 11)) ? (
+                <button
+                  onClick={handleEndRoute}
+                  className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:-translate-y-0.5"
+                >
+                  Günü Tamamla ve Kapat
+                </button>
+              ) : !isDemo && (
+                <div className="w-full py-4 rounded-2xl font-bold text-sm bg-slate-100 text-slate-500 border border-slate-200 text-center">
+                  {safeFormat(new Date(), 'yyyy-MM-dd') === todayRoute.date ? 'Saat 11:00\'den Sonra Tamamlanabilir' : 'Bu Rota Gelecek Tarihlidir'}
+                </div>
+              )}
+              
+              {isDemo && (
+                <button disabled className="w-full py-4 rounded-2xl font-bold text-sm bg-slate-200 text-slate-400 cursor-not-allowed">
+                  Demo Modunda Tamamlanamaz
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {todayRoute.status === 'completed' && (
-        <div className="bg-green-50 p-8 rounded-lg shadow-sm border border-green-200 text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4">
-            <CheckCircle className="h-10 w-10 text-green-600" />
+        <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/60 text-center relative overflow-hidden">
+          <div className="absolute top-0 w-full h-1.5 bg-gradient-to-r from-teal-400 to-emerald-500"></div>
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-50 mb-6 ring-8 ring-emerald-50/50">
+            <CheckCircle className="h-12 w-12 text-emerald-500" />
           </div>
-          <h2 className="text-2xl font-bold text-green-900 mb-2">Bugünkü göreviniz tamamlandı.</h2>
-          <p className="text-green-700">Elinize sağlık!</p>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Elinize Sağlık!</h2>
+          <p className="text-slate-500 font-medium mb-8">Bugünkü görevlerinizi başarıyla tamamladınız. Artık çıkış yapabilirsiniz.</p>
           <button 
             onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
-            className="mt-6 inline-flex items-center gap-2 text-white bg-green-600 hover:bg-green-700 px-6 py-2.5 rounded-lg shadow-sm font-medium transition-colors"
+            className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:-translate-y-0.5"
           >
-            <LogOut size={18} />
-            {isDriverRole ? 'Güvenle Çıkış Yap' : 'Farklı bir şoför seç'}
+            <LogOut size={20} />
+            {isDriverRole ? 'Güvenle Çıkış Yap' : 'Farklı Bir Şoför Seç'}
           </button>
         </div>
       )}
 
       {/* Route List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <h3 className="font-medium text-gray-900">Tüm Rota Listesi</h3>
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+          <h3 className="font-bold text-slate-800">Tüm Teslimat Listesi</h3>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
+            {sortedStops.length} Hane
+          </span>
         </div>
-        <ul className="divide-y divide-gray-200">
+        <ul className="divide-y divide-slate-100">
           {sortedStops.map((stop: RouteStop) => {
             const household = households?.find(h => h?.id === stop.householdId);
             if (!household) return null;
@@ -1040,56 +1129,75 @@ export default function DriverPage() {
             const isDeleted = household.pausedUntil === '9999-12-31';
             const isPaused = household.pausedUntil && household.pausedUntil >= todayRoute.date;
             const index = routeStops?.findIndex((s: RouteStop) => s.id === stop.id) ?? 0;
+            const isDelivered = stop.status === 'delivered';
+            const isFailed = stop.status === 'failed';
+            const isPending = stop.status === 'pending';
 
             return (
-              <li key={stop.id} className={`p-4 ${
-                isDeleted ? 'bg-red-50' : 
-                isPaused ? 'bg-orange-50' : 
-                stop.status === 'pending' ? 'bg-white' : 'bg-gray-50'
+              <li key={stop.id} className={`p-4 transition-colors ${
+                isDeleted ? 'bg-red-50/50' : 
+                isPaused ? 'bg-orange-50/50' : 
+                isPending ? 'bg-white' : 'bg-slate-50/50'
               }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium
-                      ${isDeleted ? 'bg-red-200 text-red-800' :
-                        isPaused ? 'bg-orange-200 text-orange-800' :
-                        stop.status === 'delivered' ? 'bg-green-100 text-green-600' : 
-                        stop.status === 'failed' ? 'bg-red-100 text-red-600' : 
-                        'bg-gray-200 text-gray-600'}`}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-xs font-black
+                      ${isDeleted ? 'bg-red-100 text-red-600' :
+                        isPaused ? 'bg-orange-100 text-orange-600' :
+                        isDelivered ? 'bg-green-100 text-green-600' : 
+                        isFailed ? 'bg-red-100 text-red-600' : 
+                        'bg-slate-100 text-slate-500 border border-slate-200 shadow-inner'}`}
                     >
-                      {index + 1}
+                      {isDelivered ? <CheckCircle size={16} /> : isFailed ? <XCircle size={16} /> : index + 1}
                     </div>
-                    <div className="ml-4">
-                      <p className={`text-sm font-medium ${
+                    <div className="flex flex-col mt-1">
+                      <p className={`text-[13px] leading-tight ${
                         isDeleted ? 'text-red-900 font-bold' :
                         isPaused ? 'text-orange-900 font-bold' :
-                        stop.status === 'pending' ? 'text-gray-900' : 'text-gray-500 line-through'
+                        isPending ? 'text-slate-900 font-bold' : 'text-slate-400 font-medium line-through decoration-slate-300'
                       }`}>
                         {household.headName}
-                        {isDeleted && <span className="ml-2 text-xs uppercase">[SİLİNDİ]</span>}
-                        {isPaused && <span className="ml-2 text-xs uppercase">[PASİF]</span>}
+                        {isDeleted && <span className="ml-1 text-[9px] uppercase bg-red-200 text-red-800 px-1 py-0.5 rounded leading-none border border-red-300/50">Silindi</span>}
+                        {isPaused && <span className="ml-1 text-[9px] uppercase bg-orange-200 text-orange-800 px-1 py-0.5 rounded leading-none border border-orange-300/50">Pasif</span>}
                       </p>
-                      <p className="text-sm text-gray-500">{household.address}</p>
+                      <p className={`text-xs mt-1 line-clamp-2 ${isPending ? 'text-slate-500' : 'text-slate-400'}`}>
+                        {household.address}
+                      </p>
                       {stop.issueReport && (
-                        <p className="text-xs text-red-500 mt-1 flex items-center">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          {stop.issueReport}
+                        <p className="text-[11px] font-medium text-red-600 mt-1.5 flex items-start gap-1 bg-red-50 p-1.5 rounded-lg border border-red-100">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                          <span>{stop.issueReport}</span>
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mb-1 ${
-                      isDeleted ? 'bg-red-100 text-red-800' :
-                      isPaused ? 'bg-orange-100 text-orange-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {household.memberCount * (isLastWorkingDay ? 2 : 1)} Y / {(stop.householdSnapshotBreadCount ?? household.breadCount ?? household.memberCount) * (isLastWorkingDay ? 2 : 1)} E
-                    </span>
-                    {stop.status !== 'pending' && todayRoute.status === 'in_progress' && !isDeleted && !isPaused && !isDemo && (
+                  
+                  <div className="flex flex-col items-end gap-2 shrink-0 pt-0.5">
+                    <div className="flex flex-col gap-1 items-end">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm border ${
+                        isDeleted ? 'bg-white border-red-200 text-red-700' :
+                        isPaused ? 'bg-white border-orange-200 text-orange-700' :
+                        'bg-white border-slate-200 text-indigo-700'
+                      }`}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-current mr-1 opacity-50"></div>
+                        {household.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm border ${
+                        isDeleted ? 'bg-white border-red-200 text-red-700' :
+                        isPaused ? 'bg-white border-orange-200 text-orange-700' :
+                        'bg-white border-slate-200 text-amber-700'
+                      }`}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-current mr-1 opacity-50"></div>
+                        {(stop.householdSnapshotBreadCount ?? household.breadCount ?? household.memberCount) * (isLastWorkingDay ? 2 : 1)} Ekmek
+                      </span>
+                    </div>
+                    
+                    {!isPending && todayRoute.status === 'in_progress' && !isDeleted && !isPaused && !isDemo && (
                       <button
                         onClick={() => { setEditingPastStopId(stop.id!); setIssueText(''); setActiveStopId(null); }}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium underline"
+                        className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 transition-colors mt-auto"
                       >
+                        <Edit2 size={10} />
                         Düzenle
                       </button>
                     )}
@@ -1108,73 +1216,78 @@ export default function DriverPage() {
         if (!stop || !household) return null;
 
         return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-900">Teslimat Düzenle</h3>
-                <button onClick={() => { setEditingPastStopId(null); setIssueText(''); setActiveStopId(null); }} className="text-gray-400 hover:text-gray-500">
-                  <XCircle size={24} />
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 transform scale-100 transition-all">
+              <div className="flex justify-between items-center mb-5 border-b border-slate-100 pb-4">
+                <h3 className="text-lg font-black text-slate-800">Teslimatı Düzenle</h3>
+                <button onClick={() => { setEditingPastStopId(null); setIssueText(''); setActiveStopId(null); }} className="text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1.5 transition-colors">
+                  <X size={18} />
                 </button>
               </div>
               
-              <div className="mb-4">
-                <p className="font-bold text-gray-900">{household.headName}</p>
-                <p className="text-sm text-gray-500">{household.address}</p>
+              <div className="mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <p className="font-black text-slate-800 tracking-tight leading-tight mb-1">{household.headName}</p>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">{household.address}</p>
               </div>
 
               <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">İşlem Geçmişi</h4>
-                <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm max-h-40 overflow-y-auto">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">İşlem Geçmişi</h4>
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 space-y-2.5 text-sm max-h-32 overflow-y-auto shadow-inner">
                   {stop.history && stop.history.length > 0 ? stop.history.map((h: any, i: number) => (
-                    <div key={i} className="border-b border-gray-200 last:border-0 pb-2 last:pb-0">
-                      <span className="text-gray-500">{safeFormat(new Date(h.timestamp), 'dd.MM.yyyy HH:mm')}</span> - 
-                      <span className={`ml-2 font-medium ${h.status === 'delivered' ? 'text-green-600' : 'text-red-600'}`}>
-                        {h.status === 'delivered' ? 'Teslim Edildi' : 'Edilemedi'}
-                      </span>
-                      {h.note && <p className="text-gray-600 mt-1 text-xs">Açıklama: {h.note}</p>}
+                    <div key={i} className="border-b border-slate-200/60 last:border-0 pb-2.5 last:pb-0">
+                      <div className="flex items-center gap-2">
+                         <span className="text-slate-400 font-mono text-[11px] tracking-tight">{safeFormatTRT(new Date(h.timestamp), 'dd.MM.yyyy HH:mm')}</span> 
+                         <span className={`font-bold text-[11px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${h.status === 'delivered' ? 'text-green-600 bg-green-50 border-green-200' : 'text-red-600 bg-red-50 border-red-200'}`}>
+                           {h.status === 'delivered' ? 'Teslim' : 'Hata'}
+                         </span>
+                      </div>
+                      {h.note && <p className="text-slate-600 mt-1.5 text-xs font-medium leading-tight">Neden: {h.note}</p>}
                     </div>
                   )) : (
-                    <div className="border-b border-gray-200 pb-2">
-                      <span className="text-gray-500">{stop.deliveredAt ? safeFormat(new Date(stop.deliveredAt), 'dd.MM.yyyy HH:mm') : '-'}</span> - 
-                      <span className={`ml-2 font-medium ${stop.status === 'delivered' ? 'text-green-600' : 'text-red-600'}`}>
-                        {stop.status === 'delivered' ? 'Teslim Edildi' : 'Edilemedi'}
-                      </span>
-                      {stop.issueReport && <p className="text-gray-600 mt-1 text-xs">Açıklama: {stop.issueReport}</p>}
+                    <div className="border-b border-slate-200/60 pb-2">
+                       <div className="flex items-center gap-2">
+                         <span className="text-slate-400 font-mono text-[11px] tracking-tight">{stop.deliveredAt ? safeFormatTRT(new Date(stop.deliveredAt), 'dd.MM.yyyy HH:mm') : '-'}</span> 
+                         <span className={`font-bold text-[11px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${stop.status === 'delivered' ? 'text-green-600 bg-green-50 border-green-200' : 'text-red-600 bg-red-50 border-red-200'}`}>
+                           {stop.status === 'delivered' ? 'Teslim' : 'Hata'}
+                         </span>
+                      </div>
+                      {stop.issueReport && <p className="text-slate-600 mt-1.5 text-xs font-medium leading-tight">Neden: {stop.issueReport}</p>}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 pt-2">
                 <button
                   onClick={() => setConfirmAction({ type: 'delivered', stopId: stop.id! })}
-                  className="w-full bg-green-600 text-white px-4 py-3 rounded-md hover:bg-green-700 font-medium flex items-center justify-center"
+                  className="w-full bg-green-500 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center transition-all hover:bg-green-600 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <CheckCircle className="mr-2" />
-                  Teslim Edildi Olarak Değiştir
+                  <CheckCircle className="mr-2 shrink-0 h-5 w-5" />
+                  Teslim Edildi Yap
                 </button>
                 
                 {activeStopId === stop.id ? (
-                  <div className="bg-red-50 p-3 rounded-md border border-red-200 mt-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Neden teslim edilemedi?</label>
+                  <div className="bg-red-50/80 p-4 rounded-2xl border border-red-200 mt-2 shadow-inner">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-red-800 mb-2">Neden teslim edilemedi?</label>
                     <textarea
                       value={issueText}
                       onChange={(e) => setIssueText(e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm border p-2 mb-3"
+                      className="block w-full rounded-xl border border-red-200 bg-white shadow-sm focus:border-red-500 focus:ring-red-500 text-sm p-3 mb-3 font-medium transition-colors"
                       rows={2}
+                      placeholder="Gerekçeyi yazın..."
                     ></textarea>
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => setActiveStopId(null)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-md text-sm">İptal</button>
-                      <button onClick={() => setConfirmAction({ type: 'failed', stopId: stop.id! })} className="px-3 py-1.5 bg-red-600 text-white rounded-md text-sm">Kaydet</button>
+                      <button onClick={() => setActiveStopId(null)} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-bold text-xs transition-colors">İptal</button>
+                      <button onClick={() => setConfirmAction({ type: 'failed', stopId: stop.id! })} className="px-5 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-bold text-xs shadow-sm shadow-red-300">Kaydet</button>
                     </div>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setActiveStopId(stop.id!); setIssueText(''); }}
-                    className="w-full bg-red-600 text-white px-4 py-3 rounded-md hover:bg-red-700 font-medium flex items-center justify-center"
+                    className="w-full bg-red-50 text-red-600 border border-red-200 py-3.5 rounded-2xl font-bold flex items-center justify-center transition-all hover:bg-red-100"
                   >
-                    <XCircle className="mr-2" />
-                    Teslim Edilemedi Olarak Değiştir
+                    <XCircle className="mr-2 shrink-0 h-5 w-5" />
+                    Teslim Edilemedi Yap
                   </button>
                 )}
               </div>
@@ -1185,36 +1298,39 @@ export default function DriverPage() {
 
       {/* Confirmation Modal */}
       {confirmAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 text-center">
-            <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${confirmAction.type === 'delivered' ? 'bg-green-100' : 'bg-red-100'}`}>
-              {confirmAction.type === 'delivered' ? (
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              ) : (
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              )}
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-xs w-full p-6 text-center shadow-2xl border border-slate-200 transform transition-all scale-100">
+            <div className={`mx-auto flex items-center justify-center h-16 w-16 mb-4 relative`}>
+              <div className={`absolute inset-0 rounded-full opacity-20 ${confirmAction.type === 'delivered' ? 'bg-green-500 blur-md' : 'bg-red-500 blur-md'}`}></div>
+              <div className={`relative flex items-center justify-center h-16 w-16 rounded-full border-4 border-white shadow-sm ${confirmAction.type === 'delivered' ? 'bg-green-100' : 'bg-red-100'}`}>
+                 {confirmAction.type === 'delivered' ? (
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                 ) : (
+                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                 )}
+              </div>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">İşlemi Onaylayın</h3>
-            <p className="text-sm text-gray-500 mb-6">
+            <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">İşlemi Onayla</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6 px-2">
               {confirmAction.type === 'delivered' 
-                ? 'Bu haneye teslimat yapıldığını onaylıyor musunuz?' 
-                : 'Bu haneye teslimat yapılamadığını onaylıyor musunuz?'}
+                ? 'Bu hane için yemeğin teslim edildiğini onaylıyor musunuz?' 
+                : 'Bu hane için yemeğin teslim edilemediğini onaylıyor musunuz?'}
             </p>
-            <div className="flex justify-center gap-3">
+            <div className="flex flex-col sm:flex-row justify-center gap-2.5">
               <button
                 onClick={() => setConfirmAction(null)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium"
+                className="w-full sm:w-auto px-5 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-bold transition-all shadow-sm"
               >
-                İptal
+                Vazgeç
               </button>
               <button
                 onClick={() => {
                   updateStopStatus(confirmAction.stopId, confirmAction.type);
                   setConfirmAction(null);
                 }}
-                className={`px-4 py-2 text-white rounded-md font-medium ${confirmAction.type === 'delivered' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                className={`w-full sm:w-auto px-6 py-3 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 ${confirmAction.type === 'delivered' ? 'bg-green-500 hover:bg-green-600 shadow-green-600/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'}`}
               >
-                Evet, Onaylıyorum
+                Evet, Onayla
               </button>
             </div>
           </div>
