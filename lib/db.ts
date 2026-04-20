@@ -18,7 +18,7 @@ const checkDemoMode = () => {
 // Types
 export interface HouseholdHistory {
   action: 'created' | 'updated' | 'paused' | 'activated' | 'deleted' | 'route_changed';
-  date: Date;
+  timestamp: Date;
   note?: string;
   personnelName?: string;
 }

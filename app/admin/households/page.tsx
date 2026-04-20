@@ -278,7 +278,7 @@ export default function HouseholdsPage() {
       const history = foundDeletedHousehold.history || [];
       history.push({
         action: 'activated',
-        date: new Date(),
+        timestamp: new Date(),
         note: 'Silinen hane tekrar aktifleştirildi'
       });
       await db.households.update(foundDeletedHousehold.id!, {
@@ -344,7 +344,7 @@ export default function HouseholdsPage() {
         const history = existing?.history || [];
         history.push({
           action: 'updated',
-          date: new Date(),
+          timestamp: new Date(),
           note: `${data.type === 'institution' ? 'Kurum' : 'Hane'} bilgileri güncellendi`
         });
         await db.households.put({ ...data, id: editingId, history });
@@ -354,7 +354,7 @@ export default function HouseholdsPage() {
         data.createdAt = new Date();
         data.history = [{
           action: 'created',
-          date: new Date(),
+          timestamp: new Date(),
           note: `${data.type === 'institution' ? 'Kurum' : 'Hane'} sisteme eklendi`
         }];
         const newId = await db.households.add(data);
@@ -647,7 +647,7 @@ export default function HouseholdsPage() {
         const history = existing?.history || [];
         history.push({
           action: 'paused',
-          date: new Date(),
+          timestamp: new Date(),
           note: `${pauseDate} tarihine kadar pasife alındı. Sebep: ${actionReason}`
         });
 
@@ -1141,7 +1141,7 @@ export default function HouseholdsPage() {
             <div className="p-6 flex-1 overflow-y-auto">
               {householdToViewHistory.history && householdToViewHistory.history.length > 0 ? (
                 <div className="space-y-4">
-                  {householdToViewHistory.history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item, idx) => (
+                  {householdToViewHistory.history.sort((a, b) => new Date((b as any).timestamp || (b as any).date).getTime() - new Date((a as any).timestamp || (a as any).date).getTime()).map((item: any, idx) => (
                     <div key={idx} className="flex items-start border-b border-gray-100 pb-4 last:border-0 last:pb-0">
                       <div className="mt-1 mr-4">
                         <Clock size={16} className="text-gray-400" />
@@ -1151,11 +1151,12 @@ export default function HouseholdsPage() {
                           {item.action === 'created' ? 'Oluşturuldu' : 
                            item.action === 'updated' ? 'Güncellendi' : 
                            item.action === 'paused' ? 'Pasife Alındı' : 
-                           item.action === 'activated' ? 'Aktifleştirildi' : 'Silindi'}
+                           item.action === 'activated' ? 'Aktifleştirildi' : 
+                           item.action === 'deleted' ? 'Silindi' : 'İşlem Yapıldı'}
                         </p>
                         <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
                           <Clock size={14} className="text-blue-500" />
-                          {safeFormat(item.date, 'dd.MM.yyyy HH:mm')}
+                          {safeFormat(item.timestamp || item.date, 'dd.MM.yyyy HH:mm')}
                         </div>
                         {item.note && <p className="text-sm text-gray-700 mt-1">{item.note}</p>}
                       </div>

@@ -4,9 +4,9 @@ const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/asevi';
 const options = {
   connectTimeoutMS: 10000,
   socketTimeoutMS: 45000,
-  maxPoolSize: 10,
+  maxPoolSize: 3, // Reduced for Atlas M0 limits
   minPoolSize: 1,
-  maxIdleTimeMS: 30000,
+  maxIdleTimeMS: 10000, // Reduced to close idle connections faster
   serverSelectionTimeoutMS: 10000,
 };
 
