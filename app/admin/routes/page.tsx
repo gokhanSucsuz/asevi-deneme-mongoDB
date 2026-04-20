@@ -1230,8 +1230,8 @@ export default function RoutesPage() {
       const hHistory = h?.history || [];
       const isNew = hHistory.some(hist => 
         hist.action === 'created' && 
-        safeFormat(new Date(hist.date), 'yyyy-MM-dd') >= prevStartDateStr && 
-        safeFormat(new Date(hist.date), 'yyyy-MM-dd') <= prevEndDateStr
+        safeFormat(new Date((hist as any).timestamp || (hist as any).date), 'yyyy-MM-dd') >= prevStartDateStr && 
+        safeFormat(new Date((hist as any).timestamp || (hist as any).date), 'yyyy-MM-dd') <= prevEndDateStr
       );
 
       let prevWeekNote = '';
