@@ -181,95 +181,72 @@ export default function StatisticsPage() {
         ['Aktif Hane Sayısı', `${activeHouseholdsCount}`]
       ];
 
+      // 2. SUMMARY TABLE (Professional Grid)
       autoTable(doc, {
-        head: [['Kategori', 'Değer']],
+        head: [['Aşevi Operasyonel Parametreler', 'Mevcut Değer / Miktar']],
         body: summaryData,
         startY: 45,
         theme: 'grid',
         margin: { bottom: 20 },
-        styles: { font: 'Roboto', fontSize: 10 },
-        headStyles: { fillColor: [79, 70, 229] }
+        styles: { font: 'Roboto', fontSize: 10, cellPadding: 4 },
+        headStyles: { fillColor: [79, 70, 229], halign: 'center' },
+        columnStyles: { 
+          0: { cellWidth: 100, fontStyle: 'bold' },
+          1: { halign: 'right' }
+        }
       });
 
+      // 3. GRAPHICAL ANALYSIS (Individual items for readability)
       if (chartRef.current) {
         try {
-          const originalStyle = chartRef.current.style.backgroundColor;
-          const originalOverflow = chartRef.current.style.overflow;
-          const originalHeight = chartRef.current.style.height;
-          
-          chartRef.current.style.backgroundColor = 'white';
-          chartRef.current.style.overflow = 'visible';
-          chartRef.current.style.height = 'auto';
-          
-          // Get full dimensions
-          const width = chartRef.current.scrollWidth;
-          const height = chartRef.current.scrollHeight;
-
-          const imgData = await toPng(chartRef.current, { 
-            quality: 0.95,
-            backgroundColor: '#ffffff',
-            pixelRatio: 2,
-            width: width,
-            height: height,
-            filter: (node) => {
-              if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
-              return true;
-            }
-          });
-          
-          chartRef.current.style.backgroundColor = originalStyle;
-          chartRef.current.style.overflow = originalOverflow;
-          chartRef.current.style.height = originalHeight;
-          
-          let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : 50;
-          
-          // If we are near bottom, start on new page
-          if (finalY + 30 > doc.internal.pageSize.height - 20) {
-            doc.addPage();
-            finalY = 20;
-          }
+          doc.addPage();
+          let currentY = 20;
 
           doc.setFont('Roboto', 'bold');
-          doc.setFontSize(12);
-          doc.text('GÖRSEL ANALİZ VE İSTATİSTİKLER', 14, finalY);
-          finalY += 5;
-          
-          const imgWidth = doc.internal.pageSize.width - 28;
-          const img = new Image();
-          img.src = imgData;
-          await new Promise((resolve) => { img.onload = resolve; });
-          const imgHeight = (img.height * imgWidth) / img.width;
-          
-          // If image is too tall for current page, try new page
-          if (finalY + imgHeight > doc.internal.pageSize.height - 20) {
-            // Only add new page if we haven't just added one and there is significant space occupied
-            if (finalY > 30) {
-              doc.addPage();
-              finalY = 20;
-              doc.setFont('Roboto', 'bold');
-              doc.text('GÖRSEL ANALİZ (Devamı)', 14, finalY);
-              finalY += 10;
-            }
+          doc.setFontSize(14);
+          doc.text('GÖRSEL VERİ ANALİZİ VE TRENDLER', doc.internal.pageSize.width / 2, currentY, { align: 'center' });
+          currentY += 15;
+
+          const chartSections = chartRef.current.querySelectorAll('.grid-cols-1 > div, .mt-8');
+
+          for (let i = 0; i < chartSections.length; i++) {
+            const section = chartSections[i] as HTMLElement;
             
-            // Re-calculate max available height
-            const maxAvailableHeight = doc.internal.pageSize.height - 30;
-            if (imgHeight > maxAvailableHeight) {
-              // Scale to fit the page height
-              const scaledHeight = maxAvailableHeight;
-              const scaledWidth = (img.width * scaledHeight) / img.height;
-              doc.addImage(imgData, 'PNG', (doc.internal.pageSize.width - scaledWidth)/2, finalY, scaledWidth, scaledHeight);
-            } else {
-              doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
+            if (section.classList.contains('grid-cols-1') && section.querySelectorAll('p').length > 4) continue;
+
+            const originalStyle = section.getAttribute('style') || '';
+            section.setAttribute('style', originalStyle + '; background-color: white !important; border: none !important; box-shadow: none !important;');
+
+            const imgData = await toPng(section, { 
+              quality: 0.95,
+              backgroundColor: '#ffffff',
+              pixelRatio: 2
+            });
+
+            section.setAttribute('style', originalStyle);
+
+            const img = new Image();
+            img.src = imgData;
+            await new Promise((resolve) => { img.onload = resolve; });
+
+            const pageWidth = doc.internal.pageSize.width - 28;
+            let imgWidth = pageWidth;
+            let imgHeight = (img.height * imgWidth) / img.width;
+
+            if (currentY + imgHeight > doc.internal.pageSize.height - 30) {
+              doc.addPage();
+              currentY = 20;
+              doc.setFontSize(10);
+              doc.setFont('Roboto', 'bold');
+              doc.text('GÖRSEL ANALİZ (Devamı)', 14, currentY);
+              currentY += 12;
             }
-          } else {
-            doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
+
+            doc.addImage(imgData, 'PNG', 14, currentY, imgWidth, imgHeight);
+            currentY += imgHeight + 15;
           }
         } catch (chartError) {
-          console.error('Error capturing charts for PDF:', chartError);
-          // fall back gracefully
-          doc.addPage();
-          doc.setFont('Roboto', 'bold');
-          doc.text('GÖRSEL ANALİZ (Grafikler yüklenemedi)', 14, 20);
+          console.error('Error capturing individual charts for Statistics PDF:', chartError);
         }
       }
 

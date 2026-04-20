@@ -344,99 +344,65 @@ export default function ReportsPage() {
         });
       }
 
-      // Capture Charts if reportRef is available
+      // 3. GRAPHICAL ANALYSIS SECTION
       if (reportRef.current) {
         try {
-          const chartsEl = reportRef.current.querySelector('.charts-container') as HTMLElement;
-          if (chartsEl) {
-            // Remove scrollbars and max-height temporarily for capture
-            const originalMaxHeight = chartsEl.style.maxHeight;
-            const originalOverflow = chartsEl.style.overflow;
-            const scrollableLists = chartsEl.querySelectorAll('.overflow-y-auto');
-            const originalListStyles: Array<{ el: HTMLElement, maxHeight: string, overflow: string }> = [];
-            
-            scrollableLists.forEach(el => {
-              const htmlEl = el as HTMLElement;
-              originalListStyles.push({ el: htmlEl, maxHeight: htmlEl.style.maxHeight, overflow: htmlEl.style.overflow });
-              htmlEl.style.maxHeight = 'none';
-              htmlEl.style.overflow = 'visible';
-            });
+          // Add a new page for graphics to maintain professional layout
+          doc.addPage();
+          let currentY = 20;
+          
+          doc.setFont('Roboto', 'bold');
+          doc.setFontSize(14);
+          doc.text('GRAFİKSEL ANALİZ VE DETAYLI VERİLER', doc.internal.pageSize.width / 2, currentY, { align: 'center' });
+          currentY += 15;
 
-            // Force standard colors for capture
-            const originalStyleAttr = chartsEl.getAttribute('style') || '';
-            chartsEl.setAttribute('style', originalStyleAttr + '; --color-primary: #4f46e5; --color-success: #10b981; --color-warning: #f59e0b; --color-danger: #ef4444;');
+          const chartCards = reportRef.current.querySelectorAll('.charts-container > div');
+          
+          for (let i = 0; i < chartCards.length; i++) {
+            const card = chartCards[i] as HTMLElement;
             
-            // Get full dimensions
-            const width = chartsEl.scrollWidth;
-            const height = chartsEl.scrollHeight;
-
-            const imgData = await toPng(chartsEl, { 
+            // Special handling for the large trend chart (usually the last one or has specific class)
+            const isTrendChart = card.classList.contains('lg:col-span-3');
+            
+            // Force standard colors and ensure visibility
+            const originalStyle = card.getAttribute('style') || '';
+            card.setAttribute('style', originalStyle + '; background-color: white !important; border: none !important; box-shadow: none !important;');
+            
+            // Capture individual card
+            const imgData = await toPng(card, { 
               quality: 0.95,
               backgroundColor: '#ffffff',
-              pixelRatio: 2,
-              width: width,
-              height: height,
-              filter: (node) => {
-                if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
-                return true;
-              }
+              pixelRatio: 2
             });
             
-            // Restore original styles
-            chartsEl.setAttribute('style', originalStyleAttr);
-            originalListStyles.forEach(style => {
-              style.el.style.maxHeight = style.maxHeight;
-              style.el.style.overflow = style.overflow;
-            });
-            
-            let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : 70;
-            
-            // Calculate height keeping aspect ratio
-            const imgWidth = doc.internal.pageSize.width - 28;
+            card.setAttribute('style', originalStyle);
+
             const img = new Image();
             img.src = imgData;
             await new Promise((resolve) => { img.onload = resolve; });
-            const imgHeight = (img.height * imgWidth) / img.width;
-
-            // Check if we need a new page for the heading
-            if (finalY + 15 > doc.internal.pageSize.height - 20) {
-              doc.addPage();
-              finalY = 20;
-            }
             
-            doc.setFont('Roboto', 'bold');
-            doc.setFontSize(11);
-            doc.text('GRAFİKSEL ANALİZ VE DETAYLAR', 14, finalY);
-            finalY += 5;
+            const pageWidth = doc.internal.pageSize.width - 28;
+            let imgWidth = pageWidth;
+            let imgHeight = (img.height * imgWidth) / img.width;
 
-            // Handle multi-page image adding or scaling
-            // For simplicity, if image is very tall, we might need to add it to a new page or split it
-            if (finalY + imgHeight > doc.internal.pageSize.height - 20) {
-              // If it doesn't fit at all, start on new page
-              if (finalY > 30) {
-                doc.addPage();
-                finalY = 20;
-              }
-
-              // If still doesn't fit (image itself is taller than a page), scale it to fit or just add it (it will be clipped)
-              // Optimally we'd split but let's at least scale to fit the accessible area
-              const maxAvailableHeight = doc.internal.pageSize.height - 30;
-              if (imgHeight > maxAvailableHeight) {
-                const scaledHeight = maxAvailableHeight;
-                const scaledWidth = (img.width * scaledHeight) / img.height;
-                doc.addImage(imgData, 'PNG', (doc.internal.pageSize.width - scaledWidth) / 2, finalY, scaledWidth, scaledHeight);
-              } else {
-                doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
-              }
-            } else {
-              doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
+            // If it's a small donut/pie chart, we can make it slightly smaller or keep it full width for "official" look
+            // Official reports usually prefer one-per-line for readability unless they are very related.
+            // But let's check height and page break
+            if (currentY + imgHeight > doc.internal.pageSize.height - 30) {
+              doc.addPage();
+              currentY = 20;
+              // Repeat title on new page if it's the same section
+              doc.setFontSize(10);
+              doc.setFont('Roboto', 'bold');
+              doc.text('GRAFİKSEL ANALİZ (Devamı)', 14, currentY);
+              currentY += 10;
             }
+
+            doc.addImage(imgData, 'PNG', 14, currentY, imgWidth, imgHeight);
+            currentY += imgHeight + 15;
           }
         } catch (chartError) {
-          console.error('Error capturing charts for PDF:', chartError);
-          doc.addPage();
-          doc.setFont('Roboto', 'bold');
-          doc.text('GRAFİKSEL ANALİZ (Grafikler yüklenemedi)', 14, 20);
+          console.error('Error capturing individual charts for PDF:', chartError);
         }
       }
 
