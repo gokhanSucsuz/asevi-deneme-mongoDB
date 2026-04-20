@@ -342,7 +342,7 @@ export default function DriverPage() {
       const newHistory = todayRoute.history || [];
       newHistory.push({
         action: newPausedState ? 'paused' : 'resumed',
-        date: now,
+        date: now.toISOString(), // ensure serializable
         note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
       });
 

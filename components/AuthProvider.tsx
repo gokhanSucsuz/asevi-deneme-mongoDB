@@ -84,12 +84,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
            // Not a developer/demo email, so they MUST be in personnel or drivers table.
            try {
              // Instead of using dexie queries directly, fetch all and filter to avoid API errors
-             // since some versions or offline states might block specific queries
-             const allPersonnel = await db.personnel.toArray();
-             const p = allPersonnel.find(p => p.email?.toLowerCase() === fbUser.email?.toLowerCase());
+             // since some versions or offline states might block specific queries.
+             // We use a fetch directly from backend to avoid 403 on client cache limits.
+             
+             const token = await fbUser.getIdToken();
+             
+             // Check Personnel
+             const pRes = await fetch('/api/db', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+               body: JSON.stringify({ collection: 'personnel', operation: 'list', query: { email: fbUser.email } })
+             });
+             const pData = pRes.ok ? await pRes.json() : [];
+             const p = Array.isArray(pData) && pData.length > 0 ? pData[0] : null;
 
-             const allDrivers = await db.drivers.toArray();
-             const d = allDrivers.find(dr => dr.googleEmail?.toLowerCase() === fbUser.email?.toLowerCase());
+             // Check Drivers
+             const dRes = await fetch('/api/db', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+               body: JSON.stringify({ collection: 'drivers', operation: 'list', query: { googleEmail: fbUser.email } })
+             });
+             const dData = dRes.ok ? await dRes.json() : [];
+             
+             const d2Res = await fetch('/api/db', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+               body: JSON.stringify({ collection: 'dr_drivers', operation: 'list', query: { googleEmail: fbUser.email } })
+             });
+             const d2Data = d2Res.ok ? await d2Res.json() : [];
+             
+             
+             const d = (Array.isArray(dData) && dData.length > 0 ? dData[0] : null) || (Array.isArray(d2Data) && d2Data.length > 0 ? d2Data[0] : null);
              
              if (!p && !d) {
                // Unauthorized Google login
@@ -106,7 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
              }
            } catch (e) {
              console.error('Validation error:', e);
-             toast.error('Bağlantı veya veri erişim hatası: ' + (e as Error).message);
+             toast.error('Giriş doğrulaması sırasında bir hata oluştu. Hesabınız incelenemiyor.');
              import('firebase/auth').then(({ signOut }) => {
                 signOut(auth);
              });

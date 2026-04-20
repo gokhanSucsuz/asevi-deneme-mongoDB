@@ -339,8 +339,16 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Database operation failed:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: String(error) }, { status: 500 });
+    // Explicitly check for Mongodb connection errors or timeouts
+    const errorStr = String(error);
+    if (errorStr.includes('pool') || errorStr.includes('topology') || errorStr.includes('serverSelectionTimeout') || errorStr.includes('timed out')) {
+       return NextResponse.json({ 
+         error: 'Database Connection Error. The server is currently under high load. Please try again in 5-10 seconds.', 
+         details: errorStr 
+       }, { status: 503 });
+    }
+    return NextResponse.json({ error: 'Internal Server Error', details: errorStr }, { status: 500 });
   }
 }

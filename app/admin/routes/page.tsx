@@ -5,7 +5,7 @@ import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info, Navigation } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
@@ -1117,7 +1117,7 @@ export default function RoutesPage() {
         gs.bread.toString(),
         gs.breakfast > 0 ? gs.breakfast.toString() : '-',
         gs.status === 'delivered' ? 'Teslim Edildi' : gs.status === 'failed' ? 'Edilemedi' : 'Bekliyor',
-        gs.deliveredAt ? safeFormat(gs.deliveredAt, 'HH:mm') : '-',
+        gs.deliveredAt ? safeFormatTRT(gs.deliveredAt, 'HH:mm') : '-',
         gs.issueReport
       ];
     });
@@ -1315,11 +1315,11 @@ export default function RoutesPage() {
     
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
+    doc.text(`Rapor Tarihi: ${safeFormatTRT(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
 
     const tableColumn = ["Tarih", "İşlem", "Detay", "Personel", "Kategori"];
     const tableRows = filteredLogs.map(log => [
-      safeFormat(log.timestamp, 'dd.MM.yyyy HH:mm'),
+      safeFormatTRT(log.timestamp, 'dd.MM.yyyy HH:mm'),
       log.action,
       log.details || '-',
       log.personnelName,
@@ -2219,7 +2219,7 @@ export default function RoutesPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? safeFormat(stop.deliveredAt, 'HH:mm') : '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? safeFormatTRT(stop.deliveredAt, 'HH:mm') : '-'}</td>
                         <td className="px-4 py-2 text-sm text-gray-500">
                           {isEditingRouteDetails && stop.status === 'failed' ? (
                             <input
@@ -2244,33 +2244,38 @@ export default function RoutesPage() {
               </table>
               </div>
               
-              {/* Route History (Pauses/Resumes) */}
               {viewRouteDetails.history && viewRouteDetails.history.length > 0 && (
                 <div className="mt-8">
                   <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <History className="text-blue-600" size={20} />
-                    Rota Geçmişi (Mola ve Duraklamalar)
+                    <Clock className="text-orange-500" size={20} />
+                    Mola ve Görev Geçmişi
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <ul className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-300 before:to-transparent">
-                      {viewRouteDetails.history.map((record, idx) => (
-                        <li key={idx} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm ${
-                            record.action === 'paused' ? 'bg-orange-500 text-white' : 'bg-green-500 text-white'
-                          } z-10`}>
-                            {record.action === 'paused' ? <Clock size={16} /> : <CheckCircle size={16} />}
+                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                    <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:via-slate-300 before:to-slate-200">
+                      {viewRouteDetails.history.map((record: any, idx: number) => (
+                        <div key={idx} className={`relative flex items-center justify-between md:justify-normal group is-active ${idx % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
+                          <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-50 shrink-0 md:order-1 shadow-sm z-10 ${
+                            record.action === 'paused' ? 'bg-orange-500 text-white' : 
+                            record.action === 'resumed' ? 'bg-blue-500 text-white' : 
+                            'bg-slate-400 text-white'
+                          } md:group-even:-translate-x-1/2 md:group-odd:translate-x-1/2`}>
+                            {record.action === 'paused' ? <Clock size={16} /> : 
+                             record.action === 'resumed' ? <Navigation size={16} /> : 
+                             <CheckCircle size={16} />}
                           </div>
                           <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-gray-200 bg-white shadow-sm flex flex-col">
-                            <span className="font-bold text-gray-900 text-sm">
-                              {record.action === 'paused' ? 'Mola Verildi' : 'Göreve Devam Edildi'}
+                            <span className="font-black text-slate-800 text-sm">
+                              {record.action === 'paused' ? 'Mola Verildi' : 
+                               record.action === 'resumed' ? 'Göreve Devam Edildi' : 
+                               record.action === 'manual_completion' ? 'Manuel Tamamlandı' : 'Tamamlandı'}
                             </span>
-                            <span className="text-xs text-gray-500 mt-1 font-medium">
-                              {safeFormatTRT(record.date, 'dd.MM.yyyy HH:mm:ss')}
+                            <span className="text-xs text-slate-500 mt-1.5 font-bold uppercase tracking-wider">
+                              {safeFormatTRT(new Date(record.date), 'HH:mm')}
                             </span>
                           </div>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 </div>
               )}
