@@ -4,6 +4,10 @@ const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/asevi';
 const options = {
   connectTimeoutMS: 10000,
   socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+  minPoolSize: 1,
+  maxIdleTimeMS: 30000,
+  serverSelectionTimeoutMS: 10000,
 };
 
 let client: MongoClient;
