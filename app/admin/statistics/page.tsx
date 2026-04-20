@@ -186,6 +186,7 @@ export default function StatisticsPage() {
         body: summaryData,
         startY: 45,
         theme: 'grid',
+        margin: { bottom: 20 },
         styles: { font: 'Roboto', fontSize: 10 },
         headStyles: { fillColor: [79, 70, 229] }
       });
@@ -193,12 +194,23 @@ export default function StatisticsPage() {
       if (chartRef.current) {
         try {
           const originalStyle = chartRef.current.style.backgroundColor;
-          chartRef.current.style.backgroundColor = 'white';
+          const originalOverflow = chartRef.current.style.overflow;
+          const originalHeight = chartRef.current.style.height;
           
+          chartRef.current.style.backgroundColor = 'white';
+          chartRef.current.style.overflow = 'visible';
+          chartRef.current.style.height = 'auto';
+          
+          // Get full dimensions
+          const width = chartRef.current.scrollWidth;
+          const height = chartRef.current.scrollHeight;
+
           const imgData = await toPng(chartRef.current, { 
             quality: 0.95,
             backgroundColor: '#ffffff',
             pixelRatio: 2,
+            width: width,
+            height: height,
             filter: (node) => {
               if (node.tagName === 'svg' && (node as any).width?.baseVal?.value === 0) return false;
               return true;
@@ -206,15 +218,21 @@ export default function StatisticsPage() {
           });
           
           chartRef.current.style.backgroundColor = originalStyle;
+          chartRef.current.style.overflow = originalOverflow;
+          chartRef.current.style.height = originalHeight;
           
-          let finalY = (doc as any).lastAutoTable.finalY + 10;
-          if (finalY + 100 > doc.internal.pageSize.height) {
+          let finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : 50;
+          
+          // If we are near bottom, start on new page
+          if (finalY + 30 > doc.internal.pageSize.height - 20) {
             doc.addPage();
             finalY = 20;
           }
-          
+
           doc.setFont('Roboto', 'bold');
-          doc.text('GÖRSEL ANALİZ (TÜM İSTATİSTİKLER)', 14, finalY);
+          doc.setFontSize(12);
+          doc.text('GÖRSEL ANALİZ VE İSTATİSTİKLER', 14, finalY);
+          finalY += 5;
           
           const imgWidth = doc.internal.pageSize.width - 28;
           const img = new Image();
@@ -222,15 +240,30 @@ export default function StatisticsPage() {
           await new Promise((resolve) => { img.onload = resolve; });
           const imgHeight = (img.height * imgWidth) / img.width;
           
-          // If image is too tall for current page, add new page
-          if (finalY + 5 + imgHeight > doc.internal.pageSize.height) {
-            doc.addPage();
-            finalY = 20;
-            doc.setFont('Roboto', 'bold');
-            doc.text('GÖRSEL ANALİZ (Devamı)', 14, finalY);
+          // If image is too tall for current page, try new page
+          if (finalY + imgHeight > doc.internal.pageSize.height - 20) {
+            // Only add new page if we haven't just added one and there is significant space occupied
+            if (finalY > 30) {
+              doc.addPage();
+              finalY = 20;
+              doc.setFont('Roboto', 'bold');
+              doc.text('GÖRSEL ANALİZ (Devamı)', 14, finalY);
+              finalY += 10;
+            }
+            
+            // Re-calculate max available height
+            const maxAvailableHeight = doc.internal.pageSize.height - 30;
+            if (imgHeight > maxAvailableHeight) {
+              // Scale to fit the page height
+              const scaledHeight = maxAvailableHeight;
+              const scaledWidth = (img.width * scaledHeight) / img.height;
+              doc.addImage(imgData, 'PNG', (doc.internal.pageSize.width - scaledWidth)/2, finalY, scaledWidth, scaledHeight);
+            } else {
+              doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
+            }
+          } else {
+            doc.addImage(imgData, 'PNG', 14, finalY, imgWidth, imgHeight);
           }
-          
-          doc.addImage(imgData, 'PNG', 14, finalY + 5, imgWidth, imgHeight);
         } catch (chartError) {
           console.error('Error capturing charts for PDF:', chartError);
           // fall back gracefully
