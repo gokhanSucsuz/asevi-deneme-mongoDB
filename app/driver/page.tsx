@@ -15,6 +15,7 @@ import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
 import { localDb } from '@/lib/local-db';
+import { safeFormatTRT } from '@/lib/date-utils';
 
 export default function DriverPage() {
   const { user, role } = useAuth();
