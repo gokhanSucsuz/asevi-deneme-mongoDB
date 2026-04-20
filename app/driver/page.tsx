@@ -561,7 +561,7 @@ export default function DriverPage() {
   };
 
   if (!selectedDriverId) {
-    const isDriverRole = user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+    const isDriverRole = !!(user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase()));
 
     return (
       <div className="max-w-md mx-auto mt-10 space-y-4">
@@ -610,7 +610,7 @@ export default function DriverPage() {
     );
   }
 
-  const isDriverRole = user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+  const isDriverRole = !!(user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase()));
 
   if (!todayRoute) {
     return (
