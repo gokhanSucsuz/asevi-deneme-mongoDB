@@ -43,6 +43,7 @@ export default function DriversPage() {
       tcNo: '',
       name: '',
       phone: '',
+      googleEmail: '',
       vehiclePlate: '',
       isActive: true,
     }
@@ -58,6 +59,7 @@ export default function DriversPage() {
         tcNo: '',
         name: '',
         phone: '',
+        googleEmail: '',
         vehiclePlate: '',
         isActive: true,
       });
@@ -672,6 +674,15 @@ export default function DriversPage() {
                   type="text"
                   {...register('name', { required: true })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Google E-posta</label>
+                <input
+                  type="email"
+                  {...register('googleEmail')}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                  placeholder="Giriş yapılabilecek e-posta"
                 />
               </div>
               <div>

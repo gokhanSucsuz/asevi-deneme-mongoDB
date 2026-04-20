@@ -53,6 +53,7 @@ export interface Driver {
   tcNo: string;
   name: string;
   phone: string;
+  googleEmail?: string;
   vehiclePlate: string;
   isActive: boolean;
 }
@@ -70,6 +71,7 @@ export interface Route {
   driverSnapshotName?: string;
   date: string;
   status: 'pending' | 'in_progress' | 'completed' | 'approved';
+  isPaused?: boolean;
   startKm?: number;
   endKm?: number;
   remainingFood?: number;

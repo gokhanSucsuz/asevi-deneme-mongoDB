@@ -31,10 +31,32 @@ export default function DriverPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: 'delivered' | 'failed', stopId: string } | null>(null);
   const [isLastWorkingDay, setIsLastWorkingDay] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPausedLocal, setIsPausedLocal] = useState(false);
 
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormat(new Date(), 'yyyy-MM-dd');
+
+  // Auto-select driver based on google email
+  useEffect(() => {
+    const detectDriver = async () => {
+      if (user?.email && drivers && drivers.length > 0) {
+        const matchingDriver = drivers.find(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+        if (matchingDriver && !selectedDriverId) {
+          setSelectedDriverId(matchingDriver.id!);
+          toast.success(`Hoş geldiniz, ${matchingDriver.name}`);
+        }
+      }
+    };
+    detectDriver();
+  }, [user, drivers, selectedDriverId]);
+
+  // Sync paused state from DB
+  useEffect(() => {
+    if (todayRoute) {
+      setIsPausedLocal(!!todayRoute.isPaused);
+    }
+  }, [todayRoute]);
 
   // Auth check
   useEffect(() => {
@@ -187,14 +209,34 @@ export default function DriverPage() {
       if (todayRoute) {
         await db.routes.update(todayRoute.id!, {
           status: 'in_progress',
-          startKm: Number(startKm)
+          startKm: Number(startKm),
+          isPaused: false
         });
-        setTodayRoute({ ...todayRoute, status: 'in_progress', startKm: Number(startKm) });
+        setTodayRoute({ ...todayRoute, status: 'in_progress', startKm: Number(startKm), isPaused: false });
         toast.success('Rota başarıyla başlatıldı', { id: loadingToast });
       }
     } catch (error) {
       console.error(error);
       toast.error('Rota başlatılırken bir hata oluştu', { id: loadingToast });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    if (!todayRoute) return;
+    setIsSaving(true);
+    const newPausedState = !isPausedLocal;
+    try {
+      await db.routes.update(todayRoute.id!, {
+        isPaused: newPausedState
+      });
+      setIsPausedLocal(newPausedState);
+      setTodayRoute({ ...todayRoute, isPaused: newPausedState });
+      toast.info(newPausedState ? 'Rota duraklatıldı (Mola)' : 'Rota devam ettiriliyor');
+    } catch (error) {
+      console.error(error);
+      toast.error('İşlem sırasında bir hata oluştu');
     } finally {
       setIsSaving(false);
     }
@@ -526,12 +568,21 @@ export default function DriverPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setSelectedDriverId(null)}
-          className="text-xs font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
-        >
-          Şoför Değiştir
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSelectedDriverId(null)}
+            className="text-xs font-medium text-blue-600 bg-blue-50 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors border border-blue-100"
+          >
+            Şoför Değiştir
+          </button>
+          <button
+            onClick={handleLogout}
+            className="text-xs font-medium text-red-600 bg-red-50 p-2 rounded-lg hover:bg-red-100 transition-colors border border-red-100 flex items-center"
+            title="Güvenli Çıkış Yap"
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
       </div>
 
       <main className="flex-1 space-y-6 max-w-3xl mx-auto w-full">
@@ -602,53 +653,66 @@ export default function DriverPage() {
       )}
 
       {todayRoute.status === 'in_progress' && nextStop && nextHousehold && (
-        <div className="bg-blue-50 p-6 rounded-lg shadow-sm border border-blue-200">
+        <div className={`p-6 rounded-lg shadow-sm border transition-all ${isPausedLocal ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-blue-900 flex items-center">
-              <MapPin className="mr-2" />
-              Sıradaki Teslimat
+            <h3 className={`text-xl font-bold flex items-center ${isPausedLocal ? 'text-orange-900' : 'text-blue-900'}`}>
+              {isPausedLocal ? <Clock className="mr-2" /> : <MapPin className="mr-2" />}
+              {isPausedLocal ? 'Mola Verildi' : 'Sıradaki Teslimat'}
             </h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={exportMarkingFormPDF}
-                className="bg-white text-blue-700 border border-blue-200 px-3 py-1 rounded-md hover:bg-blue-50 font-medium text-sm flex items-center"
-                title="İşaretleme Formu İndir"
+                onClick={handleTogglePause}
+                className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-colors flex items-center gap-1.5 ${
+                  isPausedLocal 
+                    ? 'bg-white text-orange-700 border-orange-300 hover:bg-orange-50 shadow-sm' 
+                    : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                }`}
               >
-                <FileText size={16} className="mr-1" />
-                Form
+                {isPausedLocal ? (
+                  <><Navigation size={14} /> Teslimata Dön</>
+                ) : (
+                  <><Clock size={14} /> Mola Ver</>
+                )}
               </button>
-              <span className="bg-blue-200 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPausedLocal ? 'bg-orange-200 text-orange-800' : 'bg-blue-200 text-blue-800'}`}>
                 {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek / {(nextStop.householdSnapshotBreadCount ?? nextHousehold.breadCount ?? nextHousehold.memberCount) * (isLastWorkingDay ? 2 : 1)} Ekmek
               </span>
             </div>
           </div>
           
-          <div className="bg-white p-4 rounded-md mb-6">
-            <p className="font-bold text-lg text-gray-900">{nextHousehold.headName}</p>
-            <p className="text-gray-600 mt-1">{nextHousehold.address}</p>
-            <p className="text-gray-800 font-medium mt-2">Tel: {nextHousehold.phone}</p>
-          </div>
+          {isPausedLocal ? (
+            <div className="bg-white p-6 rounded-md mb-6 text-center shadow-inner border border-orange-100">
+               <p className="text-orange-900 font-bold text-lg italic">Şu an mola modundasınız.</p>
+               <p className="text-orange-700 mt-2 text-sm italic">Teslimatlara devam etmek için &quot;Teslimata Dön&quot; butonuna tıklayınız.</p>
+            </div>
+          ) : (
+            <div className="bg-white p-4 rounded-md mb-6 shadow-sm border border-blue-100">
+              <p className="font-bold text-lg text-gray-900">{nextHousehold.headName}</p>
+              <p className="text-gray-600 mt-1">{nextHousehold.address}</p>
+              <p className="text-gray-800 font-medium mt-2">Tel: {nextHousehold.phone}</p>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setConfirmAction({ type: 'delivered', stopId: nextStop.id! })}
-              disabled={isPanelPassive || isDemo}
+              disabled={isPanelPassive || isDemo || isPausedLocal}
               className={`flex-1 px-4 py-4 rounded-md font-medium text-lg flex items-center justify-center transition-colors ${
-                isPanelPassive || isDemo ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'
+                isPanelPassive || isDemo || isPausedLocal ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-green-600 text-white hover:bg-green-700 shadow-md'
               }`}
             >
               <CheckCircle className="mr-2" />
-              Teslim Edildi
+              {isPausedLocal ? 'Mola Devam Ediyor' : 'Teslim Edildi'}
             </button>
             <button
               onClick={() => setActiveStopId(nextStop.id!)}
-              disabled={isPanelPassive || isDemo}
+              disabled={isPanelPassive || isDemo || isPausedLocal}
               className={`flex-1 px-4 py-4 rounded-md font-medium text-lg flex items-center justify-center transition-colors ${
-                isPanelPassive || isDemo ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'
+                isPanelPassive || isDemo || isPausedLocal ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300' : 'bg-red-600 text-white hover:bg-red-700 shadow-md'
               }`}
             >
               <XCircle className="mr-2" />
-              Teslim Edilemedi
+              {isPausedLocal ? 'Mola Devam Ediyor' : 'Teslim Edilemedi'}
             </button>
           </div>
 
