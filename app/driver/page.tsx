@@ -339,10 +339,10 @@ export default function DriverPage() {
     const newPausedState = !isPausedLocal;
     try {
       const now = new Date();
-      const newHistory = todayRoute.history || [];
+      const newHistory = [...(todayRoute.history || [])];
       newHistory.push({
         action: newPausedState ? 'paused' : 'resumed',
-        date: now.toISOString(), // ensure serializable
+        date: now,
         note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
       });
 
