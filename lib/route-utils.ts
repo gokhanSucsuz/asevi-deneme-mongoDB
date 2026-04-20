@@ -131,7 +131,7 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     date: dateStr,
     status: 'pending',
     createdAt: new Date(),
-    history: [{ action: 'created', date: new Date(), note: 'Sistem tarafından otomatik oluşturuldu' }]
+    history: [{ action: 'created', timestamp: new Date(), note: 'Sistem tarafından otomatik oluşturuldu' }]
   });
 
   if (!routeId) return null;
@@ -249,7 +249,7 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
           date: nextDayStr,
           status: 'pending',
           createdAt: new Date(),
-          history: [{ action: 'created', date: new Date(), note: 'Otomatik oluşturuldu' }]
+          history: [{ action: 'created', timestamp: new Date(), note: 'Otomatik oluşturuldu' }]
         });
 
         const stops: RouteStop[] = [];

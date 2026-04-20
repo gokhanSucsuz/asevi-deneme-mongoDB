@@ -219,7 +219,7 @@ export default function DriverPage() {
               endKm: route.startKm || 0,
               remainingFood: 0,
               remainingBread: 0,
-              history: [...(route.history || []), { action: 'auto_completed', date: new Date(), note: 'Saat 17:30 sonrası otomatik tamamlandı' }]
+              history: [...(route.history || []), { action: 'auto_completed', timestamp: new Date(), note: 'Saat 17:30 sonrası otomatik tamamlandı' }]
             });
             
             // Generate next working day's route

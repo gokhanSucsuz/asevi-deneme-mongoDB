@@ -310,7 +310,7 @@ export default function RoutesPage() {
         date: selectedDate,
         status: 'pending',
         createdAt: new Date(),
-        history: [{ action: 'created', date: new Date(), note: 'Sistem yöneticisi tarafından oluşturuldu' }]
+        history: [{ action: 'created', timestamp: new Date(), note: 'Sistem yöneticisi tarafından oluşturuldu' }]
       });
 
       const stops: RouteStop[] = [];
@@ -462,7 +462,7 @@ export default function RoutesPage() {
         remainingBread: manualLeftoverBread,
         history: [...(routeForLeftover.history || []), { 
           action: isManualCompletion ? 'manual_completion' : 'completed', 
-          date: new Date(), 
+          timestamp: new Date(), 
           note: isManualCompletion ? 'Yönetici tarafından manuel tamamlandı' : 'Yönetici tarafından tamamlandı' 
         }]
       };
@@ -631,7 +631,7 @@ export default function RoutesPage() {
         date: selectedDate,
         status: 'pending',
         createdAt: new Date(),
-        history: [{ action: 'created', date: new Date(), note: 'Yönetici tarafından oluşturuldu' }]
+        history: [{ action: 'created', timestamp: new Date(), note: 'Yönetici tarafından oluşturuldu' }]
       });
 
       const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(selectedDate));
@@ -726,7 +726,7 @@ export default function RoutesPage() {
           status: 'approved',
           completedByPersonnel: true,
           personnelCompletionTime: route.personnelCompletionTime || new Date(),
-          history: [...(route.history || []), { action: 'approved', date: new Date(), note: 'Yönetici tarafından onaylandı' }]
+          history: [...(route.history || []), { action: 'approved', timestamp: new Date(), note: 'Yönetici tarafından onaylandı' }]
         });
 
         await addLog('Rota Onaylandı', `${safeFormat(route.date, 'dd.MM.yyyy')} tarihli ${getDriverName(route.driverId)} rotası onaylandı.`);
