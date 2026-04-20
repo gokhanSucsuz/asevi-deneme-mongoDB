@@ -37,6 +37,54 @@ export default function DriverPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
 
+  const syncOfflineData = useCallback(async () => {
+    if (isSyncing || !navigator.onLine) return;
+    
+    try {
+      const updates = await localDb.offlineUpdates.toArray();
+      if (updates.length === 0) {
+        setOfflineUpdates([]);
+        return;
+      }
+
+      setIsSyncing(true);
+      for (const update of updates) {
+        try {
+          const stop = await db.routeStops.get(update.stopId);
+          if (stop) {
+            const newHistory = stop.history || [];
+            newHistory.push({
+              status: update.status,
+              timestamp: new Date(update.deliveredAt),
+              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi'
+            });
+
+            await db.routeStops.update(stop.id!, {
+              status: update.status,
+              deliveredAt: new Date(update.deliveredAt),
+              issueReport: update.issueReport,
+              history: newHistory
+            });
+          }
+          await localDb.offlineUpdates.delete(update.id!);
+        } catch (innerError) {
+          console.error('Error syncing single update:', innerError);
+        }
+      }
+      
+      const remaining = await localDb.offlineUpdates.toArray();
+      setOfflineUpdates(remaining);
+      if (remaining.length === 0) {
+        toast.success('Tüm veriler başarıyla senkronize edildi.');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+    } finally {
+      setIsSyncing(false);
+      notifyDbChange('route_stops');
+    }
+  }, [isSyncing]);
+
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormat(new Date(), 'yyyy-MM-dd');
@@ -86,54 +134,6 @@ export default function DriverPage() {
       window.removeEventListener('offline', handleOffline);
     };
   }, [syncOfflineData]);
-
-  const syncOfflineData = useCallback(async () => {
-    if (isSyncing || !navigator.onLine) return;
-    
-    try {
-      const updates = await localDb.offlineUpdates.toArray();
-      if (updates.length === 0) {
-        setOfflineUpdates([]);
-        return;
-      }
-
-      setIsSyncing(true);
-      for (const update of updates) {
-        try {
-          const stop = await db.routeStops.get(update.stopId);
-          if (stop) {
-            const newHistory = stop.history || [];
-            newHistory.push({
-              status: update.status,
-              timestamp: new Date(update.deliveredAt),
-              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi'
-            });
-
-            await db.routeStops.update(stop.id!, {
-              status: update.status,
-              deliveredAt: new Date(update.deliveredAt),
-              issueReport: update.issueReport,
-              history: newHistory
-            });
-          }
-          await localDb.offlineUpdates.delete(update.id!);
-        } catch (innerError) {
-          console.error('Error syncing single update:', innerError);
-        }
-      }
-      
-      const remaining = await localDb.offlineUpdates.toArray();
-      setOfflineUpdates(remaining);
-      if (remaining.length === 0) {
-        toast.success('Tüm veriler başarıyla senkronize edildi.');
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-    } finally {
-      setIsSyncing(false);
-      notifyDbChange('route_stops');
-    }
-  }, [isSyncing]);
 
   // Load offline updates into local state for UI merging
   useEffect(() => {
