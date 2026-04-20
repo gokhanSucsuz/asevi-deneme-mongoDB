@@ -342,7 +342,7 @@ export default function DriverPage() {
       const newHistory = [...(todayRoute.history || [])];
       newHistory.push({
         action: newPausedState ? 'paused' : 'resumed',
-        date: now,
+        timestamp: now,
         note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
       });
 

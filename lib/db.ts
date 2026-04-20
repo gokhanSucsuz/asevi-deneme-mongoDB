@@ -60,7 +60,7 @@ export interface Driver {
 
 export interface RouteHistory {
   action: string;
-  date: Date;
+  timestamp: Date;
   note?: string;
   personnelName?: string;
 }
