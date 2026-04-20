@@ -717,9 +717,9 @@ export default function DriverPage() {
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-gray-900 leading-none">Aktif Şoför</h2>
               {isOnline ? (
-                <Wifi size={14} className="text-green-500" title="Çevrimiçi" />
+                <span title="Çevrimiçi"><Wifi size={14} className="text-green-500" /></span>
               ) : (
-                <WifiOff size={14} className="text-red-500" title="Çevrimdışı" />
+                <span title="Çevrimdışı"><WifiOff size={14} className="text-red-500" /></span>
               )}
               {offlineUpdates.length > 0 && (
                 <div className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
