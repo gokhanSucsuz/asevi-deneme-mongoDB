@@ -1567,8 +1567,7 @@ export default function RoutesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
-                        {route.driverId === 'vakif_pickup' && route.status === 'pending' && 
-                          (safeFormat(new Date(), 'yyyy-MM-dd') > route.date || (safeFormat(new Date(), 'yyyy-MM-dd') === route.date && new Date().getHours() >= 11)) && (
+                        {route.status === 'pending' && (safeFormat(new Date(), 'yyyy-MM-dd') > route.date || (safeFormat(new Date(), 'yyyy-MM-dd') === route.date && new Date().getHours() >= 11)) && (
                           <button
                             onClick={async () => {
                               setRouteForLeftover(route);
@@ -1596,7 +1595,7 @@ export default function RoutesPage() {
                             <span className="text-xs">Onayla</span>
                           </button>
                         )}
-                        {route.status === 'pending' && route.driverId !== 'vakif_pickup' && systemSettings?.isDistributionPanelActive === false && (
+                        {route.status === 'pending' && route.driverId !== 'vakif_pickup' && systemSettings?.isDistributionPanelActive === false && (safeFormat(new Date(), 'yyyy-MM-dd') > route.date || (safeFormat(new Date(), 'yyyy-MM-dd') === route.date && new Date().getHours() >= 11)) && (
                           <button
                             onClick={async () => {
                               setRouteForLeftover(route);

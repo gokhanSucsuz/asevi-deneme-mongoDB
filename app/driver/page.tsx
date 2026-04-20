@@ -122,12 +122,31 @@ export default function DriverPage() {
   useEffect(() => {
     const fetchRoute = async () => {
       if (selectedDriverId) {
-        // Determine target date (skip weekends, next day if > 09:30)
         const now = new Date();
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
+        const todayStr = safeFormat(now, 'yyyy-MM-dd');
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const isWithinWorkHours = (currentHour > 8 || (currentHour === 8 && currentMinute >= 30)) && (currentHour < 17 || (currentHour === 17 && currentMinute <= 30));
+
+        // 1. Check for any "in_progress" route first (resume capability)
+        const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
+        const inProgressRoute = driverRoutes.find(r => r.status === 'in_progress');
+        
+        if (inProgressRoute) {
+          setTodayRoute(inProgressRoute);
+          return;
+        }
+
+        // 2. Check for today's route (even if pending) if within hours
+        const existingTodayRoute = driverRoutes.find(r => r.date === todayStr);
+        if (existingTodayRoute && (existingTodayRoute.status === 'pending' || isWithinWorkHours)) {
+          setTodayRoute(existingTodayRoute);
+          return;
+        }
+
+        // 3. Fallback to logic for generating/finding next route
         let targetDate = new Date();
-        if (hours > 9 || (hours === 9 && minutes >= 30)) {
+        if (currentHour > 9 || (currentHour === 9 && currentMinute >= 30)) {
           targetDate.setDate(targetDate.getDate() + 1);
         }
         while (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
@@ -135,12 +154,8 @@ export default function DriverPage() {
         }
         const targetDateStr = safeFormat(targetDate, 'yyyy-MM-dd');
         
-        // Use utility to ensure route exists
         await generateRouteFromTemplate(selectedDriverId, targetDateStr);
-        
-        const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
         const route = driverRoutes.find(r => r.date === targetDateStr);
-
         setTodayRoute(route || null);
       }
     };
@@ -722,15 +737,27 @@ export default function DriverPage() {
                 />
               </div>
             </div>
-            <button
-              onClick={handleEndRoute}
-              disabled={isDemo}
-              className={`w-full px-4 py-3 rounded-md font-medium text-lg mt-4 ${
-                isDemo ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-            >
-              {isDemo ? 'Demo Modunda Tamamlanamaz' : 'Günü Tamamla'}
-            </button>
+            {(!isDemo && (safeFormat(new Date(), 'yyyy-MM-dd') > todayRoute.date || new Date().getHours() >= 11)) ? (
+              <button
+                onClick={handleEndRoute}
+                className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-green-600 text-white hover:bg-green-700 shadow-sm"
+              >
+                Günü Tamamla
+              </button>
+            ) : !isDemo && (
+              <div className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-gray-50 text-gray-500 border-2 border-dashed border-gray-300 text-center">
+                {safeFormat(new Date(), 'yyyy-MM-dd') === todayRoute.date ? 'Saat 11:00\'den Sonra Tamamlanabilir' : 'Bu Rota Gelecek Tarihlidir'}
+              </div>
+            )}
+            
+            {isDemo && (
+              <button
+                disabled
+                className="w-full px-4 py-3 rounded-md font-medium text-lg mt-4 bg-gray-300 text-gray-500 cursor-not-allowed"
+              >
+                Demo Modunda Tamamlanamaz
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -386,35 +386,53 @@ export default function BreadTrackingPage() {
       const doc = await getTurkishPdf('landscape');
       const startY = await addVakifLogo(doc, 14, 10, 20);
       
-      doc.setFontSize(18);
+      doc.setFontSize(11);
       doc.setFont('Roboto', 'bold');
-      doc.text('EKMEK TAKİP VE SİPARİŞ RAPORU', 14, startY + 10);
+      doc.text('T.C.', doc.internal.pageSize.width / 2, 12, { align: 'center' });
+      doc.text('SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKFI BAŞKANLIĞI', doc.internal.pageSize.width / 2, 18, { align: 'center' });
+      doc.text('AŞEVİ EKMEK TAKİP VE SİPARİŞ ÇİZELGESİ', doc.internal.pageSize.width / 2, 24, { align: 'center' });
       
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('Roboto', 'normal');
-      doc.text(`Rapor Aralığı: ${safeFormat(new Date(startDate), 'dd.MM.yyyy')} - ${safeFormat(new Date(endDate), 'dd.MM.yyyy')}`, 14, startY + 18);
+      doc.text(`Rapor Tarihi: ${safeFormat(new Date(), 'dd.MM.yyyy HH:mm')}`, doc.internal.pageSize.width - 14, 12, { align: 'right' });
+      doc.text(`Rapor Aralığı: ${safeFormat(new Date(startDate), 'dd.MM.yyyy')} - ${safeFormat(new Date(endDate), 'dd.MM.yyyy')}`, 14, startY + 5);
 
       const tableData = reportData.map(b => [
         safeFormat(new Date(b.date), 'dd.MM.yyyy'),
         b.totalNeeded.toString(),
         b.leftoverAmount.toString(),
         b.finalOrderAmount.toString(),
-        b.status === 'ordered' ? 'Sipariş Verildi' : 'Bekliyor',
+        b.status === 'ordered' ? 'SİPARİŞ VERİLDİ' : 'BEKLİYOR',
         b.note || '-'
       ]);
 
       autoTable(doc, {
-        startY: startY + 25,
-        head: [['Tarih', 'Toplam İhtiyaç', 'Artan Ekmek', 'Sipariş Miktarı', 'Durum', 'Not']],
+        startY: startY + 10,
+        head: [['TARİH', 'TOPLAM İHTİYAÇ', 'ARTAN EKMEK', 'SİPARİŞ MİKTARI', 'DURUM', 'DÜŞÜNCELER']],
         body: tableData,
-        styles: { font: 'Roboto', fontSize: 9 },
-        headStyles: { fillColor: [59, 130, 246] }
+        styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, lineWidth: 0.1, lineColor: [80, 80, 80] },
+        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1 },
+        alternateRowStyles: { fillColor: [252, 252, 252] }
       });
 
-      const personnelName = personnel?.name || 'Bilinmeyen Personel';
-      addReportFooter(doc, personnelName);
-      await addSystemLog(user, personnel, 'Rapor İndirme', `${startDate} - ${endDate} dönemi Ekmek ve Kap Takip Raporu (PDF) indirildi.`, 'report');
-      doc.save(`ekmek-takip-raporu-${startDate}-${endDate}.pdf`);
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
+      doc.setFontSize(10);
+      doc.setFont('Roboto', 'normal');
+      
+      // Signatures
+      const pageWidth = doc.internal.pageSize.width;
+      doc.text('HAZIRLAYAN', 40, finalY);
+      doc.text('(İmza)', 45, finalY + 12);
+      doc.text(personnel?.name || '.........................', 35, finalY + 18);
+      doc.text('Aşevi Personeli', 40, finalY + 23);
+
+      doc.text('TASDİK OLUNUR', pageWidth - 80, finalY);
+      doc.text('(İmza)', pageWidth - 70, finalY + 12);
+      doc.text('.........................', pageWidth - 75, finalY + 18);
+      doc.text('Vakıf Müdürü / Yetkili', pageWidth - 80, finalY + 23);
+
+      await addSystemLog(user, personnel, 'Rapor İndirme', `${startDate} - ${endDate} dönemi Ekmek Takip Raporu (PDF) indirildi.`, 'report');
+      doc.save(`EKMEK_TAKIP_RAPORU_${startDate}_${endDate}.pdf`);
       toast.success('Rapor başarıyla indirildi.', { id: loadingToast });
     } catch (error) {
       console.error(error);
