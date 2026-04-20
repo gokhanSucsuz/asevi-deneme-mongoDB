@@ -11,7 +11,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
 import { maskSensitive, isValidTcNo } from '@/lib/validation';
-import { safeFormat } from '@/lib/date-utils';
+import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
 import { toPng } from 'html-to-image';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -576,6 +576,7 @@ export default function DriversPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarih</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zaman Çizelgesi & Molalar</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Yapılan KM</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teslim (Hane / Kişi)</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Başarısız</th>
@@ -596,11 +597,54 @@ export default function DriversPage() {
                       });
                       let deliveredPeople = 0;
                       uniqueHouseholds.forEach(count => deliveredPeople += count);
+                      
+                      const validDeliveredStops = delivered.filter(s => !!s.deliveredAt).sort((a, b) => new Date(a.deliveredAt!).getTime() - new Date(b.deliveredAt!).getTime());
+                      const firstDelivery = validDeliveredStops.length > 0 ? validDeliveredStops[0].deliveredAt : null;
+                      const lastDelivery = validDeliveredStops.length > 0 ? validDeliveredStops[validDeliveredStops.length - 1].deliveredAt : null;
 
                       return (
                         <tr key={route.id}>
-                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
+                          <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900 border-r border-gray-100">
                             {safeFormat(new Date(route.date), 'dd.MM.yyyy')}
+                          </td>
+                          <td className="px-6 py-4 min-w-[250px] text-xs text-gray-600 border-r border-gray-100 align-top">
+                            <div className="space-y-3">
+                              {/* Delivery Timeline */}
+                              <div>
+                                <div className="font-semibold text-gray-900 mb-1 border-b pb-1">Teslimat Saatleri:</div>
+                                {firstDelivery ? (
+                                  <ul className="space-y-1">
+                                    <li className="flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
+                                       İlk Teslim: <span className="font-medium text-gray-800">{safeFormatTRT(firstDelivery, 'HH:mm')}</span>
+                                    </li>
+                                    <li className="flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full inline-block"></span>
+                                      Son Teslim: <span className="font-medium text-gray-800">{safeFormatTRT(lastDelivery, 'HH:mm')}</span>
+                                    </li>
+                                  </ul>
+                                ) : (
+                                  <span className="text-gray-400 italic">Kayıtlı teslimat saati yok</span>
+                                )}
+                              </div>
+                              
+                              {/* Pause History */}
+                              {route.history && route.history.length > 0 && (
+                                <div className="bg-gray-50 p-2 rounded border border-gray-100">
+                                  <div className="font-semibold text-gray-900 mb-1">Mola Geçmişi:</div>
+                                  <ul className="space-y-1">
+                                    {route.history.map((record: any, idx: number) => (
+                                      <li key={idx} className="flex flex-col">
+                                        <span className={`text-[10px] uppercase font-bold tracking-wider ${record.action === 'paused' ? 'text-orange-600' : 'text-green-600'}`}>
+                                          {record.action === 'paused' ? 'Duraklatıldı' : 'Devam Edildi'}
+                                        </span>
+                                        <span className="font-medium">{safeFormatTRT(record.date, 'HH:mm:ss')}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                             {(route.endKm && route.startKm) ? (route.endKm - route.startKm) : '-'}
@@ -619,7 +663,7 @@ export default function DriversPage() {
                     })}
                     {getDriverRoutes(driverToReport.id!, driverToReport.name).length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                           Henüz tamamlanmış rota kaydı bulunmuyor.
                         </td>
                       </tr>

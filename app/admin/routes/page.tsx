@@ -8,7 +8,7 @@ import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
-import { safeFormat } from '@/lib/date-utils';
+import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
 import { normalizeTurkish } from '@/lib/utils';
 import autoTable from 'jspdf-autotable';
 import { toast } from 'sonner';
@@ -2264,8 +2264,8 @@ export default function RoutesPage() {
                             <span className="font-bold text-gray-900 text-sm">
                               {record.action === 'paused' ? 'Mola Verildi' : 'Göreve Devam Edildi'}
                             </span>
-                            <span className="text-xs text-gray-500 mt-1">
-                              {safeFormat(record.date, 'dd.MM.yyyy HH:mm:ss')}
+                            <span className="text-xs text-gray-500 mt-1 font-medium">
+                              {safeFormatTRT(record.date, 'dd.MM.yyyy HH:mm:ss')}
                             </span>
                           </div>
                         </li>
