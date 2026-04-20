@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
@@ -85,9 +85,9 @@ export default function DriverPage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [syncOfflineData]);
 
-  const syncOfflineData = async () => {
+  const syncOfflineData = useCallback(async () => {
     if (isSyncing || !navigator.onLine) return;
     
     try {
@@ -133,7 +133,7 @@ export default function DriverPage() {
       setIsSyncing(false);
       notifyDbChange('route_stops');
     }
-  };
+  }, [isSyncing]);
 
   // Load offline updates into local state for UI merging
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function DriverPage() {
       }
     };
     runBackgroundTasks();
-  }, [isDemo]);
+  }, [isDemo, syncOfflineData]);
 
   // Fetch route when driver is selected
   useEffect(() => {
