@@ -9,11 +9,12 @@ import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRo
 import { safeFormat } from '@/lib/date-utils';
 import { getTurkishPdf, addVakifLogo } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
-import { CheckCircle, XCircle, AlertTriangle, Navigation, MapPin, LogOut, Clock, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Navigation, MapPin, LogOut, Clock, FileText, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useAuth } from '@/components/AuthProvider';
+import { localDb } from '@/lib/local-db';
 
 export default function DriverPage() {
   const { user, role } = useAuth();
@@ -32,6 +33,9 @@ export default function DriverPage() {
   const [isLastWorkingDay, setIsLastWorkingDay] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPausedLocal, setIsPausedLocal] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
 
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
@@ -57,6 +61,88 @@ export default function DriverPage() {
       setIsPausedLocal(!!todayRoute.isPaused);
     }
   }, [todayRoute]);
+
+  // Offline/Online Status & Sync Logic
+  useEffect(() => {
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.info('Bağlantı geri geldi, veriler senkronize ediliyor...');
+      syncOfflineData();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning('Bağlantı koptu, veriler yerel belleğe kaydedilecek.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial sync check
+    syncOfflineData();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const syncOfflineData = async () => {
+    if (isSyncing || !navigator.onLine) return;
+    
+    try {
+      const updates = await localDb.offlineUpdates.toArray();
+      if (updates.length === 0) {
+        setOfflineUpdates([]);
+        return;
+      }
+
+      setIsSyncing(true);
+      for (const update of updates) {
+        try {
+          const stop = await db.routeStops.get(update.stopId);
+          if (stop) {
+            const newHistory = stop.history || [];
+            newHistory.push({
+              status: update.status,
+              timestamp: new Date(update.deliveredAt),
+              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi'
+            });
+
+            await db.routeStops.update(stop.id!, {
+              status: update.status,
+              deliveredAt: new Date(update.deliveredAt),
+              issueReport: update.issueReport,
+              history: newHistory
+            });
+          }
+          await localDb.offlineUpdates.delete(update.id!);
+        } catch (innerError) {
+          console.error('Error syncing single update:', innerError);
+        }
+      }
+      
+      const remaining = await localDb.offlineUpdates.toArray();
+      setOfflineUpdates(remaining);
+      if (remaining.length === 0) {
+        toast.success('Tüm veriler başarıyla senkronize edildi.');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+    } finally {
+      setIsSyncing(false);
+      notifyDbChange('route_stops');
+    }
+  };
+
+  // Load offline updates into local state for UI merging
+  useEffect(() => {
+    const loadOffline = async () => {
+      const updates = await localDb.offlineUpdates.toArray();
+      setOfflineUpdates(updates);
+    };
+    loadOffline();
+  }, []);
 
   // Auth check
   useEffect(() => {
@@ -84,11 +170,18 @@ export default function DriverPage() {
       const now = new Date();
       const todayStr = safeFormat(now, 'yyyy-MM-dd');
       const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const isPast1730 = currentHour > 17 || (currentHour === 17 && currentMinute >= 30);
 
       try {
+        // Sync first if past 17:30 to ensure client's local work is preserved before auto-completion
+        if (isPast1730 && navigator.onLine) {
+          await syncOfflineData();
+        }
+
         // 1. Check expired pauses and activate them
-        const households = await db.households.toArray();
-        const expired = households.filter(h => !h.isActive && h.pausedUntil && h.pausedUntil !== '9999-12-31' && h.pausedUntil < todayStr);
+        const householdsData = await db.households.toArray();
+        const expired = householdsData.filter(h => !h.isActive && h.pausedUntil && h.pausedUntil !== '9999-12-31' && h.pausedUntil < todayStr);
         for (const h of expired) {
           await db.households.update(h.id!, {
             isActive: true,
@@ -104,11 +197,10 @@ export default function DriverPage() {
         // 2. Auto-complete past routes
         const allRoutes = await db.routes.toArray();
         const pendingRoutes = allRoutes.filter(r => r.status !== 'completed' && r.status !== 'approved');
-        const currentMinute = now.getMinutes();
         
         for (const route of pendingRoutes) {
           const isPastDay = route.date < todayStr;
-          const isTodayPast1730 = route.date === todayStr && (currentHour > 17 || (currentHour === 17 && currentMinute >= 30));
+          const isTodayPast1730 = route.date === todayStr && isPast1730;
           
           if (isPastDay || isTodayPast1730) {
             const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
@@ -184,7 +276,7 @@ export default function DriverPage() {
     fetchRoute();
   }, [selectedDriverId]);
 
-  const routeStops = useAppQuery(
+  const routeStopsRaw = useAppQuery(
     async () => {
       if (!todayRoute) return [];
       const stops = await db.routeStops.where('routeId').equals(todayRoute.id!).toArray();
@@ -192,6 +284,23 @@ export default function DriverPage() {
     },
     [todayRoute]
   );
+
+  // Merge raw stops with offline updates for current UI state
+  const routeStops = useMemo(() => {
+    if (!routeStopsRaw) return [];
+    return routeStopsRaw.map((stop: RouteStop) => {
+      const offline = offlineUpdates.find(u => u.stopId === stop.id);
+      if (offline) {
+        return {
+          ...stop,
+          status: offline.status,
+          deliveredAt: new Date(offline.deliveredAt),
+          issueReport: offline.issueReport
+        };
+      }
+      return stop;
+    });
+  }, [routeStopsRaw, offlineUpdates]);
 
   const households = useAppQuery(
     async () => routeStops ? Promise.all(routeStops.map((rs: RouteStop) => db.households.get(rs.householdId))) : [],
@@ -248,6 +357,16 @@ export default function DriverPage() {
       return;
     }
     if (confirm('Günü tamamlamak istediğinize emin misiniz?')) {
+      if (offlineUpdates.length > 0) {
+        if (navigator.onLine) {
+          toast.info('Bekleyen veriler senkronize ediliyor...');
+          await syncOfflineData();
+        } else {
+          toast.error('İnternet bağlantısı olmadan günü bitiremezsiniz. Lütfen bağlantı sağlayın.');
+          return;
+        }
+      }
+
       setIsSaving(true);
       const loadingToast = toast.loading('Günü tamamlanıyor...');
       try {
@@ -289,22 +408,55 @@ export default function DriverPage() {
     const loadingToast = toast.loading('Kaydediliyor...');
     try {
       const stop = await db.routeStops.get(stopId);
-      if (stop) {
-        const newHistory = stop.history || [];
-        newHistory.push({
-          status,
-          timestamp: new Date(),
-          note: status === 'failed' ? issueText : undefined
-        });
+      if (!stop) throw new Error('Durak bulunamadı');
 
-        await db.routeStops.update(stop.id!, {
-          status,
-          deliveredAt: new Date(),
-          issueReport: status === 'failed' ? issueText : undefined,
-          history: newHistory
-        });
-        toast.success(status === 'delivered' ? 'Teslimat kaydedildi' : 'Sorun bildirildi', { id: loadingToast });
+      const deliveredAt = new Date();
+      const issueReport = status === 'failed' ? issueText : undefined;
+
+      // Always save to local DB first (Persistence)
+      await localDb.offlineUpdates.add({
+        stopId,
+        status,
+        issueReport,
+        deliveredAt,
+        timestamp: Date.now()
+      });
+
+      // Update local UI state immediately
+      setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
+
+      // Attempt immediate sync if online
+      if (navigator.onLine) {
+        try {
+          const newHistory = stop.history || [];
+          newHistory.push({
+            status,
+            timestamp: deliveredAt,
+            note: issueReport
+          });
+
+          await db.routeStops.update(stop.id!, {
+            status,
+            deliveredAt,
+            issueReport,
+            history: newHistory
+          });
+
+          // If successfully updated on server, remove from local queue
+          const lastUpdate = await localDb.offlineUpdates.where('stopId').equals(stopId).last();
+          if (lastUpdate) {
+            await localDb.offlineUpdates.delete(lastUpdate.id!);
+            setOfflineUpdates(prev => prev.filter(u => u.stopId !== stopId));
+          }
+          toast.success(status === 'delivered' ? 'Teslimat kaydedildi' : 'Sorun bildirildi', { id: loadingToast });
+        } catch (syncError) {
+          console.warn('Sync failed, will retry later:', syncError);
+          toast.info('Bağlantı sorunu: Veri yerel belleğe kaydedildi, internet gelince senkronize edilecek.', { id: loadingToast });
+        }
+      } else {
+        toast.info('Çevrimdışı mod: Veri yerel belleğe kaydedildi.', { id: loadingToast });
       }
+
       setIssueText('');
       setActiveStopId(null);
       setEditingPastStopId(null);
@@ -562,7 +714,20 @@ export default function DriverPage() {
             referrerPolicy="no-referrer"
           />
           <div>
-            <h2 className="text-sm font-bold text-gray-900 leading-none">Aktif Şoför</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-gray-900 leading-none">Aktif Şoför</h2>
+              {isOnline ? (
+                <Wifi size={14} className="text-green-500" title="Çevrimiçi" />
+              ) : (
+                <WifiOff size={14} className="text-red-500" title="Çevrimdışı" />
+              )}
+              {offlineUpdates.length > 0 && (
+                <div className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                  <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
+                  {offlineUpdates.length} Bekleyen
+                </div>
+              )}
+            </div>
             <p className="text-xs text-gray-500 mt-1">
               {drivers?.find(d => d.id === selectedDriverId)?.name || 'Şoför Seçilmedi'}
             </p>
