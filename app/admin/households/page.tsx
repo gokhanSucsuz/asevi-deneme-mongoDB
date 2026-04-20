@@ -753,7 +753,7 @@ export default function HouseholdsPage() {
             createdAt: new Date(),
             history: [{
               action: 'created',
-              date: new Date(),
+              timestamp: new Date(),
               note: 'Excel ile toplu eklendi'
             }]
           };
