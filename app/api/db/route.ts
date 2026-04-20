@@ -95,6 +95,14 @@ export async function POST(req: NextRequest) {
         userRole = p.role;
         isActive = p.isActive;
         isApproved = p.isApproved;
+      } else {
+        // Check if user is an active driver
+        const d = await db.collection('drivers').findOne({ googleEmail: userEmail });
+        if (d && d.isActive) {
+          userRole = 'driver';
+          isActive = true;
+          isApproved = true;
+        }
       }
     }
     
