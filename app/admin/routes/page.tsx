@@ -2252,7 +2252,15 @@ export default function RoutesPage() {
                   </h4>
                   <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
                     <div className="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:via-slate-300 before:to-slate-200">
-                      {viewRouteDetails.history.map((record: any, idx: number) => (
+                      {viewRouteDetails.history
+                        .filter((record: any) => {
+                          if (record.action === 'paused' || record.action === 'resumed') {
+                            const recordDateStr = safeFormat(new Date(record.timestamp || record.date), 'yyyy-MM-dd');
+                            return recordDateStr === viewRouteDetails.date;
+                          }
+                          return true;
+                        })
+                        .map((record: any, idx: number) => (
                         <div key={idx} className={`relative flex items-center justify-between md:justify-normal group is-active ${idx % 2 === 0 ? 'md:flex-row-reverse' : ''}`}>
                           <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-slate-50 shrink-0 md:order-1 shadow-sm z-10 ${
                             record.action === 'paused' ? 'bg-orange-500 text-white' : 
@@ -2267,7 +2275,9 @@ export default function RoutesPage() {
                             <span className="font-black text-slate-800 text-sm">
                               {record.action === 'paused' ? 'Mola Verildi' : 
                                record.action === 'resumed' ? 'Göreve Devam Edildi' : 
-                               record.action === 'manual_completion' ? 'Manuel Tamamlandı' : 'Tamamlandı'}
+                               record.action === 'manual_completion' ? 'Manuel Tamamlandı' : 
+                               record.action === 'created' ? 'Oluşturuldu' : 
+                               record.action === 'auto_completed' ? 'Otomatik Tamamlandı' : 'Tamamlandı'}
                             </span>
                             <span className="text-xs text-slate-500 mt-1.5 font-bold uppercase tracking-wider">
                               {safeFormatTRT(record.timestamp || record.date, 'HH:mm')}
