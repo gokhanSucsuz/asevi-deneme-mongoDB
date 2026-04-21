@@ -483,11 +483,9 @@ export default function DriverPage() {
     const deliveredAt = new Date();
     const issueReport = status === 'failed' ? issueText : undefined;
 
-    // Koordinatları almayı dene (Hız için paralel veya kısa süreli await)
-    const coords = await getCurrentLocation();
-
     // Hemen UI durumunu güncelliyoruz (Optimistic Update)
-    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now(), lat: coords?.lat, lng: coords?.lng }]);
+    // Not: Koordinatlar arka planda alınacağı için UI'da ilk etapta boş kalacak, bu şoförün akışını bozmaz.
+    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
     
     // Şoförün beklemesini engelleyip hemen diğer karta geçmesini sağlıyoruz.
     setIssueText('');
@@ -500,6 +498,9 @@ export default function DriverPage() {
     // 2. ARKA PLAN (BACKGROUND) İŞLEMLERİ
     (async () => {
       try {
+        // Koordinatları ARKA PLANDA al (UI'ı bekletmez)
+        const coords = await getCurrentLocation();
+
         // Her ihtimale karşı (Offline desteği) local veritabanına at
         await localDb.offlineUpdates.add({
           stopId,
@@ -543,7 +544,6 @@ export default function DriverPage() {
         }
       } catch (error) {
         console.error('Arka plan veritabanı güncelleme hatası:', error);
-        toast.info('Bağlantı zayıf: Veriniz cihaza kaydedildi, internet olunca otomatik gönderilecek.');
       }
     })();
   };

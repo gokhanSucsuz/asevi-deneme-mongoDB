@@ -2226,6 +2226,36 @@ export default function RoutesPage() {
                   <p className="font-medium">{viewRouteDetails.remainingBread || 0}</p>
                 </div>
               </div>
+
+              {((isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).some(s => s.lat && s.lng)) && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-600 p-2 rounded-lg text-white">
+                      <MapPin size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900">Konum Verileri Mevcut</p>
+                      <p className="text-xs text-gray-600">Teslimat sırasında kaydedilen koordinatları haritada inceleyin.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                        // For simplicity, we open the first coordinate found to show the map
+                        const firstWithCoord = (isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).find(s => s.lat && s.lng);
+                        if (firstWithCoord) {
+                          setMapModalData({ 
+                            lat: firstWithCoord.lat!, 
+                            lng: firstWithCoord.lng!, 
+                            title: firstWithCoord.householdSnapshotName || 'Teslimat Noktası' 
+                          });
+                        }
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    Haritayı Aç
+                  </button>
+                </div>
+              )}
               
               <h4 className="font-medium text-gray-900 mb-4">Teslimat Noktaları</h4>
               <div className="overflow-x-auto mb-6">
