@@ -722,8 +722,8 @@ export const db = {
       notifyDbChange('personnel');
     },
     count: async () => {
-      const data = await callApi('personnel', 'list');
-      return data.length;
+      const data = await callApi('personnel', 'count');
+      return data.count;
     },
   },
   restore: async (data: any) => {

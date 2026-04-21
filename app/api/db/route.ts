@@ -116,6 +116,8 @@ export async function POST(req: NextRequest) {
       // Allow only self-fetching of personnel record for approval status check
       if (collection === 'personnel' && operation === 'list' && queryObj?.email === userEmail) {
         // Continue
+      } else if (collection === 'personnel' && operation === 'count') {
+        // Continue for first-time setup check
       } else if (collection === 'dr_drivers' || collection === 'drivers') {
         // Continue if they are trying to check their own driver status
       } else {
@@ -129,7 +131,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Restriction 2: Only admins can manage personnel or system settings
-    if (['personnel', 'system_settings', 'working_days'].includes(collection) && operation !== 'get' && operation !== 'list' && !isAdmin) {
+    if (['personnel', 'system_settings', 'working_days'].includes(collection) && !['get', 'list', 'count'].includes(operation) && !isAdmin) {
        // Allow self-update for profile (optional, but keep it strict for now)
        return NextResponse.json({ error: 'Only admins can modify system configurations' }, { status: 403 });
     }
@@ -222,6 +224,10 @@ export async function POST(req: NextRequest) {
     const safeQuery = queryObj ? encryptSensitiveFields(convertIncomingObjectIds(queryObj)) : {};
 
     switch (operation) {
+      case 'count': {
+        const count = await col.countDocuments(safeQuery);
+        return NextResponse.json({ count });
+      }
       case 'list': {
         let cursor = col.find(safeQuery);
         if (sort) cursor = cursor.sort(sort);
