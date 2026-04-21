@@ -17,7 +17,18 @@ export default function AdminDashboard() {
   const households = useAppQuery(() => firestoreDb.households.toArray(), [], 'households') || [];
   const breadTracking = useAppQuery(() => firestoreDb.breadTracking.toArray(), [], 'bread_tracking') || [];
   const routes = useAppQuery(() => firestoreDb.routes.where('date').equals(today).toArray(), [today], 'routes') || [];
-  const routeStops = useAppQuery(() => firestoreDb.routeStops.toArray(), [], 'route_stops') || [];
+  const routeStops = useAppQuery(async () => {
+    if (routes.length === 0) return [];
+    // Only fetch stops for today's routes to avoid performance issues
+    const allStops = [];
+    for (const r of routes) {
+      if (r.id) {
+        const stops = await firestoreDb.routeStops.where('routeId').equals(r.id).toArray();
+        allStops.push(...stops);
+      }
+    }
+    return allStops;
+  }, [routes, today], 'today_route_stops') || [];
 
   const nextMonthObj = new Date();
   nextMonthObj.setMonth(nextMonthObj.getMonth() + 1);
@@ -101,7 +112,13 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Anlık Takip Paneli</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 leading-none">Anlık Takip Paneli</h2>
+        <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-sm font-bold border border-blue-100 flex items-center gap-2">
+          <Clock size={16} />
+          {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+      </div>
 
       {showWorkingDayWarning && (
         <div className="mb-8 bg-amber-50 border-2 border-amber-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm shadow-amber-100">
@@ -253,12 +270,16 @@ export default function AdminDashboard() {
               ) : (
                 <>
                   <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-500">İlerleme</span>
-                      <span className="font-medium text-gray-900">{status.progress}% ({status.completedStops}/{status.totalStops})</span>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider mb-2">
+                      <span className="text-gray-500">Teslimat İlerlemesi</span>
+                      <span className="text-blue-600">%{status.progress} Tamamlandı</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${status.progress}%` }}></div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
+                      <div className="bg-blue-600 h-3 rounded-full transition-all duration-500" style={{ width: `${status.progress}%` }}></div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-bold text-gray-600 bg-gray-50 p-2 rounded-lg">
+                      <span>Tamamlanan: {status.completedStops} / {status.totalStops}</span>
+                      <span>Kalan: {status.totalStops - status.completedStops}</span>
                     </div>
                   </div>
                   
