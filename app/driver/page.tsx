@@ -413,8 +413,6 @@ export default function DriverPage() {
               history: [...(stop.history || []), { status: 'delivered', timestamp: deliveredAt, personnelName: driverName }]
             });
           }
-          // Query the fresh state after updates
-          setRouteStops(await db.routeStops.toArray().then(arr => arr.filter(s => s.routeId === todayRoute!.id)));
         }
 
         await db.routes.update(todayRoute!.id!, {
