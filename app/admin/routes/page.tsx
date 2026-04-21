@@ -1312,7 +1312,7 @@ export default function RoutesPage() {
         const route = weekRoutes.find(r => r.date === dateStr);
         const isPaused = h && !h.isActive && h.pausedUntil && h.pausedUntil >= dateStr && h.pausedUntil !== '9999-12-31';
 
-        if (isPaused) {
+        if (isPaused && h?.pausedUntil) {
            row.push(`${safeFormat(new Date(h.pausedUntil), 'dd.MM')} tarihine kadar pasiftir ve yemek bırakılmayacaktır.`);
         } else {
             if (dateStr < reportDateStr) {
