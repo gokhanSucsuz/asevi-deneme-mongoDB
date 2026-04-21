@@ -414,30 +414,38 @@ export default function DriverPage() {
   };
 
   const updateStopStatus = async (stopId: string, status: 'delivered' | 'failed') => {
-    setIsSaving(true);
-    const loadingToast = toast.loading('Kaydediliyor...');
-    try {
-      const stop = await db.routeStops.get(stopId);
-      if (!stop) throw new Error('Durak bulunamadı');
+    // 1. ANLIK ARAYÜZ (UI) GÜNCELLEMESİ 
+    const deliveredAt = new Date();
+    const issueReport = status === 'failed' ? issueText : undefined;
 
-      const deliveredAt = new Date();
-      const issueReport = status === 'failed' ? issueText : undefined;
+    // Hemen UI durumunu güncelliyoruz (Optimistic Update)
+    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
+    
+    // Şoförün beklemesini engelleyip hemen diğer karta geçmesini sağlıyoruz.
+    setIssueText('');
+    setActiveStopId(null);
+    setEditingPastStopId(null);
+    
+    // Yükleniyor gibi durduran toast yerine hızlı geri bildirim veriyoruz:
+    toast.success(status === 'delivered' ? 'Teslimat kaydedildi' : 'Sorun bildirildi');
 
-      // Always save to local DB first (Persistence)
-      await localDb.offlineUpdates.add({
-        stopId,
-        status,
-        issueReport,
-        deliveredAt,
-        timestamp: Date.now()
-      });
+    // 2. ARKA PLAN (BACKGROUND) İŞLEMLERİ
+    (async () => {
+      try {
+        // Her ihtimale karşı (Offline desteği) local veritabanına at
+        await localDb.offlineUpdates.add({
+          stopId,
+          status,
+          issueReport,
+          deliveredAt,
+          timestamp: Date.now()
+        });
 
-      // Update local UI state immediately
-      setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
-
-      // Attempt immediate sync if online
-      if (navigator.onLine) {
-        try {
+        // Online isek, arka planda MongoDB sunucu güncellemesini yap
+        if (navigator.onLine) {
+          const stop = await db.routeStops.get(stopId);
+          if (!stop) return; // Durak yoksa (silinmişse vb.) işlem yapma
+          
           const newHistory = stop.history || [];
           newHistory.push({
             status,
@@ -445,6 +453,7 @@ export default function DriverPage() {
             note: issueReport
           });
 
+          // Sunucu güncellemesi
           await db.routeStops.update(stop.id!, {
             status,
             deliveredAt,
@@ -452,30 +461,18 @@ export default function DriverPage() {
             history: newHistory
           });
 
-          // If successfully updated on server, remove from local queue
+          // Başarılı sunucu işleminden sonra, ilgili offline kaydını yerelden sil
           const lastUpdate = await localDb.offlineUpdates.where('stopId').equals(stopId).last();
           if (lastUpdate) {
             await localDb.offlineUpdates.delete(lastUpdate.id!);
             setOfflineUpdates(prev => prev.filter(u => u.stopId !== stopId));
           }
-          toast.success(status === 'delivered' ? 'Teslimat kaydedildi' : 'Sorun bildirildi', { id: loadingToast });
-        } catch (syncError) {
-          console.warn('Sync failed, will retry later:', syncError);
-          toast.info('Bağlantı sorunu: Veri yerel belleğe kaydedildi, internet gelince senkronize edilecek.', { id: loadingToast });
         }
-      } else {
-        toast.info('Çevrimdışı mod: Veri yerel belleğe kaydedildi.', { id: loadingToast });
+      } catch (error) {
+        console.error('Arka plan veritabanı güncelleme hatası:', error);
+        toast.info('Bağlantı zayıf: Veriniz cihaza kaydedildi, internet olunca otomatik gönderilecek.');
       }
-
-      setIssueText('');
-      setActiveStopId(null);
-      setEditingPastStopId(null);
-    } catch (error) {
-      console.error(error);
-      toast.error('İşlem sırasında bir hata oluştu', { id: loadingToast });
-    } finally {
-      setIsSaving(false);
-    }
+    })();
   };
 
   const exportMarkingFormPDF = async () => {
