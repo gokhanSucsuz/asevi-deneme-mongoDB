@@ -304,39 +304,9 @@ const processData = (data: any): any => {
 
 let normalizationStarted = false;
 export const normalizeDatabaseTypes = async () => {
-  try {
-    if (normalizationStarted) return;
-    if (!auth.currentUser) return;
-    normalizationStarted = true;
-
-    const drivers = await db.drivers.toArray();
-    const routes = await db.routes.toArray();
-    const logs = await db.system_logs.toArray();
-
-    // 1. Log Sorting Normalization
-    for (const l of logs) {
-      if (!l.timestamp || isNaN(new Date(l.timestamp).getTime())) {
-        await db.system_logs.update(l.id!, { timestamp: new Date() });
-      }
-    }
-
-    // 2. Driver ID Synchronization (MongoDB Compatibility Fix)
-    // Ensures that routes are linked to the current driver IDs by checking Plate/TC fallback
-    for (const r of routes) {
-      const currentDriver = drivers.find(d => String(d.id) === String(r.driverId));
-      if (!currentDriver) {
-        // ID mismatch! Try to find driver by name or plate if stored
-        const reLinkedDriver = drivers.find(d => 
-          (r.driverSnapshotName && d.name === r.driverSnapshotName)
-        );
-        if (reLinkedDriver) {
-          await db.routes.update(r.id!, { driverId: String(reLinkedDriver.id) });
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Normalization error:', error);
-  }
+  // Bu işlem her açılışta veritabanına aşırı yük bindirdiği için devre dışı bırakıldı.
+  // Gerekirse admin panelinden kontrollü bir şekilde tetiklenmelidir.
+  return;
 };
 
 // Helper to prepare data before saving (encryption is now handled server-side)
@@ -364,8 +334,11 @@ async function callApi(collection: string, operation: string, params: any = {}) 
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'API request failed');
+    const errorBody = await response.json().catch(() => ({}));
+    const message = errorBody.details 
+      ? `${errorBody.error}: ${errorBody.details}` 
+      : (errorBody.error || `API Hatası: ${response.status}`);
+    throw new Error(message);
   }
 
   return await response.json();

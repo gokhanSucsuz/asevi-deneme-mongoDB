@@ -12,12 +12,12 @@ const options: any = {
     strict: true,
     deprecationErrors: true,
   },
-  connectTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 10, // Increased slightly to handle bursts for 10 personnel
-  minPoolSize: 1,
-  maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
-  waitQueueTimeoutMS: 5000, // Don't wait forever for a connection
+  connectTimeoutMS: 20000,
+  socketTimeoutMS: 60000,
+  maxPoolSize: 5, // Bir bağlantı havuzuna 5 bağlantı yeterlidir (Atlas M0 limitini korumak için)
+  minPoolSize: 0, // Boştayken 0'a inmesine izin ver (bağlantı sızıntısını önler)
+  maxIdleTimeMS: 15000, // Boştaki bağlantıları 15 saniye sonra kapat
+  waitQueueTimeoutMS: 10000, // Bağlantı için 10 saniye bekle, sonra hata ver
 };
 
 let client: MongoClient;
