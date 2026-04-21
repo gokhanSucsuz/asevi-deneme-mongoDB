@@ -95,8 +95,8 @@ export async function POST(req: NextRequest) {
     const andIsHardcodedAdmin = userEmail && adminEmails.includes(userEmail);
     
     let userRole: string | null = andIsHardcodedAdmin ? 'admin' : null;
-    let isActive = andIsHardcodedAdmin;
-    let isApproved = andIsHardcodedAdmin;
+    let isActive: boolean = !!andIsHardcodedAdmin;
+    let isApproved: boolean = !!andIsHardcodedAdmin;
     
     // Use cache for roles if not hardcoded admin
     if (!andIsHardcodedAdmin && userEmail) {
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
         const p = await db.collection('personnel').findOne({ email: userEmail });
         if (p) {
           userRole = p.role;
-          isActive = p.isActive;
-          isApproved = p.isApproved;
+          isActive = p.isActive === true;
+          isApproved = p.isApproved === true;
         } else {
           const d = await db.collection('dr_drivers').findOne({ googleEmail: userEmail }) || 
                     await db.collection('drivers').findOne({ googleEmail: userEmail });
