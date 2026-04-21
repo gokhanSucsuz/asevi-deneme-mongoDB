@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [personnel, setPersonnel] = useState<any | null>(null);
   const [role, setRole] = useState<'admin' | 'driver' | 'demo' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toastShown, setToastShown] = useState<string | null>(null); // To prevent duplicate toasts for the same session
   const router = useRouter();
   const pathname = usePathname();
 
@@ -118,7 +119,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           import('firebase/auth').then(({ signOut }) => {
             signOut(auth);
           });
-          toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
+          
+          if (toastShown !== fbUser.uid + '_error') {
+            toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
+            setToastShown(fbUser.uid + '_error');
+          }
+          
           setUser(null);
           setPersonnel(null);
           setRole(null);
@@ -128,6 +134,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         // Authorized
+        if (toastShown !== fbUser.uid + '_success') {
+          toast.success('Başarıyla giriş yapıldı');
+          setToastShown(fbUser.uid + '_success');
+        }
+        
         setUser(fbUser);
         
         // Finalize personnel/role
@@ -159,6 +170,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
         setRole(null);
         setPersonnel(null);
+        setToastShown(null);
       }
       
       setLoading(false);

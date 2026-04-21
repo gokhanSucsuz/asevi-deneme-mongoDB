@@ -29,7 +29,7 @@ export default function LoginPage() {
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          toast.success('Başarıyla giriş yapıldı');
+          // Success message removed - AuthProvider will handle it after verification
           router.push('/');
         }
       } catch (error: any) {
@@ -47,7 +47,7 @@ export default function LoginPage() {
         await signInWithRedirect(auth, googleProvider);
       } else {
         await signInWithPopup(auth, googleProvider);
-        toast.success('Başarıyla giriş yapıldı');
+        // Success message removed - AuthProvider will handle it after verification
         router.push('/');
       }
     } catch (error: any) {
