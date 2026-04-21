@@ -71,6 +71,7 @@ export default function AdminDashboard() {
       const completedStops = processedStops.length;
       const successfulCount = successfulStops.length;
       const progress = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
+      const successfulPeopleCount = successfulStops.reduce((sum, s) => sum + (s.householdSnapshotMemberCount || 0), 0);
 
       return {
         routeId: route.id,
@@ -81,6 +82,7 @@ export default function AdminDashboard() {
         progress,
         completedStops,
         successfulCount,
+        successfulPeopleCount,
         totalStops,
         lastHousehold: lastHousehold?.headName || '-',
         lastStopStatus: lastStop?.status || 'pending',
@@ -261,9 +263,16 @@ export default function AdminDashboard() {
                   </div>
                   
                   {status.status === 'completed' ? (
-                    <div className="bg-green-50 rounded-lg p-4 mt-4 flex items-center justify-center text-green-700">
-                      <CheckCircle className="mr-2" size={20} />
-                      <span className="font-medium">Başarıyla teslimat bitirildi</span>
+                    <div className="bg-green-50 rounded-lg p-5 mt-4 flex flex-col items-center justify-center text-green-700 border border-green-100">
+                      <div className="flex items-center mb-2">
+                        <CheckCircle className="mr-2" size={24} />
+                        <span className="font-black text-lg">Rota Başarıyla Tamamlandı</span>
+                      </div>
+                      <p className="text-sm font-medium text-center">
+                        Bugün toplam <span className="font-bold underline">{status.successfulCount} hane</span> ve 
+                        <span className="font-bold underline mx-1">{status.successfulPeopleCount} kişiye</span> 
+                        başarıyla yemek teslimatı yapıldı.
+                      </p>
                     </div>
                   ) : (
                     <div className="bg-gray-50 rounded-lg p-4 mt-4">
