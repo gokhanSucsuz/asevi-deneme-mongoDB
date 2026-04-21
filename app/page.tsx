@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { clsx } from 'clsx';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, role, personnel, loading } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -26,12 +26,21 @@ export default function Home() {
     }
   };
 
-  const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com'];
-  const isAuthorizedAdmin = user && authorizedEmails.includes(user.email || '');
+  const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com', 'demo@sydv.org.tr'];
+  const isAuthorizedAdmin = user && (authorizedEmails.includes(user.email || '') || (personnel && personnel.role === 'admin') || role === 'demo');
+  const isAuthorizedDriver = user && (isAuthorizedAdmin || (personnel && (personnel.googleEmail || personnel.email)));
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative">
-      {user ? (
+      {user && (isAuthorizedAdmin || isAuthorizedDriver) ? (
         <div className="absolute top-4 right-4 flex items-center gap-4 bg-white p-2 px-4 rounded-full shadow-sm border border-gray-200">
           <div className="flex flex-col items-end">
             <span className="text-xs font-bold text-gray-900">{user.displayName || user.email}</span>
@@ -79,7 +88,7 @@ export default function Home() {
           </Link>
         )}
 
-        {user && (
+        {user && isAuthorizedDriver && (
           <Link href="/driver" className={clsx(
             "group flex flex-col items-center justify-center p-12 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-green-500 transition-all",
             !isAuthorizedAdmin && "md:col-span-2 max-w-xl mx-auto w-full"
@@ -92,16 +101,29 @@ export default function Home() {
           </Link>
         )}
 
-        {!user && (
+        {(!user || (!isAuthorizedAdmin && !isAuthorizedDriver)) && (
           <div className="md:col-span-2 bg-blue-50 border border-blue-100 p-8 rounded-2xl text-center">
-            <p className="text-blue-800 font-medium mb-4">Panellere erişmek için lütfen giriş yapın.</p>
-            <Link 
-              href="/login"
-              className="inline-flex items-center gap-2 bg-blue-600 text-white py-3 px-8 rounded-full shadow-sm hover:bg-blue-700 transition-all font-bold"
-            >
-              <LogIn size={20} />
-              Google ile Giriş Yap
-            </Link>
+            <p className="text-blue-800 font-medium mb-4">
+              {user ? 'Giriş yaptığınız hesap yetkilendirilmemiş. Lütfen yönetici ile iletişime geçin.' : 'Panellere erişmek için lütfen giriş yapın.'}
+            </p>
+            {!user && (
+              <Link 
+                href="/login"
+                className="inline-flex items-center gap-2 bg-blue-600 text-white py-3 px-8 rounded-full shadow-sm hover:bg-blue-700 transition-all font-bold"
+              >
+                <LogIn size={20} />
+                Google ile Giriş Yap
+              </Link>
+            )}
+            {user && (
+              <button 
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 bg-red-600 text-white py-3 px-8 rounded-full shadow-sm hover:bg-red-700 transition-all font-bold"
+              >
+                <LogOut size={20} />
+                Farklı Hesapla Giriş Yap
+              </button>
+            )}
           </div>
         )}
       </div>

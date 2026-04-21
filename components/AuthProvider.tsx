@@ -55,118 +55,100 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setUser(fbUser);
-      
       if (fbUser) {
         normalizeDatabaseTypes();
         
-        // Priority 1: Check Local Session (Explicit TC/Pass Login)
-        const session = localStorage.getItem('personnel-session');
-        let sessionPersonnel = null;
-        
-        if (session) {
-          try {
-            const deobfuscated = deobfuscate(session);
-            const sessionData = JSON.parse(deobfuscated);
-            if (sessionData.id) {
-              sessionPersonnel = await db.personnel.get(sessionData.id);
-            }
-          } catch (e) {
-            console.error('Error parsing session:', e);
-          }
-        }
-        
-        // Priority 2: Google Email Restrictions
-        // If not demo and not specific authorized hardcoded admin emails, check DB
-        const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com', 'demo@sydv.org.tr'];
-        
-        if (fbUser && fbUser.email && !authorizedEmails.includes(fbUser.email)) {
-           // Not a developer/demo email, so they MUST be in personnel or drivers table.
-           try {
-             // Instead of using dexie queries directly, fetch all and filter to avoid API errors
-             // since some versions or offline states might block specific queries.
-             // We use a fetch directly from backend to avoid 403 on client cache limits.
-             
-             const token = await fbUser.getIdToken();
-             
-             // Check Personnel
-             const pRes = await fetch('/api/db', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-               body: JSON.stringify({ collection: 'personnel', operation: 'list', query: { email: fbUser.email } })
-             });
-             const pData = pRes.ok ? await pRes.json() : [];
-             const p = Array.isArray(pData) && pData.length > 0 ? pData[0] : null;
-
-             // Check Drivers
-             const dRes = await fetch('/api/db', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-               body: JSON.stringify({ collection: 'drivers', operation: 'list', query: { googleEmail: fbUser.email } })
-             });
-             const dData = dRes.ok ? await dRes.json() : [];
-             
-             const d2Res = await fetch('/api/db', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-               body: JSON.stringify({ collection: 'dr_drivers', operation: 'list', query: { googleEmail: fbUser.email } })
-             });
-             const d2Data = d2Res.ok ? await d2Res.json() : [];
-             
-             
-             const d = (Array.isArray(dData) && dData.length > 0 ? dData[0] : null) || (Array.isArray(d2Data) && d2Data.length > 0 ? d2Data[0] : null);
-             
-             if (!p && !d) {
-               // Unauthorized Google login
-               import('firebase/auth').then(({ signOut }) => {
-                 signOut(auth);
-               });
-               toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
-               setUser(null);
-               setPersonnel(null);
-               setRole(null);
-               setLoading(false);
-               router.push('/login');
-               return; // exit the callback
-             }
-           } catch (e) {
-             console.error('Validation error:', e);
-             toast.error('Giriş doğrulaması sırasında bir hata oluştu. Hesabınız incelenemiyor.');
-             import('firebase/auth').then(({ signOut }) => {
-                signOut(auth);
-             });
-             setUser(null);
-             setPersonnel(null);
-             setRole(null);
-             setLoading(false);
-             router.push('/login');
-             return;
-           }
-        }
-
-        if (sessionPersonnel && sessionPersonnel.isActive && sessionPersonnel.isApproved) {
-          setPersonnel(sessionPersonnel);
-        } else {
-          // Priority 3: Fallback to Email Lookup (Google Login only)
-          try {
-            const p = await db.personnel.where('email').equals(fbUser.email).first();
-            if (p) {
-              setPersonnel(p);
-            } else if (fbUser.email === 'demo@sydv.org.tr') {
-              const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };
-              setPersonnel(demoP);
-            } else {
-              setPersonnel(null);
-            }
-          } catch (e) {
-            console.error('Error fetching personnel:', e);
-            setPersonnel(null);
-          }
-        }
-
+        // Priority 1: Check Demo
         if (fbUser.email === 'demo@sydv.org.tr') {
+          const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };
+          setPersonnel(demoP);
+          setUser(fbUser);
           setRole('demo');
-        } else if (pathname.startsWith('/admin')) {
+          setLoading(false);
+          return;
+        }
+
+        // Priority 2: Google Email Restrictions
+        const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com'];
+        let isAuthorized = authorizedEmails.includes(fbUser.email || '');
+        let pFound = null;
+        let dFound = null;
+
+        if (!isAuthorized) {
+          try {
+            const token = await fbUser.getIdToken();
+            
+            // Check Personnel
+            const pRes = await fetch('/api/db', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ collection: 'personnel', operation: 'list', query: { email: fbUser.email } })
+            });
+            const pData = pRes.ok ? await pRes.json() : [];
+            pFound = Array.isArray(pData) && pData.length > 0 ? pData[0] : null;
+
+            if (pFound) {
+              isAuthorized = true;
+            } else {
+              // Check Drivers
+              const dRes = await fetch('/api/db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ collection: 'drivers', operation: 'list', query: { googleEmail: fbUser.email } })
+              });
+              const dData = dRes.ok ? await dRes.json() : [];
+              
+              const d2Res = await fetch('/api/db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ collection: 'dr_drivers', operation: 'list', query: { googleEmail: fbUser.email } })
+              });
+              const d2Data = d2Res.ok ? await d2Res.json() : [];
+              
+              dFound = (Array.isArray(dData) && dData.length > 0 ? dData[0] : null) || (Array.isArray(d2Data) && d2Data.length > 0 ? d2Data[0] : null);
+              if (dFound) isAuthorized = true;
+            }
+          } catch (e) {
+            console.error('Validation error:', e);
+          }
+        }
+
+        if (!isAuthorized) {
+          // Unauthorized Google login
+          import('firebase/auth').then(({ signOut }) => {
+            signOut(auth);
+          });
+          toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
+          setUser(null);
+          setPersonnel(null);
+          setRole(null);
+          setLoading(false);
+          router.push('/login');
+          return;
+        }
+
+        // Authorized
+        setUser(fbUser);
+        
+        // Finalize personnel/role
+        if (pFound) {
+          setPersonnel(pFound);
+        } else if (dFound) {
+          setPersonnel(dFound);
+        } else {
+          // Check local DB/Session fallback if needed
+          const session = localStorage.getItem('personnel-session');
+          if (session) {
+            try {
+              const deobfuscated = deobfuscate(session);
+              const sessionData = JSON.parse(deobfuscated);
+              const p = await db.personnel.get(sessionData.id);
+              if (p && p.isActive && p.isApproved) setPersonnel(p);
+            } catch (e) { console.error(e); }
+          }
+        }
+
+        if (pathname.startsWith('/admin')) {
           setRole('admin');
         } else if (pathname.startsWith('/driver')) {
           setRole('driver');
@@ -174,6 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setRole(null);
         }
       } else {
+        setUser(null);
         setRole(null);
         setPersonnel(null);
       }

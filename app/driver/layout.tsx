@@ -1,14 +1,45 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, LogOut } from 'lucide-react';
+import { Home, LogOut, Clock } from 'lucide-react';
 import { auth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
 
 export default function DriverLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { user, loading: authLoading, personnel, role } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const checkDriverAuth = async () => {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      const authorizedEmails = ['edirnesydv@gmail.com', 'real.lucifer22@gmail.com', 'demo@sydv.org.tr'];
+      const isDev = authorizedEmails.includes(user.email || '');
+      const isDemo = role === 'demo' || user.email === 'demo@sydv.org.tr';
+      
+      const isDriver = (personnel && (personnel.googleEmail || personnel.email)) || isDev || isDemo;
+
+      if (!isDriver) {
+        toast.error('Bu bölüme erişim yetkiniz bulunmamaktadır.');
+        router.push('/');
+        return;
+      }
+
+      setIsLoading(false);
+    };
+
+    checkDriverAuth();
+  }, [user, authLoading, router, personnel, role]);
 
   const handleLogout = async () => {
     try {
@@ -21,6 +52,17 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       toast.error('Çıkış yapılırken bir hata oluştu');
     }
   };
+
+  if (isLoading || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
