@@ -1234,8 +1234,8 @@ export default function RoutesPage() {
 
     doc.setFontSize(10);
     doc.setFont('Roboto', 'normal');
-    doc.text(`Şoför: ${driver.name}`, 14, 25);
-    doc.text(`Hafta: ${safeFormat(weekDays[0], 'dd.MM.yyyy')} - ${safeFormat(weekDays[4], 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 25, { align: 'right' });
+    doc.text(`Şoför: ${driver.name}`, 14, 32);
+    doc.text(`Hafta: ${safeFormat(weekDays[0], 'dd.MM.yyyy')} - ${safeFormat(weekDays[4], 'dd.MM.yyyy')}`, doc.internal.pageSize.width - 14, 32, { align: 'right' });
 
     // Get all routes for this driver in this week
     const weekDates = weekDays.map(d => safeFormat(d, 'yyyy-MM-dd'));
@@ -1291,9 +1291,9 @@ export default function RoutesPage() {
       const uniqueDates = Array.from(new Set(servedDates));
       
       if (uniqueDates.length > 0) {
-        prevWeekNote = `${uniqueDates.join(', ')} günleri aldı.`;
+        prevWeekNote = `${uniqueDates.join(', ')} günleri teslim edildi.`;
       } else {
-        prevWeekNote = 'Geçen hafta almadı.';
+        prevWeekNote = 'Geçen hafta teslim edilmedi.';
       }
 
       if (isNew) {
@@ -1321,7 +1321,7 @@ export default function RoutesPage() {
               } else {
                 const stop = weekStops.find(rs => rs.routeId === route.id && rs.householdId === hId && rs.mealType !== 'breakfast');
                 if (!stop) row.push('-');
-                else row.push(stop.status === 'delivered' ? 'ALDI' : stop.status === 'failed' ? 'ALMADI' : '-');
+                else row.push(stop.status === 'delivered' ? 'TESLİM EDİLDİ' : stop.status === 'failed' ? 'TESLİM EDİLMEDİ' : '-');
               }
             } else {
               row.push(''); // Boş satır (gelecek/bugün)
@@ -1336,7 +1336,7 @@ export default function RoutesPage() {
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 30,
+      startY: 40,
       theme: 'grid',
       styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5, lineColor: [200, 200, 200], lineWidth: 0.1 },
       headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
