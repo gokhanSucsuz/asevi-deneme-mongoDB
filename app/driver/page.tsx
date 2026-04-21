@@ -57,7 +57,8 @@ export default function DriverPage() {
             newHistory.push({
               status: update.status,
               timestamp: new Date(update.deliveredAt),
-              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi'
+              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi',
+              personnelName: driverName
             });
 
             await db.routeStops.update(stop.id!, {
@@ -84,11 +85,15 @@ export default function DriverPage() {
       setIsSyncing(false);
       notifyDbChange('route_stops');
     }
-  }, [isSyncing]);
+  }, [isSyncing, driverName]);
 
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormat(new Date(), 'yyyy-MM-dd');
+  const driverName = useMemo(() => {
+    const d = drivers?.find(dr => dr.id === selectedDriverId);
+    return d?.name || 'Bilinmeyen Şoför';
+  }, [drivers, selectedDriverId]);
 
   // Auto-select driver based on google email
   useEffect(() => {
@@ -190,7 +195,8 @@ export default function DriverPage() {
             history: [...(h.history || []), {
               action: 'activated',
               timestamp: new Date(),
-              note: 'Pasif süresi dolduğu için otomatik aktifleştirildi'
+              note: 'Pasif süresi dolduğu için otomatik aktifleştirildi',
+              personnelName: 'Sistem (Otomatik)'
             }]
           });
         }
@@ -210,7 +216,12 @@ export default function DriverPage() {
                 await db.routeStops.update(stop.id!, {
                   status: 'delivered',
                   deliveredAt: new Date(),
-                  history: [...(stop.history || []), { status: 'delivered', timestamp: new Date(), note: 'Otomatik tamamlandı (Saat 17:30 sonrası)' }]
+                  history: [...(stop.history || []), { 
+                    status: 'delivered', 
+                    timestamp: new Date(), 
+                    note: 'Otomatik tamamlandı (Saat 17:30 sonrası)',
+                    personnelName: 'Sistem (Otomatik)' 
+                  }]
                 });
               }
             }
@@ -219,7 +230,12 @@ export default function DriverPage() {
               endKm: route.startKm || 0,
               remainingFood: 0,
               remainingBread: 0,
-              history: [...(route.history || []), { action: 'auto_completed', timestamp: new Date(), note: 'Saat 17:30 sonrası otomatik tamamlandı' }]
+              history: [...(route.history || []), { 
+                action: 'auto_completed', 
+                timestamp: new Date(), 
+                note: 'Saat 17:30 sonrası otomatik tamamlandı',
+                personnelName: 'Sistem (Otomatik)'
+              }]
             });
             
             // Generate next working day's route
@@ -395,7 +411,7 @@ export default function DriverPage() {
             await db.routeStops.update(stop.id!, {
               status: 'delivered',
               deliveredAt: deliveredAt,
-              history: [...(stop.history || []), { status: 'delivered', timestamp: deliveredAt, by: driverName }]
+              history: [...(stop.history || []), { status: 'delivered', timestamp: deliveredAt, personnelName: driverName }]
             });
           }
           // Query the fresh state after updates
@@ -469,7 +485,8 @@ export default function DriverPage() {
           newHistory.push({
             status,
             timestamp: deliveredAt,
-            note: issueReport
+            note: issueReport,
+            personnelName: driverName
           });
 
           // Sunucu güncellemesi
@@ -498,8 +515,6 @@ export default function DriverPage() {
     if (!todayRoute) return;
     
     const doc = await getTurkishPdf('portrait');
-    const driver = drivers?.find(d => d.id === selectedDriverId);
-    const driverName = driver?.name || 'Bilinmeyen Şoför';
     
     await addVakifLogo(doc, 14, 10, 20);
 
