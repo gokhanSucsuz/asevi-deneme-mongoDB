@@ -1,27 +1,34 @@
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, ServerApiVersion } from 'mongodb';
 
 const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/asevi';
-const options = {
-  connectTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 3, // Reduced for Atlas M0 limits
-  minPoolSize: 1,
-  maxIdleTimeMS: 10000, // Reduced to close idle connections faster
-  serverSelectionTimeoutMS: 10000,
-};
-
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongo URI to .env.local');
 }
 
-// In development or production, use a global variable to preserve the value
-// across module reloads or to share connections between serverless invocations.
-let globalWithMongo = global as typeof globalThis & {
-  _mongoClientPromise?: Promise<MongoClient>;
+const options: any = {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10, // Increased slightly to handle bursts for 10 personnel
+  minPoolSize: 1,
+  maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
+  waitQueueTimeoutMS: 5000, // Don't wait forever for a connection
 };
+
+let client: MongoClient;
+let clientPromise: Promise<MongoClient>;
+
+interface GlobalMongo {
+  _mongoClientPromise?: Promise<MongoClient>;
+  _mongoDb?: Db;
+}
+
+const globalWithMongo = global as typeof globalThis & GlobalMongo;
 
 if (!globalWithMongo._mongoClientPromise) {
   client = new MongoClient(uri, options);
@@ -32,6 +39,12 @@ clientPromise = globalWithMongo._mongoClientPromise;
 export default clientPromise;
 
 export async function getDb(): Promise<Db> {
+  if (globalWithMongo._mongoDb) {
+    return globalWithMongo._mongoDb;
+  }
+  
   const client = await clientPromise;
-  return client.db();
+  const db = client.db();
+  globalWithMongo._mongoDb = db;
+  return db;
 }

@@ -6,6 +6,16 @@ import { encrypt, decrypt, isEncrypted } from '@/lib/crypto';
 
 const SENSITIVE_FIELDS = ['tcNo', 'householdNo', 'phone', 'address', 'password', 'details'];
 
+// In-memory cache for personnel roles to reduce DB lookups
+interface RoleCacheEntry {
+  userRole: string | null;
+  isActive: boolean;
+  isApproved: boolean;
+  timestamp: number;
+}
+const roleCache = new Map<string, RoleCacheEntry>();
+const ROLE_CACHE_TTL = 30000; // 30 seconds
+
 function decryptSensitiveFields(doc: any): any {
   if (!doc || typeof doc !== 'object') return doc;
   if (Array.isArray(doc)) return doc.map(decryptSensitiveFields);
@@ -84,28 +94,35 @@ export async function POST(req: NextRequest) {
     // Check if user is a hardcoded admin
     const andIsHardcodedAdmin = userEmail && adminEmails.includes(userEmail);
     
-    // Fetch personnel record if not hardcoded admin
-    let userRole = andIsHardcodedAdmin ? 'admin' : null;
+    let userRole: string | null = andIsHardcodedAdmin ? 'admin' : null;
     let isActive = andIsHardcodedAdmin;
     let isApproved = andIsHardcodedAdmin;
     
+    // Use cache for roles if not hardcoded admin
     if (!andIsHardcodedAdmin && userEmail) {
-      const p = await db.collection('personnel').findOne({ email: userEmail });
-      if (p) {
-        userRole = p.role;
-        isActive = p.isActive;
-        isApproved = p.isApproved;
+      const cached = roleCache.get(userEmail);
+      if (cached && Date.now() - cached.timestamp < ROLE_CACHE_TTL) {
+        userRole = cached.userRole;
+        isActive = cached.isActive;
+        isApproved = cached.isApproved;
       } else {
-        // Check if user is an active driver
-        // Note: Some drivers might not have the isActive field set, or we just want to check existence
-        const d = await db.collection('dr_drivers').findOne({ googleEmail: userEmail }) || 
-                  await db.collection('drivers').findOne({ googleEmail: userEmail });
-        
-        if (d) {
-          userRole = 'driver';
-          isActive = d.isActive !== false; // Default to true if missing
-          isApproved = true;
+        const p = await db.collection('personnel').findOne({ email: userEmail });
+        if (p) {
+          userRole = p.role;
+          isActive = p.isActive;
+          isApproved = p.isApproved;
+        } else {
+          const d = await db.collection('dr_drivers').findOne({ googleEmail: userEmail }) || 
+                    await db.collection('drivers').findOne({ googleEmail: userEmail });
+          
+          if (d) {
+            userRole = 'driver';
+            isActive = d.isActive !== false;
+            isApproved = true;
+          }
         }
+        // Cache the result
+        roleCache.set(userEmail, { userRole, isActive, isApproved, timestamp: Date.now() });
       }
     }
     
