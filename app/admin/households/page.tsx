@@ -50,6 +50,9 @@ export default function HouseholdsPage() {
   const allHouseholds = useAppQuery(() => db.households.toArray(), [], 'households');
   const surveys = useAppQuery(() => db.surveys.toArray(), [], 'surveys');
   const surveyResponses = useAppQuery(() => db.surveyResponses.toArray(), [], 'survey_responses');
+  const allDrivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
+  const activeRouteTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
+  const activeRouteTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
   const [isLastWorkingDay, setIsLastWorkingDay] = useState(false);
 
   React.useEffect(() => {
@@ -781,6 +784,135 @@ export default function HouseholdsPage() {
     }
   };
 
+  const exportHouseholdsToExcel = async () => {
+    if (!allHouseholds || !allDrivers || !activeRouteTemplates || !activeRouteTemplateStops) {
+      toast.error('Veriler yükleniyor, lütfen bekleyin...');
+      return;
+    }
+
+    const loadingToast = toast.loading('Excel dosyası hazırlanıyor...');
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Driver bazlı verileri gruplamak için bir map oluşturuyoruz
+      // Map<DriverID, Household[]>
+      const driverMap = new Map<string, Household[]>();
+      
+      // Serservis / Vakıf alanlarını ayrı tutuyoruz
+      const vakifHouseholds: Household[] = [];
+      const unassignedHouseholds: Household[] = [];
+      
+      // Silinmemiş ve aktif tüm haneleri al (dilersek tümünü de aktarabiliriz ama genelde aktif olanlar istenir, 
+      // yedeğini almak gibi olacak dediği için silinenleri "Silinmiş Haneler" adında atabiliriz)
+      const visibleHouseholds = allHouseholds.filter(h => h.pausedUntil !== '9999-12-31');
+      const deletedHouseholds = allHouseholds.filter(h => h.pausedUntil === '9999-12-31');
+      
+      // Hane -> Template Map
+      const householdToTemplateMap = new Map<string, string>();
+      activeRouteTemplateStops.forEach(stop => {
+         householdToTemplateMap.set(stop.householdId, stop.templateId);
+      });
+      
+      // Template -> Driver Map
+      const templateToDriverMap = new Map<string, string>();
+      activeRouteTemplates.forEach(template => {
+          templateToDriverMap.set(template.id!, template.driverId);
+      });
+      
+      visibleHouseholds.forEach(h => {
+        if (h.isSelfService) {
+           vakifHouseholds.push(h);
+        } else {
+           const templateId = householdToTemplateMap.get(h.id!);
+           const driverId = templateId ? templateToDriverMap.get(templateId) : null;
+           
+           if (driverId) {
+              if (!driverMap.has(driverId)) driverMap.set(driverId, []);
+              driverMap.get(driverId)!.push(h);
+           } else {
+              unassignedHouseholds.push(h);
+           }
+        }
+      });
+      
+      // Fonksiyon: Household dizisini Excel Worksheet'e çevirir (gelişmiş stil ile)
+      const createSheet = (dataList: Household[]) => {
+         const rows = dataList.map((h, i) => ({
+            'Sıra': i + 1,
+            'TC Kimlik No': h.tcNo || '-',
+            'Hane No': h.householdNo || '-',
+            'Hane / Kurum Sorumlusu': h.headName,
+            'Tip': h.type === 'institution' ? 'Kurum' : 'Hane',
+            'Sorumlu Telefon': h.phone || '-',
+            'Açık Adres': h.address || '-',
+            'Toplam Kişi Sayısı': h.memberCount || 0,
+            'Verilecek Ekmek': h.breadCount ?? h.memberCount ?? 0,
+            'Özel Durum': [
+               h.isRetired ? 'Emekli' : null,
+               h.noBreakfast ? 'Kahvaltı İstemiyor' : null,
+               h.usesOwnContainer ? 'Kendi Kabını Kullanıyor' : null,
+            ].filter(Boolean).join(', ') || 'Yok',
+            'Durum': h.isActive ? 'Aktif' : (h.pausedUntil ? `${safeFormat(new Date(h.pausedUntil), 'dd.MM.yyyy')} tarihine kadar pasif` : 'Pasif')
+         }));
+         
+         const ws = XLSX.utils.json_to_sheet(rows);
+         // Sütun genişliklerini ayarla (Görsellik ve Kullanıcı Dostu Mimarisi)
+         ws['!cols'] = [
+           { wch: 5 },  // Sıra
+           { wch: 15 }, // TC
+           { wch: 12 }, // Hane No
+           { wch: 30 }, // İsim
+           { wch: 10 }, // Tip
+           { wch: 15 }, // Telefon
+           { wch: 50 }, // Adres
+           { wch: 18 }, // Kişi
+           { wch: 15 }, // Ekmek
+           { wch: 25 }, // Durum/Özel
+           { wch: 20 }, // Aktif?
+         ];
+         return ws;
+      };
+
+      // 1. Şoförleri Sekme Sekme Ekle
+      allDrivers.forEach(driver => {
+         if (driver.isActive) {
+             const hList = driverMap.get(driver.id!) || [];
+             if (hList.length > 0) {
+                const sheetName = driver.name.substring(0, 30); // Excel sheet name limit 31 chars
+                XLSX.utils.book_append_sheet(workbook, createSheet(hList), sheetName);
+             }
+         }
+      });
+      
+      // 2. Vakıftan Alanlar (Self Service)
+      if (vakifHouseholds.length > 0) {
+         XLSX.utils.book_append_sheet(workbook, createSheet(vakifHouseholds), 'Vakıftan Alanlar');
+      }
+      
+      // 3. Atanmamış Haneler
+      if (unassignedHouseholds.length > 0) {
+         XLSX.utils.book_append_sheet(workbook, createSheet(unassignedHouseholds), 'Rotası Olmayanlar');
+      }
+      
+      // 4. Silinmiş Haneler
+      if (deletedHouseholds.length > 0) {
+         XLSX.utils.book_append_sheet(workbook, createSheet(deletedHouseholds), 'Arşiv (Silinmiş)');
+      }
+
+      // Eğer sistem tamamen boşsa (Hiç hane yoksa)
+      if (workbook.SheetNames.length === 0) {
+         XLSX.utils.book_append_sheet(workbook, createSheet([]), 'Haneler');
+      }
+
+      XLSX.writeFile(workbook, `Haneler_Yedek_Raporu_${safeFormat(new Date(), 'dd_MM_yyyy')}.xlsx`);
+      await addLog('Hane Dışa Aktarım', 'Tüm hane verileri (şoför ve gruplara ayrılmış olarak) Excel formatında dışa aktarıldı.');
+      toast.success('Excel dosyası başarıyla indirildi', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('Excel dosyası oluşturulurken bir hata meydana geldi', { id: loadingToast });
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -793,6 +925,13 @@ export default function HouseholdsPage() {
             ref={fileInputRef}
             onChange={handleFileUpload}
           />
+          <button
+            onClick={exportHouseholdsToExcel}
+            className="flex-1 md:flex-none bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 flex items-center justify-center text-sm"
+          >
+            <Download size={18} className="mr-2" />
+            Yedek Al (Excel)
+          </button>
           <button
             onClick={downloadExcelTemplate}
             className="flex-1 md:flex-none bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-200 flex items-center justify-center text-sm"
