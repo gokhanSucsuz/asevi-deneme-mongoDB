@@ -27,22 +27,15 @@ export default function RoutesPage() {
   const [editRouteData, setEditRouteData] = useState<Partial<Route>>({});
   const [editRouteStopsData, setEditRouteStopsData] = useState<RouteStop[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string | ''>('');
-  const getDefaultRouteDate = () => {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Initial guess, will be refined in useEffect based on routes
     const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    let defaultDate = new Date();
-    if (hours > 9 || (hours === 9 && minutes >= 30)) {
-      defaultDate.setDate(defaultDate.getDate() + 1);
-    }
-    // Skip weekends (0 = Sunday, 6 = Saturday)
-    while (defaultDate.getDay() === 0 || defaultDate.getDay() === 6) {
-      defaultDate.setDate(defaultDate.getDate() + 1);
-    }
-    return safeFormat(defaultDate, 'yyyy-MM-dd');
-  };
+    return safeFormat(now, 'yyyy-MM-dd');
+  });
+  
+  // Track if we have already auto-selected the date to prevent infinite re-renders
+  const [hasAutoSelectedDate, setHasAutoSelectedDate] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState(getDefaultRouteDate());
   const [selectedHouseholds, setSelectedHouseholds] = useState<{ householdId: string, order: number }[]>([]);
   const [routeDetailsStops, setRouteDetailsStops] = useState<RouteStop[]>([]);
   
@@ -63,6 +56,34 @@ export default function RoutesPage() {
   const [isManualCompletion, setIsManualCompletion] = useState(true);
   
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  
+  // Auto-select the target viewing date when routes load
+  useEffect(() => {
+    if (routes && routes.length > 0 && !hasAutoSelectedDate) {
+      const today = new Date();
+      const todayStr = safeFormat(today, 'yyyy-MM-dd');
+      const todaysRoutes = routes.filter(r => r.date === todayStr);
+      
+      let targetDate = todayStr;
+      
+      // If there are routes for today, and ALL of them are completed or approved, move to next working day.
+      if (todaysRoutes.length > 0) {
+        const allCompleted = todaysRoutes.every(r => r.status === 'completed' || r.status === 'approved');
+        if (allCompleted) {
+          let nextDateObj = new Date();
+          nextDateObj.setDate(nextDateObj.getDate() + 1);
+          while (nextDateObj.getDay() === 0 || nextDateObj.getDay() === 6) {
+             nextDateObj.setDate(nextDateObj.getDate() + 1);
+          }
+          targetDate = safeFormat(nextDateObj, 'yyyy-MM-dd');
+        }
+      }
+      
+      setSelectedDate(targetDate);
+      setHasAutoSelectedDate(true);
+    }
+  }, [routes, hasAutoSelectedDate]);
+
   const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
@@ -214,12 +235,30 @@ export default function RoutesPage() {
     }
   });
 
+  const getDefaultRouteDateFallback = () => {
+    let nextDateObj = new Date();
+    if (routes && routes.length > 0) {
+      const todayStr = safeFormat(nextDateObj, 'yyyy-MM-dd');
+      const todaysRoutes = routes.filter((r: Route) => r.date === todayStr);
+      if (todaysRoutes.length > 0) {
+        const allCompleted = todaysRoutes.every((r: Route) => r.status === 'completed' || r.status === 'approved');
+        if (allCompleted) {
+          nextDateObj.setDate(nextDateObj.getDate() + 1);
+          while (nextDateObj.getDay() === 0 || nextDateObj.getDay() === 6) {
+             nextDateObj.setDate(nextDateObj.getDate() + 1);
+          }
+        }
+      }
+    }
+    return safeFormat(nextDateObj, 'yyyy-MM-dd');
+  };
+
   const openModal = () => {
     setDailySearchTerm('');
     setDailySortField('headName');
     setDailySortOrder('asc');
     setSelectedDriverId('');
-    setSelectedDate(getDefaultRouteDate());
+    setSelectedDate(getDefaultRouteDateFallback());
     setSelectedHouseholds([]);
     setIsModalOpen(true);
   };
