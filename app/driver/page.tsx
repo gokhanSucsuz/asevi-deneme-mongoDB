@@ -37,6 +37,37 @@ export default function DriverPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
+  const [currentCoords, setCurrentCoords] = useState<{lat: number, lng: number} | null>(null);
+
+  // Helper to get current location
+  const getCurrentLocation = useCallback((): Promise<{lat: number, lng: number} | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    });
+  }, []);
+
+  // Warm up geolocation permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {});
+    }
+  }, []);
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormat(new Date(), 'yyyy-MM-dd');
@@ -64,7 +95,7 @@ export default function DriverPage() {
             newHistory.push({
               status: update.status,
               timestamp: new Date(update.deliveredAt),
-              note: update.issueReport || 'Çevrimdışı işlendi ve senkronize edildi',
+              note: update.issueReport || (update.lat ? `Konum kaydedildi: ${update.lat}, ${update.lng}` : 'Çevrimdışı işlendi ve senkronize edildi'),
               personnelName: driverName
             });
 
@@ -72,7 +103,9 @@ export default function DriverPage() {
               status: update.status,
               deliveredAt: new Date(update.deliveredAt),
               issueReport: update.issueReport,
-              history: newHistory
+              history: newHistory,
+              lat: update.lat,
+              lng: update.lng
             });
           }
           await localDb.offlineUpdates.delete(update.id!);
@@ -450,8 +483,11 @@ export default function DriverPage() {
     const deliveredAt = new Date();
     const issueReport = status === 'failed' ? issueText : undefined;
 
+    // Koordinatları almayı dene (Hız için paralel veya kısa süreli await)
+    const coords = await getCurrentLocation();
+
     // Hemen UI durumunu güncelliyoruz (Optimistic Update)
-    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
+    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now(), lat: coords?.lat, lng: coords?.lng }]);
     
     // Şoförün beklemesini engelleyip hemen diğer karta geçmesini sağlıyoruz.
     setIssueText('');
@@ -470,7 +506,9 @@ export default function DriverPage() {
           status,
           issueReport,
           deliveredAt,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          lat: coords?.lat,
+          lng: coords?.lng
         });
 
         // Online isek, arka planda MongoDB sunucu güncellemesini yap
@@ -482,7 +520,7 @@ export default function DriverPage() {
           newHistory.push({
             status,
             timestamp: deliveredAt,
-            note: issueReport,
+            note: issueReport || (coords ? `Konum kaydedildi: ${coords.lat}, ${coords.lng}` : undefined),
             personnelName: driverName
           });
 
@@ -491,7 +529,9 @@ export default function DriverPage() {
             status,
             deliveredAt,
             issueReport,
-            history: newHistory
+            history: newHistory,
+            lat: coords?.lat,
+            lng: coords?.lng
           });
 
           // Başarılı sunucu işleminden sonra, ilgili offline kaydını yerelden sil

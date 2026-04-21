@@ -103,6 +103,8 @@ export interface RouteStop {
   order: number;
   mealType?: 'standard' | 'breakfast';
   isManual?: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 export interface RouteTemplate {

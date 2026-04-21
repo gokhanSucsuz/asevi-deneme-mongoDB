@@ -5,7 +5,7 @@ import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info, Navigation } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info, Navigation, MapPin } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
@@ -54,6 +54,7 @@ export default function RoutesPage() {
   const [manualLeftoverBread, setManualLeftoverBread] = useState<number>(0);
   const [leftoverStops, setLeftoverStops] = useState<RouteStop[]>([]);
   const [isManualCompletion, setIsManualCompletion] = useState(true);
+  const [mapModalData, setMapModalData] = useState<{ lat: number, lng: number, title: string } | null>(null);
   
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
   
@@ -2277,7 +2278,20 @@ export default function RoutesPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">{stop.deliveredAt ? safeFormatTRT(stop.deliveredAt, 'HH:mm') : '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-500">
+                          <div className="flex items-center gap-2">
+                            {stop.deliveredAt ? safeFormatTRT(stop.deliveredAt, 'HH:mm') : '-'}
+                            {stop.lat && stop.lng && (
+                              <button
+                                onClick={() => setMapModalData({ lat: stop.lat!, lng: stop.lng!, title: stop.householdSnapshotName || 'Teslimat Noktası' })}
+                                className="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded"
+                                title="Haritada Gör"
+                              >
+                                <MapPin size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-2 text-sm text-gray-500">
                           {isEditingRouteDetails && stop.status === 'failed' ? (
                             <input
@@ -2612,6 +2626,50 @@ export default function RoutesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {mapModalData && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-2xl max-w-2xl w-full h-[600px] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b bg-gray-50">
+              <div>
+                <h3 className="font-black text-gray-900 tracking-tight">{mapModalData.title}</h3>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">Teslimat Koordinatları</p>
+              </div>
+              <button 
+                onClick={() => setMapModalData(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 bg-gray-100 relative">
+              <iframe
+                title="Google Maps"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                marginHeight={0}
+                marginWidth={0}
+                src={`https://maps.google.com/maps?q=${mapModalData.lat},${mapModalData.lng}&z=17&output=embed`}
+                className="opacity-0 animate-in fade-in fill-mode-forwards duration-500"
+                style={{ animationDelay: '300ms' }}
+              />
+              <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white/20 shadow-lg flex items-center justify-between text-xs font-bold text-gray-700">
+                <span>{mapModalData.lat.toFixed(6)}, {mapModalData.lng.toFixed(6)}</span>
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${mapModalData.lat},${mapModalData.lng}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Tam Haritada Aç
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       )}

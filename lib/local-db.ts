@@ -8,6 +8,8 @@ export interface OfflineStopUpdate {
   issueReport?: string;
   deliveredAt: Date;
   timestamp: number;
+  lat?: number;
+  lng?: number;
 }
 
 export class LocalRouteDatabase extends Dexie {
