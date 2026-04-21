@@ -37,6 +37,13 @@ export default function DriverPage() {
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
+  const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
+  const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
+  const today = safeFormat(new Date(), 'yyyy-MM-dd');
+  const driverName = useMemo(() => {
+    const d = drivers?.find(dr => dr.id === selectedDriverId);
+    return d?.name || 'Bilinmeyen Şoför';
+  }, [drivers, selectedDriverId]);
 
   const syncOfflineData = useCallback(async () => {
     if (isSyncing || !navigator.onLine) return;
@@ -86,14 +93,6 @@ export default function DriverPage() {
       notifyDbChange('route_stops');
     }
   }, [isSyncing, driverName]);
-
-  const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
-  const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
-  const today = safeFormat(new Date(), 'yyyy-MM-dd');
-  const driverName = useMemo(() => {
-    const d = drivers?.find(dr => dr.id === selectedDriverId);
-    return d?.name || 'Bilinmeyen Şoför';
-  }, [drivers, selectedDriverId]);
 
   // Auto-select driver based on google email
   useEffect(() => {
