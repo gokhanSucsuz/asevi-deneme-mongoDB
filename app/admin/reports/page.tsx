@@ -311,6 +311,7 @@ export default function ReportsPage() {
         startY: 60,
         theme: 'grid',
         styles: { font: 'Roboto', fontSize: 9, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
         columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
       });
 
@@ -340,6 +341,7 @@ export default function ReportsPage() {
           startY: finalY + 5,
           margin: { bottom: 20 },
           styles: { font: 'Roboto', fontSize: 9 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
           headStyles: { fillColor: [79, 70, 229] }
         });
       }

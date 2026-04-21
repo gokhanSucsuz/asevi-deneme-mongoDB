@@ -531,6 +531,7 @@ export default function DriverPage() {
       body: tableRows,
       startY: 50,
       styles: { font: 'Roboto', fontSize: 9, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [66, 66, 66] },
       footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] },
       columnStyles: {

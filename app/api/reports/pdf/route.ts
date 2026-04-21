@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       body: tableData,
       startY: 45,
       styles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       headStyles: { fillColor: [100, 100, 100] }
     });
 

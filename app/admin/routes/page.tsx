@@ -1168,6 +1168,7 @@ export default function RoutesPage() {
       showFoot: 'lastPage',
       startY: startY,
       styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
       footStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], halign: 'center' },
       columnStyles: {
@@ -1274,26 +1275,29 @@ export default function RoutesPage() {
       );
 
       let prevWeekNote = '';
+      const prevStops = routeStops?.filter(rs => 
+        rs.householdId === hId && 
+        rs.status === 'delivered'
+      ) || [];
+      
+      const servedDates: string[] = [];
+      for (const ps of prevStops) {
+        const r = routes?.find(route => route.id === ps.routeId);
+        if (r && r.date >= prevStartDateStr && r.date <= prevEndDateStr) {
+          servedDates.push(safeFormat(new Date(r.date), 'EEEE').substring(0, 3));
+        }
+      }
+      
+      const uniqueDates = Array.from(new Set(servedDates));
+      
+      if (uniqueDates.length > 0) {
+        prevWeekNote = `${uniqueDates.join(', ')} günleri aldı.`;
+      } else {
+        prevWeekNote = 'Geçen hafta almadı.';
+      }
+
       if (isNew) {
-        // Find which days they were served in the previous week
-        const prevStops = routeStops?.filter(rs => 
-          rs.householdId === hId && 
-          rs.status === 'delivered'
-        ) || [];
-        
-        const servedDates: string[] = [];
-        for (const ps of prevStops) {
-          const r = routes?.find(route => route.id === ps.routeId);
-          if (r && r.date >= prevStartDateStr && r.date <= prevEndDateStr) {
-            servedDates.push(safeFormat(new Date(r.date), 'EEEE').substring(0, 3));
-          }
-        }
-        
-        if (servedDates.length > 0) {
-          prevWeekNote = `Yeni Kayıt: Geçen hafta (${servedDates.join(', ')}) günleri yemek aldı.`;
-        } else {
-          prevWeekNote = 'Yeni Kayıt.';
-        }
+        prevWeekNote = `(Yeni Kayıt) ` + prevWeekNote;
       }
 
       const row = [
@@ -1302,14 +1306,26 @@ export default function RoutesPage() {
         h?.address || '',
       ];
 
+      const reportDateStr = safeFormat(new Date(), 'yyyy-MM-dd');
+
       weekDates.forEach(dateStr => {
         const route = weekRoutes.find(r => r.date === dateStr);
-        if (!route) {
-          row.push('-');
+        const isPaused = h && !h.isActive && h.pausedUntil && h.pausedUntil >= dateStr && h.pausedUntil !== '9999-12-31';
+
+        if (isPaused) {
+           row.push(`${safeFormat(new Date(h.pausedUntil), 'dd.MM')} tarihine kadar pasiftir ve yemek bırakılmayacaktır.`);
         } else {
-          const stop = weekStops.find(rs => rs.routeId === route.id && rs.householdId === hId && rs.mealType !== 'breakfast');
-          if (!stop) row.push('-');
-          else row.push(stop.status === 'delivered' ? 'OK' : stop.status === 'failed' ? 'X' : '.');
+            if (dateStr < reportDateStr) {
+              if (!route) {
+                row.push('-');
+              } else {
+                const stop = weekStops.find(rs => rs.routeId === route.id && rs.householdId === hId && rs.mealType !== 'breakfast');
+                if (!stop) row.push('-');
+                else row.push(stop.status === 'delivered' ? 'ALDI' : stop.status === 'failed' ? 'ALMADI' : '-');
+              }
+            } else {
+              row.push(''); // Boş satır (gelecek/bugün)
+            }
         }
       });
 
@@ -1322,13 +1338,15 @@ export default function RoutesPage() {
       body: tableRows,
       startY: 30,
       theme: 'grid',
-      styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      styles: { font: 'Roboto', fontSize: 7, cellPadding: 1.5, lineColor: [200, 200, 200], lineWidth: 0.1 },
       headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', halign: 'center' },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
       columnStyles: {
         0: { halign: 'center', cellWidth: 8 },
         1: { cellWidth: 35 },
         2: { cellWidth: 50 },
-        8: { cellWidth: 40, fontSize: 6 } // Açıklama column
+        // Geri kalan günler otomatik yayılacak
+        8: { cellWidth: 35, fontSize: 6 } // Açıklama column
       }
     });
 
@@ -1370,6 +1388,7 @@ export default function RoutesPage() {
       body: tableRows,
       startY: 45,
       styles: { font: 'Roboto', fontSize: 9, lineColor: [0, 0, 0], lineWidth: 0.1 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] }
     });
 

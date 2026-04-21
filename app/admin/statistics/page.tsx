@@ -189,6 +189,7 @@ export default function StatisticsPage() {
         theme: 'grid',
         margin: { bottom: 20 },
         styles: { font: 'Roboto', fontSize: 10, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
         headStyles: { fillColor: [79, 70, 229], halign: 'center' },
         columnStyles: { 
           0: { cellWidth: 100, fontStyle: 'bold' },

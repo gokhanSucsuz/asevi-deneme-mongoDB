@@ -569,6 +569,7 @@ export default function HouseholdsPage() {
         body: tableRows,
         startY: 65,
         styles: { font: 'Roboto', fontSize: 9, lineColor: [0, 0, 0], lineWidth: 0.1 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0] }
       });
 

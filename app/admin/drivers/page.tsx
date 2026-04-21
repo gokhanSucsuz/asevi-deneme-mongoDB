@@ -249,6 +249,7 @@ export default function DriversPage() {
         body: [[totalKm, totalHouseholdDeliveries, totalDeliveredPeople, totalFailedStops, driverRoutes.length]],
         startY: 65,
         styles: { font: 'Roboto', fontSize: 10, halign: 'center' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [41, 128, 185] }
       });
 
@@ -312,6 +313,7 @@ export default function DriversPage() {
         body: tableRows,
         startY: currentY,
         styles: { font: 'Roboto', fontSize: 9 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
         headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [52, 73, 94] }
       });
 
@@ -338,6 +340,7 @@ export default function DriversPage() {
           body: failedTableRows,
           startY: 35,
           styles: { font: 'Roboto', fontSize: 9 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
           headStyles: { font: 'Roboto', fontStyle: 'bold', fillColor: [192, 57, 43] }
         });
       }

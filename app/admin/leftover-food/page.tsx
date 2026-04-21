@@ -121,6 +121,7 @@ export default function LeftoverFoodPage() {
       body: tableData,
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 10 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       headStyles: { fillColor: [41, 128, 185] }
     });
 

@@ -7,7 +7,7 @@ import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAf
 import { safeFormat } from '@/lib/date-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { checkIsWorkingDay, getNextWorkingDay } from '@/lib/route-utils';
-import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info } from 'lucide-react';
+import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
@@ -309,13 +309,32 @@ export default function BreadTrackingPage() {
     }
 
     try {
-      await db.tenders.add({
-        ...tenderForm,
-        remainingMaxBreadCount: tenderForm.maxBreadCount,
-        createdAt: new Date()
-      });
-      toast.success('Yeni ihale başarıyla eklendi.');
-      await addSystemLog(user, personnel, 'Yeni İhale Tanımlandı', `${tenderForm.name} ihalesi ${tenderForm.maxBreadCount} adet kapasite ile tanımlandı.`, 'tender');
+      if ((tenderForm as any).id) {
+         // Update existing
+         const existing = await db.tenders.get((tenderForm as any).id);
+         if (existing) {
+             const diff = tenderForm.maxBreadCount - existing.maxBreadCount;
+             await db.tenders.update(existing.id!, {
+                name: tenderForm.name,
+                date: tenderForm.date,
+                tenderNo: tenderForm.tenderNo,
+                endDate: tenderForm.endDate,
+                maxBreadCount: tenderForm.maxBreadCount,
+                remainingMaxBreadCount: existing.remainingMaxBreadCount + diff
+             });
+             toast.success('İhale başarıyla güncellendi.');
+             await addSystemLog(user, personnel, 'İhale Güncellendi', `${tenderForm.name} ihalesi güncellendi. Yeni Kapasite: ${tenderForm.maxBreadCount}`, 'tender');
+         }
+      } else {
+         // Create new
+         await db.tenders.add({
+           ...tenderForm,
+           remainingMaxBreadCount: tenderForm.maxBreadCount,
+           createdAt: new Date()
+         });
+         toast.success('Yeni ihale başarıyla eklendi.');
+         await addSystemLog(user, personnel, 'Yeni İhale Tanımlandı', `${tenderForm.name} ihalesi ${tenderForm.maxBreadCount} adet kapasite ile tanımlandı.`, 'tender');
+      }
       setIsTenderModalOpen(false);
       setTenderForm({
         name: '',
@@ -326,8 +345,28 @@ export default function BreadTrackingPage() {
       });
     } catch (error) {
       console.error(error);
-      toast.error('İhale eklenirken bir hata oluştu.');
+      toast.error('İhale kaydedilirken bir hata oluştu.');
     }
+  };
+
+  const handleEditTender = (tender: Tender) => {
+     setTenderForm({
+         ...tender,
+         date: tender.date || safeFormat(tender.createdAt || new Date(), 'yyyy-MM-dd')
+     } as any);
+     setIsTenderModalOpen(true);
+  };
+
+  const handleDeleteTender = async (id: string) => {
+      if (confirm('Bu ihaleyi tamamen silmek istediğinize emin misiniz?')) {
+          try {
+             await db.tenders.delete(id);
+             toast.success('İhale başarıyla silindi.');
+             await addSystemLog(user, personnel, 'İhale Silindi', `İhale kaydı (ID: ${id}) sistemden silindi.`, 'tender');
+          } catch (error) {
+             toast.error('Silme sırasında hata oluştu.');
+          }
+      }
   };
 
   const handleOrderBread = async (item: any) => {
@@ -482,7 +521,15 @@ export default function BreadTrackingPage() {
           </div>
           
           {activeTender ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+              <div className="absolute top-0 right-0 flex gap-2">
+                 <button onClick={() => handleEditTender(activeTender)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-full" title="Düzenle">
+                    <Edit2 size={16} />
+                 </button>
+                 <button onClick={() => handleDeleteTender(activeTender.id!)} className="p-2 text-red-600 hover:bg-red-50 rounded-full" title="Sil">
+                    <Trash2 size={16} />
+                 </button>
+              </div>
               <div className="space-y-3">
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">İhale Adı:</span>
