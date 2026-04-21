@@ -366,7 +366,7 @@ export default function DriverPage() {
       toast.error('Lütfen bitiş KM bilgisini giriniz.');
       return;
     }
-    if (confirm('Günü tamamlamak istediğinize emin misiniz?')) {
+    if (confirm('Günü tamamlamak istediğinize emin misiniz? Bekleyen adresler otomatik olarak "Teslim Edildi" işaretlenecektir.')) {
       if (offlineUpdates.length > 0) {
         if (navigator.onLine) {
           toast.info('Bekleyen veriler senkronize ediliyor...');
@@ -382,6 +382,25 @@ export default function DriverPage() {
       try {
         const totalRemainingFood = autoRemainingFood + Number(extraFood);
         const totalRemainingBread = autoRemainingBread + Number(extraBread);
+
+        // Fetch remaining points that are still "pending" (bekliyor) and update them to "delivered".
+        const pendingStops = await db.routeStops.toArray().then(arr => 
+          arr.filter(s => s.routeId === todayRoute!.id && s.status === 'pending')
+        );
+
+        if (pendingStops.length > 0) {
+          toast.info(`${pendingStops.length} adet bekleyen teslimat otomatik olarak kaydediliyor...`);
+          const deliveredAt = new Date();
+          for (const stop of pendingStops) {
+            await db.routeStops.update(stop.id!, {
+              status: 'delivered',
+              deliveredAt: deliveredAt,
+              history: [...(stop.history || []), { status: 'delivered', timestamp: deliveredAt, by: driverName }]
+            });
+          }
+          // Query the fresh state after updates
+          setRouteStops(await db.routeStops.toArray().then(arr => arr.filter(s => s.routeId === todayRoute!.id)));
+        }
 
         await db.routes.update(todayRoute!.id!, {
           status: 'completed',

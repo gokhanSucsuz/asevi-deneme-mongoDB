@@ -311,7 +311,7 @@ export default function BreadTrackingPage() {
     try {
       if ((tenderForm as any).id) {
          // Update existing
-         const existing = await db.tenders.get((tenderForm as any).id);
+         const existing = await db.tenders.toArray().then(arr => arr.find(t => t.id === (tenderForm as any).id));
          if (existing) {
              const diff = tenderForm.maxBreadCount - existing.maxBreadCount;
              await db.tenders.update(existing.id!, {
