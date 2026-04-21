@@ -2684,9 +2684,9 @@ export default function RoutesPage() {
                 scrolling="no"
                 marginHeight={0}
                 marginWidth={0}
-                src={`https://maps.google.com/maps?q=${mapModalData.lat},${mapModalData.lng}&z=17&output=embed`}
-                className="opacity-0 animate-in fade-in fill-mode-forwards duration-500"
-                style={{ animationDelay: '300ms' }}
+                src={`https://maps.google.com/maps?q=${mapModalData.lat},${mapModalData.lng}&z=15&output=embed&hl=tr`}
+                referrerPolicy="no-referrer"
+                className="w-full h-full bg-gray-200"
               />
               <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-xl border border-white/20 shadow-lg flex items-center justify-between text-xs font-bold text-gray-700">
                 <span>{mapModalData.lat.toFixed(6)}, {mapModalData.lng.toFixed(6)}</span>
