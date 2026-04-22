@@ -23,11 +23,14 @@ export default function AdminDashboard() {
 
   const routeStops = useAppQuery(async () => {
     if (routes.length === 0) return [];
-    // Bulk fetch stops for all of today's routes to avoid N+1 query problem
+    // Fetch stops for all active/pending routes using parallel requests
     const routeIds = routes.map(r => r.id).filter(id => !!id) as string[];
     if (routeIds.length === 0) return [];
-    return await firestoreDb.routeStops.where('routeId').anyOf(routeIds).toArray();
-  }, [routes, today], 'today_route_stops') || [];
+    
+    const stopsPromises = routeIds.map(id => firestoreDb.routeStops.where('routeId').equals(id).toArray());
+    const stopsArrays = await Promise.all(stopsPromises);
+    return stopsArrays.flat();
+  }, [routes, today], 'route_stops') || [];
 
   const nextMonthObj = new Date();
   nextMonthObj.setMonth(nextMonthObj.getMonth() + 1);
