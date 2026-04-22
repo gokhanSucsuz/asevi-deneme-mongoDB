@@ -482,7 +482,8 @@ export default function DriverPage() {
       const stops = await db.routeStops.where('routeId').equals(todayRoute.id!).toArray();
       return stops.sort((a: any, b: any) => a.order - b.order);
     },
-    [todayRoute]
+    [todayRoute],
+    'route_stops'
   );
 
   // Merge raw stops with offline updates for current UI state and FILTER OUT PASSIVE ONES
@@ -508,14 +509,12 @@ export default function DriverPage() {
 
   const households = useAppQuery(
     async () => {
-      if (!routeStops || routeStops.length === 0) return [];
-      const householdIds = routeStops.map((rs: RouteStop) => rs.householdId);
+      if (!routeStopsRaw || routeStopsRaw.length === 0) return [];
+      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId);
       // Bulk fetch households to avoid N+1 query problem
-      const fetchedHouseholds = await db.households.where('id').anyOf(householdIds).toArray();
-      // Maintain the order of routeStops
-      return householdIds.map((id: string) => fetchedHouseholds.find((h: Household) => h.id === id));
+      return await db.households.where('id').anyOf(householdIds).toArray();
     },
-    [routeStops],
+    [routeStopsRaw],
     'households'
   );
 
@@ -630,6 +629,7 @@ export default function DriverPage() {
         setEndKm('');
         setExtraFood('0');
         setExtraBread('0');
+        notifyDbChange('route_stops');
         toast.success('Günü başarıyla tamamladınız. Elinize sağlık!', { id: loadingToast });
       } catch (error) {
         console.error(error);
@@ -703,6 +703,7 @@ export default function DriverPage() {
             await localDb.offlineUpdates.delete(lastUpdate.id!);
             setOfflineUpdates(prev => prev.filter(u => u.stopId !== stopId));
           }
+          notifyDbChange('route_stops');
         }
       } catch (error) {
         console.error('Arka plan veritabanı güncelleme hatası:', error);
@@ -949,8 +950,8 @@ export default function DriverPage() {
   let autoRemainingBread = 0;
 
   if (routeStops && households) {
-    routeStops.forEach((stop: RouteStop, index: number) => {
-      const household = households[index] as Household | null;
+    routeStops.forEach((stop: RouteStop) => {
+      const household = households.find((h: Household) => h.id === stop.householdId) as Household | undefined;
       if (household) {
         // Skip deleted/paused from totals if they are not active
         const isDeleted = household.pausedUntil === '9999-12-31';
