@@ -125,8 +125,10 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
       console.log(`Cleaning up orphaned route ${duplicateRoute.id} for driver ${driverId} on ${dateStr}`);
       await db.routes.delete(duplicateRoute.id!);
     } else {
-      console.log(`Route already exists and has ${stopsCount.length} stops for driver ${driverId} on ${dateStr}`);
-      return null;
+      const msg = `Route already exists and has ${stopsCount.length} stops for driver ${driverId} on ${dateStr}. Please delete the existing route first if you want to re-generate.`;
+      console.log(msg);
+      // We return the existing route ID so the caller can know it's already there
+      return duplicateRoute.id!;
     }
   }
 

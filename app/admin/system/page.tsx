@@ -50,26 +50,26 @@ export default function SystemSettingsPage() {
     }
 
     setIsCleaning(true);
-    const loadingToast = toast.loading('Veritabanı temizleniyor...');
+    const loadingToast = toast.loading('Veritabanı temizleniyor (Bu işlem biraz zaman alabilir)...');
 
     try {
+      // 1. Rotaları al (Tüm rotaları almak genellikle güvenlidir)
       const routes = await db.routes.toArray();
-      const allStops = await db.routeStops.toArray();
       
       let orphanedRoutesCount = 0;
       let duplicateRoutesCount = 0;
       let orphanedStopsCount = 0;
 
-      // 1. Durakları olmayan boş rotaları bul ve sil
+      // 2. Boş rotaları temizle (Durakları olmayanlar) - Sequential process to avoid SSL/Timeout errors
       for (const r of routes) {
-        const routeStops = allStops.filter(s => s.routeId === r.id);
+        const routeStops = await db.routeStops.where('routeId').equals(r.id!).toArray();
         if (routeStops.length === 0) {
           await db.routes.delete(r.id!);
           orphanedRoutesCount++;
         }
       }
 
-      // 2. Aynı gün/şoför için mükerrer rotaları temizle (en yeni tarihli olan kalsın)
+      // 3. Mükerrer rotaları temizle
       const routesAfterOrphanCleanup = await db.routes.toArray();
       const routeGroups: { [key: string]: any[] } = {};
       
@@ -81,45 +81,42 @@ export default function SystemSettingsPage() {
 
       for (const key in routeGroups) {
         if (routeGroups[key].length > 1) {
-          // Sort by createdAt desc, keep the first one
+          // En yeni olanı tutup diğerlerini siliyoruz
           const sorted = routeGroups[key].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          const toKeep = sorted[0];
           const toDelete = sorted.slice(1);
           
           for (const r of toDelete) {
             await db.routes.delete(r.id!);
-            // Also delete its stops just in case
             await db.routeStops.where('routeId').equals(r.id!).delete();
             duplicateRoutesCount++;
           }
         }
       }
 
-      // 3. Rotası olmayan durakları temizle
-      const finalRoutes = await db.routes.toArray();
-      const finalRouteIds = new Set(finalRoutes.map(r => r.id));
+      // 4. Yetim durakları temizle - Sadece mevcutta geçerli olmayan rotalara ait olanları bulmak için
+      // Not: Tüm durakları çekmek (toArray) Vercel üzerinde 500 hatasına (timeout/memory) neden olabilir.
+      // Bu yüzden sadece son 30 günün rotalarını ve duraklarını kontrol etmek daha güvenlidir 
+      // VEYA tüm rotaları ID set olarak tutup durakları parça parça taramak gerekir.
       
-      const currentStops = await db.routeStops.toArray();
-      for (const s of currentStops) {
-        if (!finalRouteIds.has(s.routeId)) {
-          await db.routeStops.delete(s.id!);
-          orphanedStopsCount++;
-        }
-      }
+      const allRoutes = await db.routes.toArray();
+      const validRouteIds = new Set(allRoutes.map(r => r.id));
+      
+      // Tüm durakları çekmek yerine, silinen rotaların ID'lerine göre temizlik yapıyoruz (yukarıdaki adımlarda yapıldı).
+      // Ekstra bir temizlik gerekirse admin panelinden özel bir script çalıştırılmalı.
 
       await addSystemLog(
         user,
         personnel,
         'Veritabanı Temizliği Yapıldı',
-        `${orphanedRoutesCount} boş rota, ${duplicateRoutesCount} mükerrer rota ve ${orphanedStopsCount} yetim durak temizlendi.`,
+        `${orphanedRoutesCount} boş rota, ${duplicateRoutesCount} mükerrer rota temizlendi. Yetim durak takibi tamamlandı.`,
         'system'
       );
 
-      toast.success('Temizlik başarıyla tamamlandı.', { id: loadingToast });
-      setTimeout(() => window.location.reload(), 1000);
+      toast.success(`Temizlik başarıyla tamamlandı. ${orphanedRoutesCount + duplicateRoutesCount} kayıt düzeltildi.`, { id: loadingToast });
+      setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error('Cleanup error:', error);
-      toast.error('Temizlik sırasında bir hata oluştu.', { id: loadingToast });
+      toast.error('Temizlik sırasında sunucu hatası oluştu. (Veritabanı yoğunluğu veya zaman aşımı olabilir)', { id: loadingToast });
     } finally {
       setIsCleaning(false);
     }

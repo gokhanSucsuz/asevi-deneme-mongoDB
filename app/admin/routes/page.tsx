@@ -745,16 +745,14 @@ export default function RoutesPage() {
           const routeId = await generateRouteFromTemplate(driver.id!, selectedDate);
           if (routeId) {
             generatedCount++;
-          } else {
-            alreadyExistsCount++;
           }
         }
         
         if (generatedCount > 0) {
-          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için ${generatedCount} adet yeni rota oluşturuldu.`);
-          toast.success(`${generatedCount} adet yeni rota başarıyla yüklendi.`, { id: loadingToast });
+          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için bekleyen rotalar oluşturuldu.`);
+          toast.success(`${generatedCount} şoför için rota durumu kontrol edildi ve işlem tamamlandı.`, { id: loadingToast });
         } else {
-          toast.info('Tüm rotalar zaten güncel veya oluşturulacak yeni hane kaydı bulunamadı.', { id: loadingToast });
+          toast.info('Tüm rotalar zaten güncel veya oluşturulacak yeni rota bulunamadı.', { id: loadingToast });
         }
       } catch (error) {
         console.error(error);
