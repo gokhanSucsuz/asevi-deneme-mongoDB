@@ -486,12 +486,13 @@ export default function DriverPage() {
     'route_stops'
   );
 
-  // Merge raw stops with offline updates for current UI state and FILTER OUT PASSIVE ONES
+  // Merge raw stops with offline updates for current UI state
   const routeStops = useMemo(() => {
     if (!routeStopsRaw) return [];
-    // Only show active stops to the driver (member count > 0)
-    // Passive/Paused households have householdSnapshotMemberCount set to 0 during route generation
-    const activeStopsRaw = routeStopsRaw.filter((s: RouteStop) => (s.householdSnapshotMemberCount || 0) > 0);
+    
+    // Yalnızca pasif olduğu açıkça belirtilenleri filtrele, eski kayıtların memberCount değeri olmadığı için 0 gelirse diye hepsini filtrelemeyi kaldırıyoruz
+    // Şoför ekranında tüm evlerin tam görünmesi esastır
+    const activeStopsRaw = routeStopsRaw;
     
     return activeStopsRaw.map((stop: RouteStop) => {
       const offline = offlineUpdates.find(u => u.stopId === stop.id);
@@ -510,9 +511,13 @@ export default function DriverPage() {
   const households = useAppQuery(
     async () => {
       if (!routeStopsRaw || routeStopsRaw.length === 0) return [];
-      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId);
-      // Bulk fetch households to avoid N+1 query problem
-      return await db.households.where('id').anyOf(householdIds).toArray();
+      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter(id => !!id) as string[];
+      if (householdIds.length === 0) return [];
+      
+      // Bulk fetch households to avoid N+1 query problem using parallel requests
+      const householdPromises = householdIds.map(id => db.households.get(id));
+      const results = await Promise.all(householdPromises);
+      return results.filter(h => !!h) as Household[];
     },
     [routeStopsRaw],
     'households'

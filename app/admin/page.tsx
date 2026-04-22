@@ -29,7 +29,7 @@ export default function AdminDashboard() {
     
     const stopsPromises = routeIds.map(id => firestoreDb.routeStops.where('routeId').equals(id).toArray());
     const stopsArrays = await Promise.all(stopsPromises);
-    return stopsArrays.flat();
+    return stopsArrays.reduce((acc, val) => acc.concat(val), []);
   }, [routes, today], 'route_stops') || [];
 
   const nextMonthObj = new Date();
