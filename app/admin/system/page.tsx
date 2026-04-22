@@ -155,7 +155,8 @@ export default function SystemSettingsPage() {
           `${repairDate} tarihinde "${driverName}" (${driverId}) için rota sıfırlandı ve diğer rotalarla çakışmaları temizlenerek yeniden oluşturuldu.`,
           'route'
         );
-        const finalStopsCount = await db.routeStops.where('routeId').equals(newRouteId).toArray().then(arr => arr.length);
+        const finalStops = await db.routeStops.where('routeId').equals(newRouteId).toArray();
+        const finalStopsCount = finalStops.length;
         toast.success(`Başarılı: "${driverName}" rotası ${finalStopsCount} hane ile tertemiz bir şekilde yeniden oluşturuldu.`, { id: loadingToast });
       } else {
         toast.error(`"${driverName}" için kayıtlar silindi ancak yeni rota oluşturulamadı. Şablondaki tüm haneler başka bir teknik engelle karşılaşıyor olabilir.`, { id: loadingToast });
