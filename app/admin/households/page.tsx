@@ -68,18 +68,33 @@ export default function HouseholdsPage() {
 
   // Summary Stats
   const stats = React.useMemo(() => {
-    if (!allHouseholds) return { totalHouseholds: 0, totalPeople: 0, totalBread: 0, selfServiceHouseholds: 0, totalInstitutions: 0, householdPeople: 0, institutionPeople: 0, totalContainers: 0 };
+    if (!allHouseholds) return { totalHouseholds: 0, totalPeople: 0, totalBread: 0, selfServiceHouseholds: 0, totalInstitutions: 0, householdPeople: 0, institutionPeople: 0, totalContainers: 0, wantsBreakfastTotal: 0, wantsBreakfastPeople: 0, noBreakfastTotal: 0, noBreakfastPeople: 0 };
+    
+    const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+
     // "deneme" isimli kayıtları tüm hesaplamalardan çıkartıyoruz
-    const activeHouseholds = allHouseholds.filter((h: Household) => h.isActive && !h.headName?.toLowerCase().includes('deneme'));
+    const activeHouseholds = allHouseholds.filter((h: Household) => {
+      // Is it explicitly deleted?
+      const isDeleted = h.pausedUntil === '9999-12-31';
+      if (isDeleted) return false;
+
+      // Filter out test records
+      if (h.headName?.toLowerCase().includes('deneme')) return false;
+
+      // Current logic: Must be isActive. 
+      // But what if it was paused and the pause ended?
+      // For stats calculation, if pausedUntil is in the past, it should be considered active
+      const isPaused = h.pausedUntil && h.pausedUntil >= todayStr;
+      
+      return h.isActive || (h.pausedUntil && h.pausedUntil < todayStr);
+    });
+
     const householdsOnly = activeHouseholds.filter((h: Household) => !h.type || h.type === 'household');
     const institutionsOnly = activeHouseholds.filter((h: Household) => h.type === 'institution');
     
     const inRouteHouseholds = householdsOnly.filter((h: Household) => !h.isSelfService);
     const selfServiceHouseholds = householdsOnly.filter((h: Household) => h.isSelfService);
     
-    // Calculate containers: 
-    // Households: If usesOwnContainer AND NOT isSelfService, add to ownContainerCount
-    // Vakıf Container Count = Total People - Own Container Count
     const totalPeople = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
     
     const ownContainerCount = activeHouseholds.reduce((sum: number, h: Household) => {
@@ -94,16 +109,18 @@ export default function HouseholdsPage() {
     // Calculate total bread: Kahvaltı için ayrıca ekmek verilmiyor
     const totalBread = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.breadCount || 0), 0);
     
-    const wantsBreakfastHouseholds = householdsOnly.filter((h: Household) => !h.noBreakfast);
-    const wantsBreakfastInstitutions = institutionsOnly.filter((h: Household) => !h.noBreakfast);
-    const noBreakfastHouseholds = householdsOnly.filter((h: Household) => h.noBreakfast);
-    const noBreakfastInstitutions = institutionsOnly.filter((h: Household) => h.noBreakfast);
+    const wantsBreakfastTotal = activeHouseholds.filter(h => !h.noBreakfast).length;
+    const noBreakfastTotal = activeHouseholds.filter(h => h.noBreakfast).length;
     
-    const wantsBreakfastTotal = wantsBreakfastHouseholds.length + wantsBreakfastInstitutions.length;
-    const noBreakfastTotal = noBreakfastHouseholds.length + noBreakfastInstitutions.length;
+    const wantsBreakfastPeople = activeHouseholds.reduce((sum: number, h: Household) => {
+      if (!h.noBreakfast) return sum + (h.memberCount || 0);
+      return sum;
+    }, 0);
     
-    const wantsBreakfastPeople = wantsBreakfastHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0) + wantsBreakfastInstitutions.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
-    const noBreakfastPeople = noBreakfastHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0) + noBreakfastInstitutions.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
+    const noBreakfastPeople = activeHouseholds.reduce((sum: number, h: Household) => {
+      if (h.noBreakfast) return sum + (h.memberCount || 0);
+      return sum;
+    }, 0);
     
     return {
       totalHouseholds: householdsOnly.length,

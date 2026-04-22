@@ -89,7 +89,7 @@ export default function SystemSettingsPage() {
       if (!targetDriver) {
         // Partial name search
         const allDrivers = await db.drivers.toArray();
-        targetDriver = allDrivers.find(d => d.name.toLowerCase().includes(repairDriverId.toLowerCase()));
+        targetDriver = allDrivers.find(d => d.name.toLowerCase().includes(repairDriverId.toLowerCase())) || null;
       }
 
       if (!targetDriver) {
