@@ -416,11 +416,11 @@ export default function DriverPage() {
   const households = useAppQuery(
     async () => {
       if (!routeStops || routeStops.length === 0) return [];
-      const householdIds = routeStops.map(rs => rs.householdId);
+      const householdIds = routeStops.map((rs: RouteStop) => rs.householdId);
       // Bulk fetch households to avoid N+1 query problem
       const fetchedHouseholds = await db.households.where('id').anyOf(householdIds).toArray();
       // Maintain the order of routeStops
-      return householdIds.map(id => fetchedHouseholds.find(h => h.id === id));
+      return householdIds.map((id: string) => fetchedHouseholds.find((h: Household) => h.id === id));
     },
     [routeStops],
     'households'
