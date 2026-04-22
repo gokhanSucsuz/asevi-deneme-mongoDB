@@ -1278,7 +1278,7 @@ export default function DriverPage() {
         </div>
         <ul className="divide-y divide-slate-100">
           {sortedStops.map((stop: RouteStop) => {
-            const household = households?.find(h => h?.id === stop.householdId);
+            const household = households?.find((h: Household) => h?.id === stop.householdId);
             if (!household) return null;
             
             const isDeleted = household.pausedUntil === '9999-12-31';
