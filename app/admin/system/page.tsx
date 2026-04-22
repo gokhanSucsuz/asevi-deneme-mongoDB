@@ -929,7 +929,7 @@ export default function SystemSettingsPage() {
           
           <div className="bg-white/50 p-4 rounded-2xl border border-red-100 flex flex-col gap-2">
              <p className="text-[10px] text-red-800 font-bold leading-relaxed uppercase tracking-tighter">
-               <strong>ÖNEMLİ:</strong> Bu panel şoför ismine veya ID'sine göre arama yapar. Şoför adına göre arama yapmak için Özkan yazmanız yeterlidir.
+               <strong>ÖNEMLİ:</strong> Bu panel şoför ismine veya ID&apos;sine göre arama yapar. Şoför adına göre arama yapmak için Özkan yazmanız yeterlidir.
              </p>
              <p className="text-[10px] text-red-800 font-bold leading-relaxed">
                <strong>DİKKAT:</strong> Bu işlem seçilen tarihteki TÜM rota ve durak verilerini kalıcı olarak siler ve ana şablondan tertemiz bir şekilde yeniden oluşturur. 

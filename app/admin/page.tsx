@@ -86,7 +86,7 @@ export default function AdminDashboard() {
         // 3. Force Generate
         // We call the utility and wait for it
         const { generateRouteFromTemplate } = await import('@/lib/route-utils');
-        const newRouteId = await generateRouteFromTemplate(template.id!, targetDate);
+        const newRouteId = await generateRouteFromTemplate(ozkanId, targetDate);
 
         if (newRouteId) {
           const finalStops = await firestoreDb.routeStops.where('routeId').equals(newRouteId).toArray();
