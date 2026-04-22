@@ -114,10 +114,20 @@ export async function getPreviousWorkingDay(date: Date): Promise<Date> {
  */
 export async function generateRouteFromTemplate(driverId: string, dateStr: string): Promise<string | null> {
   // Check if route already exists
-  const existing = await db.routes.where('driverId').equals(driverId).toArray();
-  if (existing.find(r => r.date === dateStr)) {
-    console.log(`Route already exists for driver ${driverId} on ${dateStr}`);
-    return null;
+  // OPTIMIZATION: Check for exact date and driver to avoid loading all driver routes
+  const existingOnDate = await db.routes.where('date').equals(dateStr).toArray();
+  const duplicateRoute = existingOnDate.find(r => r.driverId === driverId);
+  
+  if (duplicateRoute) {
+    // Check if it's an "orphaned" route without stops. If so, clean it up.
+    const stopsCount = await db.routeStops.where('routeId').equals(duplicateRoute.id!).toArray();
+    if (stopsCount.length === 0) {
+      console.log(`Cleaning up orphaned route ${duplicateRoute.id} for driver ${driverId} on ${dateStr}`);
+      await db.routes.delete(duplicateRoute.id!);
+    } else {
+      console.log(`Route already exists and has ${stopsCount.length} stops for driver ${driverId} on ${dateStr}`);
+      return null;
+    }
   }
 
   const template = await db.routeTemplates.where('driverId').equals(driverId).first();

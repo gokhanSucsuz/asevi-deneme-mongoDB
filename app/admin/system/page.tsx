@@ -20,6 +20,7 @@ export default function SystemSettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
   const [isDistributionPanelActive, setIsDistributionPanelActive] = useState(true);
 
   useEffect(() => {
@@ -42,6 +43,87 @@ export default function SystemSettingsPage() {
     };
     fetchSettings();
   }, []);
+
+  const handleCleanupOrphans = async () => {
+    if (!confirm('Veritabanındaki "yetim" kayıtlar (durakları olmayan rotalar veya rotası olmayan duraklar) temizlenecektir. Ayrıca mükerrer rotalar da düzeltilir. Bu işlem veri kaybına yol açmaz, sadece hatalı kayıtları temizler. Devam edilsin mi?')) {
+      return;
+    }
+
+    setIsCleaning(true);
+    const loadingToast = toast.loading('Veritabanı temizleniyor...');
+
+    try {
+      const routes = await db.routes.toArray();
+      const allStops = await db.routeStops.toArray();
+      
+      let orphanedRoutesCount = 0;
+      let duplicateRoutesCount = 0;
+      let orphanedStopsCount = 0;
+
+      // 1. Durakları olmayan boş rotaları bul ve sil
+      for (const r of routes) {
+        const routeStops = allStops.filter(s => s.routeId === r.id);
+        if (routeStops.length === 0) {
+          await db.routes.delete(r.id!);
+          orphanedRoutesCount++;
+        }
+      }
+
+      // 2. Aynı gün/şoför için mükerrer rotaları temizle (en yeni tarihli olan kalsın)
+      const routesAfterOrphanCleanup = await db.routes.toArray();
+      const routeGroups: { [key: string]: any[] } = {};
+      
+      routesAfterOrphanCleanup.forEach(r => {
+        const key = `${r.date}_${r.driverId}`;
+        if (!routeGroups[key]) routeGroups[key] = [];
+        routeGroups[key].push(r);
+      });
+
+      for (const key in routeGroups) {
+        if (routeGroups[key].length > 1) {
+          // Sort by createdAt desc, keep the first one
+          const sorted = routeGroups[key].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const toKeep = sorted[0];
+          const toDelete = sorted.slice(1);
+          
+          for (const r of toDelete) {
+            await db.routes.delete(r.id!);
+            // Also delete its stops just in case
+            await db.routeStops.where('routeId').equals(r.id!).delete();
+            duplicateRoutesCount++;
+          }
+        }
+      }
+
+      // 3. Rotası olmayan durakları temizle
+      const finalRoutes = await db.routes.toArray();
+      const finalRouteIds = new Set(finalRoutes.map(r => r.id));
+      
+      const currentStops = await db.routeStops.toArray();
+      for (const s of currentStops) {
+        if (!finalRouteIds.has(s.routeId)) {
+          await db.routeStops.delete(s.id!);
+          orphanedStopsCount++;
+        }
+      }
+
+      await addSystemLog(
+        user,
+        personnel,
+        'Veritabanı Temizliği Yapıldı',
+        `${orphanedRoutesCount} boş rota, ${duplicateRoutesCount} mükerrer rota ve ${orphanedStopsCount} yetim durak temizlendi.`,
+        'system'
+      );
+
+      toast.success('Temizlik başarıyla tamamlandı.', { id: loadingToast });
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      toast.error('Temizlik sırasında bir hata oluştu.', { id: loadingToast });
+    } finally {
+      setIsCleaning(false);
+    }
+  };
 
   const toggleDistributionPanel = async () => {
     const newState = !isDistributionPanelActive;
@@ -530,6 +612,18 @@ export default function SystemSettingsPage() {
                 >
                   <Database size={16} />
                   FORMATLARI DÜZELT
+                </button>
+              )}
+
+              {!isDemo && (
+                <button
+                  onClick={handleCleanupOrphans}
+                  disabled={isCleaning}
+                  className="px-6 py-4 bg-orange-100 text-orange-600 rounded-2xl font-black text-xs hover:bg-orange-200 transition-all active:scale-95 flex items-center gap-2"
+                  title="Boş rotaları ve yetim durakları temizler"
+                >
+                  <Zap size={16} />
+                  SİSTEMİ TEMİZLE
                 </button>
               )}
           </div>

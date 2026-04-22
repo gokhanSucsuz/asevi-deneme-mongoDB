@@ -73,7 +73,7 @@ export default function Home() {
           className="rounded-full mb-6 shadow-lg"
           referrerPolicy="no-referrer"
         />
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">Aşevi Modülü</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Aşevi Yönetim Sistemi</h1>
         <p className="text-lg text-gray-600">Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı</p>
       </div>
 

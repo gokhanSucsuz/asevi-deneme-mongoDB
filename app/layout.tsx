@@ -5,7 +5,7 @@ import { Toaster } from 'sonner';
 import { DemoBanner } from '@/components/DemoBanner';
 
 export const metadata: Metadata = {
-  title: 'Aşevi Modülü - Edirne SYDV',
+  title: 'Aşevi Yönetim Sistemi - Edirne SYDV',
   description: 'Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakıf Başkanlığı Aşevi Yönetim Sistemi',
 };
 

@@ -1,6 +1,6 @@
 # Edirne SYDV Aşevi Yönetim Sistemi - Teknik Kılavuz & Kurulum
 
-Bu doküman, T.C. Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı için geliştirilen Aşevi Modülü'nün (v3.5) teknik mimarisini, güvenlik protokollerini ve lojistik işleyişini içermektedir.
+Bu doküman, T.C. Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakfı Başkanlığı için geliştirilen Aşevi Yönetim Sistemi'nin (v3.5) teknik mimarisini, güvenlik protokollerini ve lojistik işleyişini içermektedir.
 
 ## 🚀 Proje Hakkında
 Sistem; Edirne genelindeki ihtiyaç sahibi hanelere ve resmi kurumlara günlük sıcak yemek dağıtım sürecini dijitalize etmek, rotaları akıllı algoritmalarla optimize etmek ve tam denetlenebilir bir raporlama ekosistemi oluşturmak amacıyla geliştirilmiştir.

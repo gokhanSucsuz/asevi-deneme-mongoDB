@@ -1,6 +1,6 @@
 {
   "name": "Edirne SYDV Aşevi Yönetim Sistemi",
-  "description": "Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakıf Başkanlığı Aşevi Dağıtım, Stok ve Personel Takip Modülü",
+  "description": "Edirne Merkez Sosyal Yardımlaşma ve Dayanışma Vakıf Başkanlığı Aşevi Dağıtım, Stok ve Personel Takip Sistemi",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": []
 }

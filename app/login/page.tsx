@@ -91,7 +91,7 @@ export default function LoginPage() {
           className="rounded-full mb-6 shadow-md"
           referrerPolicy="no-referrer"
         />
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Aşevi Modülü</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Aşevi Yönetim Sistemi</h1>
         <p className="text-gray-500 text-center mb-8">Devam etmek için lütfen giriş yapın</p>
         
         {showDemoLogin ? (
