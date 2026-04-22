@@ -112,11 +112,6 @@ export default function SystemSettingsPage() {
         await db.routes.delete(r.id!);
       }
 
-      // 2. Deep clean orphaned stops AND conflicting stops from other routes
-      const allRoutesThisDate = await db.routes.where('date').equals(repairDate).toArray();
-      const allRouteIds = allRoutesThisDate.map(r => r.id!);
-      
-      // Get the template stops to know which households we are trying to recover
       const template = await db.routeTemplates.where('driverId').equals(driverId).first();
       if (!template) {
         toast.error(`"${driverName}" için bir rota şablonu (ana rota) bulunamadı.`, { id: loadingToast });
@@ -126,23 +121,19 @@ export default function SystemSettingsPage() {
       const templateStops = await db.routeTemplateStops.where('templateId').equals(template.id!).toArray();
       const targetHouseholdIds = templateStops.map(ts => ts.householdId);
 
-      const currentStopsAll = await db.routeStops.toArray();
-      for (const s of currentStopsAll) {
-        // Orphaned stops cleanup
-        const isOrphaned = s.routeId && !allRouteIds.includes(s.routeId);
-        
-        // Conflict cleanup: If this household is already in SOMEONE ELSE'S route on this SAME DATE
-        let isConflict = false;
-        if (targetHouseholdIds.includes(s.householdId)) {
-          const stopRoute = allRoutesThisDate.find(r => r.id === s.routeId);
-          if (stopRoute && stopRoute.date === repairDate) {
-            isConflict = true;
+      // --- CRITICAL STEP: REMOVE THESE HOUSEHOLDS FROM EVERYWHERE ELSE TODAY ---
+      const allTodayRoutes = await db.routes.where('date').equals(repairDate).toArray();
+      for (const otherRoute of allTodayRoutes) {
+          // If this is some other route, search for our target households in its stops
+          const otherRouteStops = await db.routeStops.where('routeId').equals(otherRoute.id!).toArray();
+          const conflictingOnes = otherRouteStops.filter(s => targetHouseholdIds.includes(s.householdId));
+          
+          if (conflictingOnes.length > 0) {
+              console.log(`Clearing ${conflictingOnes.length} conflicting stops from route ${otherRoute.id}`);
+              for (const cs of conflictingOnes) {
+                  await db.routeStops.delete(cs.id!);
+              }
           }
-        }
-
-        if (isOrphaned || isConflict) {
-          await db.routeStops.delete(s.id!);
-        }
       }
 
       const newRouteId = await generateRouteFromTemplate(driverId, repairDate);
