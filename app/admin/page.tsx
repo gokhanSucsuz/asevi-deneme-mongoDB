@@ -47,29 +47,45 @@ export default function AdminDashboard() {
   useEffect(() => {
     const executeEmergencyFix = async () => {
       const targetDate = '2026-04-22';
-      const ozkanId = '69e28cd7c6c220fd2a8360da';
-      const fixKey = `emergency_fix_ozkan_final_v5_${targetDate}`;
+      const fixKey = `emergency_fix_ozkan_final_v10_${targetDate}`;
       
       if (localStorage.getItem(fixKey)) return;
 
       try {
-        console.log('--- EMERGENCY REPAIR STARTING ---');
+        console.log('--- EMERGENCY REPAIR STARTING (Resilient) ---');
         
+        // Find Ozkan by name dynamically to avoid ID mismatch
+        const allDrivers = await firestoreDb.drivers.toArray();
+        const ozkanDriver = allDrivers.find(d => d.name.toUpperCase().includes('ÖZKAN'));
+        
+        if (!ozkanDriver) {
+          console.error('Ozkan driver NOT found by name search.');
+          return;
+        }
+
+        const ozkanId = ozkanDriver.id!;
+        console.log(`Found Ozkan ID: ${ozkanId}`);
+
         // 1. Delete Ozkan's corrupted routes for today
         const existingRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
         const ozkanRoutes = existingRoutes.filter(r => r.driverId === ozkanId);
         
         for (const r of ozkanRoutes) {
+          console.log(`Deleting existing route: ${r.id}`);
           await firestoreDb.routeStops.where('routeId').equals(r.id!).delete();
           await firestoreDb.routes.delete(r.id!);
         }
 
         // 2. Clear conflicts (Households stuck in other routes)
         const template = await firestoreDb.routeTemplates.where('driverId').equals(ozkanId).first();
-        if (!template) return;
+        if (!template) {
+          console.error(`No template found for driver: ${ozkanId}`);
+          return;
+        }
         
         const templateStops = await firestoreDb.routeTemplateStops.where('templateId').equals(template.id!).toArray();
         const targetHouseholdIds = templateStops.map(ts => ts.householdId);
+        console.log(`Found ${targetHouseholdIds.length} households in template.`);
 
         const allTodayRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
         for (const otherRoute of allTodayRoutes) {
@@ -77,6 +93,7 @@ export default function AdminDashboard() {
            const conflicts = otherRouteStops.filter((s: RouteStop) => targetHouseholdIds.includes(s.householdId));
            
            if (conflicts.length > 0) {
+             console.log(`Clearing ${conflicts.length} conflicts from ${otherRoute.driverSnapshotName}`);
              for (const c of conflicts) {
                await firestoreDb.routeStops.delete(c.id!);
              }
@@ -84,18 +101,17 @@ export default function AdminDashboard() {
         }
 
         // 3. Force Generate
-        // We call the utility and wait for it
         const { generateRouteFromTemplate } = await import('@/lib/route-utils');
         const newRouteId = await generateRouteFromTemplate(ozkanId, targetDate, true);
 
         if (newRouteId) {
           const finalStops = await firestoreDb.routeStops.where('routeId').equals(newRouteId).toArray();
-          toast.success(`${finalStops.length} durak sistemsel olarak kurtarıldı! (Zorla Geri Alındı)`, { duration: 5000 });
+          console.log(`Successfully generated route with ${finalStops.length} stops.`);
+          toast.success(`Özkan Bey'in rotası ${finalStops.length} hane ile kurtarıldı!`, { duration: 5000 });
           localStorage.setItem(fixKey, 'true');
         } else {
-           // If it still returns null, maybe the template is missing?
-           console.error('Final attempt failed to generate route.');
-           localStorage.setItem(fixKey, 'failed_to_gen');
+           console.error('Final attempt failed to generate route. generateRouteFromTemplate returned null.');
+           localStorage.setItem(fixKey, 'failed_to_gen_final');
         }
       } catch (err) {
         console.error('Emergency fix error:', err);
