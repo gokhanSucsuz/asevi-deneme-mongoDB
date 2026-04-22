@@ -71,10 +71,10 @@ export default function AdminDashboard() {
       
       // Filter out actually passive stops from status calculation if we want them "dropped" from totals
       // In generateRouteFromTemplate we set memberCount to 0 for passive ones
-      const actualStops = stops.filter(s => (s.householdSnapshotMemberCount || 0) > 0);
+      const actualStops = stops.filter((s: RouteStop) => (s.householdSnapshotMemberCount || 0) > 0);
       
-      const processedStops = actualStops.filter(s => s.status === 'delivered' || s.status === 'failed');
-      const successfulStops = actualStops.filter(s => s.status === 'delivered');
+      const processedStops = actualStops.filter((s: RouteStop) => s.status === 'delivered' || s.status === 'failed');
+      const successfulStops = actualStops.filter((s: RouteStop) => s.status === 'delivered');
       const lastStop = processedStops.length > 0 ? processedStops[processedStops.length - 1] : null;
       const lastHousehold = lastStop ? households.find(h => h.id === lastStop.householdId) : null;
 

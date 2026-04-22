@@ -1637,11 +1637,11 @@ export default function RoutesPage() {
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             <Users className="text-indigo-500" size={14} />
-                            <span className="text-sm font-black text-slate-900">{householdCount + institutionCount} <span className="text-slate-400 font-bold font-sans">HANEYE</span></span>
+                            <span className="text-sm font-black text-slate-900">{householdCount + institutionCount} <span className="text-slate-400 font-bold font-sans">HANE</span></span>
                           </div>
                           <div className="flex items-center gap-2">
                             <ShoppingBasket className="text-amber-500" size={14} />
-                            <span className="text-sm font-black text-slate-900">{householdPeople + institutionPeople} <span className="text-slate-400 font-bold font-sans">PORSİYON</span></span>
+                            <span className="text-sm font-black text-slate-900">{householdPeople + institutionPeople} <span className="text-slate-400 font-bold font-sans">KİŞİ</span></span>
                           </div>
                         </div>
                       </td>
