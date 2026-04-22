@@ -82,7 +82,7 @@ export default function AdminDashboard() {
       const completedStops = processedStops.length;
       const successfulCount = successfulStops.length;
       const progress = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
-      const successfulPeopleCount = successfulStops.reduce((sum, s) => sum + (s.householdSnapshotMemberCount || 0), 0);
+      const successfulPeopleCount = successfulStops.reduce((sum: number, s: RouteStop) => sum + (s.householdSnapshotMemberCount || 0), 0);
 
       return {
         routeId: route.id,
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
   });
   const totalHouseholdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household').length;
   const totalInstitutions = activeHouseholds.filter(h => h.type === 'institution').length;
-  const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+  const totalPeople = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
 
   return (
     <div>
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-500">Günlük Görevler</p>
               <p className="text-2xl font-bold text-gray-900">
-                {driverStatuses.reduce((acc, curr) => acc + curr.totalStops, 0)}
+                {driverStatuses.reduce((acc: number, curr: any) => acc + curr.totalStops, 0)}
               </p>
             </div>
           </div>
@@ -226,7 +226,7 @@ export default function AdminDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-500">İşlem Gören</p>
               <p className="text-2xl font-bold text-gray-900">
-                {driverStatuses.reduce((acc, curr) => acc + curr.completedStops, 0)}
+                {driverStatuses.reduce((acc: number, curr: any) => acc + curr.completedStops, 0)}
               </p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function AdminDashboard() {
             <div>
               <p className="text-sm font-medium text-gray-500">Başarılı Teslimat</p>
               <p className="text-2xl font-bold text-gray-900">
-                {driverStatuses.reduce((acc, curr) => acc + curr.successfulCount, 0)}
+                {driverStatuses.reduce((acc: number, curr: any) => acc + curr.successfulCount, 0)}
               </p>
             </div>
           </div>
