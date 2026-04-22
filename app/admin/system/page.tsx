@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/db';
+import { db, RouteStop } from '@/lib/db';
 import { Download, Database, Clock, AlertTriangle, ShieldCheck, Lock, Upload, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInDays } from 'date-fns';
@@ -126,7 +126,7 @@ export default function SystemSettingsPage() {
       for (const otherRoute of allTodayRoutes) {
           // If this is some other route, search for our target households in its stops
           const otherRouteStops = await db.routeStops.where('routeId').equals(otherRoute.id!).toArray();
-          const conflictingOnes = otherRouteStops.filter(s => targetHouseholdIds.includes(s.householdId));
+          const conflictingOnes = otherRouteStops.filter((s: RouteStop) => targetHouseholdIds.includes(s.householdId));
           
           if (conflictingOnes.length > 0) {
               console.log(`Clearing ${conflictingOnes.length} conflicting stops from route ${otherRoute.id}`);
