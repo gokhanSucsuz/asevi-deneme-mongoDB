@@ -16,7 +16,11 @@ export default function AdminDashboard() {
   const drivers = useAppQuery(() => firestoreDb.drivers.toArray(), [], 'drivers') || [];
   const households = useAppQuery(() => firestoreDb.households.toArray(), [], 'households') || [];
   const breadTracking = useAppQuery(() => firestoreDb.breadTracking.toArray(), [], 'bread_tracking') || [];
-  const routes = useAppQuery(() => firestoreDb.routes.where('date').equals(today).toArray(), [today], 'routes') || [];
+  const routes = useAppQuery(async () => {
+    const allRoutes = await firestoreDb.routes.toArray();
+    return allRoutes.filter(r => r.date === today || r.status === 'in_progress' || r.status === 'pending');
+  }, [today], 'routes') || [];
+
   const routeStops = useAppQuery(async () => {
     if (routes.length === 0) return [];
     // Bulk fetch stops for all of today's routes to avoid N+1 query problem
@@ -43,10 +47,12 @@ export default function AdminDashboard() {
   }, [todayBread]);
   
   const getDriverStatus = () => {
-    if (!drivers.length || !routeStops.length || !households.length) return [];
+    if (!drivers.length) return [];
 
     return drivers.map(driver => {
-      const route = routes.find(r => r.driverId === driver.id);
+      const route = routes.find(r => r.driverId === driver.id && r.status === 'in_progress') || 
+                    routes.find(r => r.driverId === driver.id && r.date === today) ||
+                    routes.find(r => r.driverId === driver.id && r.status === 'pending');
       
       if (!route) {
         return {
@@ -64,6 +70,8 @@ export default function AdminDashboard() {
           lastStopStatus: 'pending',
           lastStopIssue: '',
           lastDeliveryTime: '-',
+          locationPermissionStatus: (driver as any).locationPermissionStatus || 'unknown',
+          locationPermissionRequestPending: (driver as any).locationPermissionRequestPending || false,
         };
       }
 
