@@ -2312,17 +2312,18 @@ export default function RoutesPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                  {(isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).map((stop, idx) => {
-                    const household = households?.find(h => h.id === stop.householdId);
-                    const isDeleted = household?.pausedUntil === '9999-12-31';
-                    const isPaused = household?.pausedUntil && household.pausedUntil >= viewRouteDetails.date;
-
+                  {(isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).filter(stop => {
+                    const h = households?.find(hh => hh.id === stop.householdId);
+                    const isDeleted = h?.pausedUntil === '9999-12-31';
+                    const isPaused = h?.pausedUntil && h.pausedUntil >= viewRouteDetails.date;
+                    const isInactive = h && !h.isActive && !h.pausedUntil;
+                    const isPassive = isDeleted || isPaused || isInactive || stop.issueReport === 'Pasif/Duraklatılmış Kayıt' || (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)'));
+                    return !isPassive;
+                  }).map((stop, idx) => {
                     return (
-                      <tr key={idx} className={isDeleted ? 'bg-red-50' : isPaused ? 'bg-orange-50' : ''}>
+                      <tr key={idx}>
                         <td className="px-4 py-2 text-sm text-gray-900">
                           {stop.householdSnapshotName}
-                          {isDeleted && <span className="ml-2 text-xs text-red-600 font-bold">[SİLİNDİ]</span>}
-                          {isPaused && <span className="ml-2 text-xs text-orange-600 font-bold">[PASİF]</span>}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-500">{stop.householdSnapshotMemberCount}</td>
                         <td className="px-4 py-2 text-sm">
@@ -2331,8 +2332,11 @@ export default function RoutesPage() {
                               value={stop.status}
                               onChange={(e) => {
                                 const newStops = [...editRouteStopsData];
-                                newStops[idx].status = e.target.value as any;
-                                setEditRouteStopsData(newStops);
+                                const originalIdx = newStops.findIndex(s => s.id === stop.id);
+                                if (originalIdx > -1) {
+                                  newStops[originalIdx].status = e.target.value as any;
+                                  setEditRouteStopsData(newStops);
+                                }
                               }}
                               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-1"
                             >
@@ -2370,8 +2374,11 @@ export default function RoutesPage() {
                               value={stop.issueReport || ''}
                               onChange={(e) => {
                                 const newStops = [...editRouteStopsData];
-                                newStops[idx].issueReport = e.target.value;
-                                setEditRouteStopsData(newStops);
+                                const originalIdx = newStops.findIndex(s => s.id === stop.id);
+                                if (originalIdx > -1) {
+                                  newStops[originalIdx].issueReport = e.target.value;
+                                  setEditRouteStopsData(newStops);
+                                }
                               }}
                               className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-1"
                               placeholder="Açıklama"

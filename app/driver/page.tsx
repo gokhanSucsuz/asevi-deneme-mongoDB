@@ -490,9 +490,12 @@ export default function DriverPage() {
   const routeStops = useMemo(() => {
     if (!routeStopsRaw) return [];
     
-    // Yalnızca pasif olduğu açıkça belirtilenleri filtrele, eski kayıtların memberCount değeri olmadığı için 0 gelirse diye hepsini filtrelemeyi kaldırıyoruz
-    // Şoför ekranında tüm evlerin tam görünmesi esastır
-    const activeStopsRaw = routeStopsRaw;
+    // Yalnızca pasif olduğu açıkça belirtilenleri filtrele
+    const activeStopsRaw = routeStopsRaw.filter((stop: RouteStop) => {
+      if (stop.issueReport === 'Pasif/Duraklatılmış Kayıt') return false;
+      if (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)')) return false;
+      return true;
+    });
     
     return activeStopsRaw.map((stop: RouteStop) => {
       const offline = offlineUpdates.find(u => u.stopId === stop.id);
