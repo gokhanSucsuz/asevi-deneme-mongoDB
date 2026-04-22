@@ -69,7 +69,8 @@ export default function HouseholdsPage() {
   // Summary Stats
   const stats = React.useMemo(() => {
     if (!allHouseholds) return { totalHouseholds: 0, totalPeople: 0, totalBread: 0, selfServiceHouseholds: 0, totalInstitutions: 0, householdPeople: 0, institutionPeople: 0, totalContainers: 0 };
-    const activeHouseholds = allHouseholds.filter((h: Household) => h.isActive);
+    // "deneme" isimli kayıtları tüm hesaplamalardan çıkartıyoruz
+    const activeHouseholds = allHouseholds.filter((h: Household) => h.isActive && !h.headName?.toLowerCase().includes('deneme'));
     const householdsOnly = activeHouseholds.filter((h: Household) => !h.type || h.type === 'household');
     const institutionsOnly = activeHouseholds.filter((h: Household) => h.type === 'institution');
     
@@ -123,6 +124,9 @@ export default function HouseholdsPage() {
   }, [allHouseholds]);
 
   const filteredHouseholds = allHouseholds?.filter((h: Household) => {
+    // Liste tablosundan "deneme" isimli kayıtları gizliyoruz
+    if (h.headName?.toLowerCase().includes('deneme')) return false;
+
     const search = normalizeTurkish(searchTerm);
     const matchesSearch = normalizeTurkish(h.headName).includes(search) || 
                           normalizeTurkish(h.address).includes(search) ||
