@@ -21,6 +21,9 @@ export default function SystemSettingsPage() {
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isFixing, setIsFixing] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+  const [isRepairing, setIsRepairing] = useState(false);
+  const [repairDriverId, setRepairDriverId] = useState('');
+  const [repairDate, setRepairDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [isDistributionPanelActive, setIsDistributionPanelActive] = useState(true);
 
   useEffect(() => {
@@ -43,6 +46,76 @@ export default function SystemSettingsPage() {
     };
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    // Check if we need to auto-repair for the specific user request
+    const checkAutoRepair = async () => {
+       const hasRepaired = localStorage.getItem('auto-repair-executed-69e28cd7');
+       if (!hasRepaired && window.location.hash === '#repair-ozkan') {
+          setRepairDriverId('69e28cd7c6c220fd2a8360da');
+          setRepairDate('2026-04-22');
+          toast.info('Özkan ÇAĞDAVULCU için otomatik onarım başlatılıyor...');
+          setTimeout(() => {
+            const btn = document.getElementById('repair-btn');
+            if (btn) btn.click();
+          }, 1000);
+          localStorage.setItem('auto-repair-executed-69e28cd7', 'true');
+       }
+    };
+    checkAutoRepair();
+  }, []);
+
+  const handleManualRepair = async () => {
+    if (!repairDriverId || !repairDate) {
+      toast.error('Lütfen Şoför ID ve Tarih giriniz.');
+      return;
+    }
+
+    if (!confirm(`${repairDate} tarihinde ${repairDriverId} ID'li şoföre ait TÜM kayıtlar silinecek ve ana rotadan yeniden oluşturulacaktır. Devam edilsin mi?`)) {
+      return;
+    }
+
+    setIsRepairing(true);
+    const loadingToast = toast.loading('Kritik müdahale gerçekleştiriliyor...');
+
+    try {
+      const { generateRouteFromTemplate } = await import('@/lib/route-utils');
+      
+      // 1. Find existing routes for this driver on this date
+      const existingOnDate = await db.routes.where('date').equals(repairDate).toArray();
+      const targetRoutes = existingOnDate.filter(r => r.driverId === repairDriverId);
+
+      for (const r of targetRoutes) {
+        // Delete stops
+        await db.routeStops.where('routeId').equals(r.id!).delete();
+        // Delete route
+        await db.routes.delete(r.id!);
+      }
+
+      // 2. Generate new route from template
+      const newRouteId = await generateRouteFromTemplate(repairDriverId, repairDate);
+      
+      if (newRouteId) {
+        await addSystemLog(
+          user,
+          personnel,
+          'Kritik Rota Onarımı',
+          `${repairDate} tarihinde ${repairDriverId} için rota sıfırlandı ve yeniden oluşturuldu.`,
+          'route'
+        );
+        toast.success('Müdahale Başarılı: Rota temizlendi ve tertemiz bir şekilde yeniden oluşturuldu.', { id: loadingToast });
+      } else {
+        toast.error('Kayıtlar silindi ancak yeni rota oluşturulamadı. Şoförün ana rotası (şablonu) olmayabilir.', { id: loadingToast });
+      }
+
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (error) {
+      console.error('Repair error:', error);
+      toast.error('Müdahale sırasında bir hata oluştu.', { id: loadingToast });
+    } finally {
+      setIsRepairing(false);
+    }
+  };
 
   const handleCleanupOrphans = async () => {
     if (!confirm('Veritabanındaki "yetim" kayıtlar (durakları olmayan rotalar veya rotası olmayan duraklar) temizlenecektir. Ayrıca mükerrer rotalar da düzeltilir. Bu işlem veri kaybına yol açmaz, sadece hatalı kayıtları temizler. Devam edilsin mi?')) {
@@ -765,6 +838,57 @@ export default function SystemSettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Kritik Müdahale Paneli */}
+      {!isDemo && (
+        <div className="bg-red-50 border border-red-200 p-8 rounded-[2.5rem] shadow-lg shadow-red-100 flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-100 p-3 rounded-2xl text-red-600">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-red-900 uppercase tracking-tight">Kritik Rota Müdahale Paneli</h2>
+              <p className="text-xs text-red-700 font-bold opacity-75">Hatalı, çakışan veya silinemeyen rotalar için doğrudan veritabanı müdahalesi.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-red-900 uppercase tracking-[0.1em] ml-1">Şoför ObjectId</label>
+              <input 
+                type="text" 
+                value={repairDriverId}
+                onChange={(e) => setRepairDriverId(e.target.value)}
+                placeholder="69e28cd7c6c220fd2a8360da"
+                className="w-full bg-white border border-red-200 rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-red-500 outline-none text-red-900 placeholder:text-red-200 shadow-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-red-900 uppercase tracking-[0.1em] ml-1">Hedef Tarih</label>
+              <input 
+                type="date" 
+                value={repairDate}
+                onChange={(e) => setRepairDate(e.target.value)}
+                className="w-full bg-white border border-red-200 rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-red-500 outline-none text-red-900 shadow-sm"
+              />
+            </div>
+            <button
+              id="repair-btn"
+              onClick={handleManualRepair}
+              disabled={isRepairing}
+              className="bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest px-8 py-4 rounded-2xl shadow-xl shadow-red-200 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {isRepairing ? 'İşleniyor...' : 'Kayıtları Sıfırla ve Yeniden Oluştur'}
+            </button>
+          </div>
+          
+          <div className="bg-white/50 p-4 rounded-2xl border border-red-100">
+             <p className="text-[10px] text-red-800 font-bold leading-relaxed">
+               <strong>DİKKAT:</strong> Bu işlem seçilen tarihteki tüm rota ve durak verilerini kalıcı olarak siler ve ana şablondan tertemiz bir şekilde yeniden oluşturur. Hiçbir veri kurtarılamaz.
+             </p>
+          </div>
+        </div>
+      )}
 
       {/* Footer Alert */}
       <div className="bg-amber-50 border border-amber-200 p-8 rounded-[2.5rem] flex items-start gap-6">
