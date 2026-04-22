@@ -43,75 +43,96 @@ export default function AdminDashboard() {
 
   const todayBread = breadTracking.find(b => b.date === today);
   
-  // EMERGENCY AUTO-FIX FOR OZKAN 22.04.2026
+  // EMERGENCY AUTO-FIX FOR OZKAN 22.04.2026 - INLINE RELIABLE VERSION
   useEffect(() => {
     const executeEmergencyFix = async () => {
       const targetDate = '2026-04-22';
-      const fixKey = `emergency_fix_ozkan_final_v10_${targetDate}`;
+      const fixKey = `emergency_fix_ozkan_final_v12_inline_${targetDate}`;
       
       if (localStorage.getItem(fixKey)) return;
 
       try {
-        console.log('--- EMERGENCY REPAIR STARTING (Resilient) ---');
+        console.log('--- EMERGENCY REPAIR STARTING (INLINE V12) ---');
         
-        // Find Ozkan by name dynamically to avoid ID mismatch
+        // 1. Find Ozkan Driver
         const allDrivers = await firestoreDb.drivers.toArray();
         const ozkanDriver = allDrivers.find(d => d.name.toUpperCase().includes('ÖZKAN'));
-        
-        if (!ozkanDriver) {
-          console.error('Ozkan driver NOT found by name search.');
-          return;
-        }
-
+        if (!ozkanDriver) return;
         const ozkanId = ozkanDriver.id!;
-        console.log(`Found Ozkan ID: ${ozkanId}`);
 
-        // 1. Delete Ozkan's corrupted routes for today
-        const existingRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
-        const ozkanRoutes = existingRoutes.filter(r => r.driverId === ozkanId);
+        // 2. Find Template
+        const template = await firestoreDb.routeTemplates.where('driverId').equals(ozkanId).first();
+        if (!template) return;
         
+        const templateStops = await firestoreDb.routeTemplateStops.where('templateId').equals(template.id!).toArray();
+        if (templateStops.length === 0) return;
+        
+        const targetHouseholdIds = templateStops.map(ts => ts.householdId);
+
+        // 3. Clean up Existing & Conflicts
+        const existingRoutes = (await firestoreDb.routes.toArray()).filter(r => r.date === targetDate);
+        
+        // Delete Ozkan's specific routes for today
+        const ozkanRoutes = existingRoutes.filter(r => r.driverId === ozkanId);
         for (const r of ozkanRoutes) {
-          console.log(`Deleting existing route: ${r.id}`);
           await firestoreDb.routeStops.where('routeId').equals(r.id!).delete();
           await firestoreDb.routes.delete(r.id!);
         }
 
-        // 2. Clear conflicts (Households stuck in other routes)
-        const template = await firestoreDb.routeTemplates.where('driverId').equals(ozkanId).first();
-        if (!template) {
-          console.error(`No template found for driver: ${ozkanId}`);
-          return;
-        }
-        
-        const templateStops = await firestoreDb.routeTemplateStops.where('templateId').equals(template.id!).toArray();
-        const targetHouseholdIds = templateStops.map(ts => ts.householdId);
-        console.log(`Found ${targetHouseholdIds.length} households in template.`);
-
-        const allTodayRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
-        for (const otherRoute of allTodayRoutes) {
+        // De-orphan households from other routes
+        for (const otherRoute of existingRoutes.filter(r => r.driverId !== ozkanId)) {
            const otherRouteStops = await firestoreDb.routeStops.where('routeId').equals(otherRoute.id!).toArray();
            const conflicts = otherRouteStops.filter((s: RouteStop) => targetHouseholdIds.includes(s.householdId));
-           
            if (conflicts.length > 0) {
-             console.log(`Clearing ${conflicts.length} conflicts from ${otherRoute.driverSnapshotName}`);
              for (const c of conflicts) {
                await firestoreDb.routeStops.delete(c.id!);
              }
            }
         }
 
-        // 3. Force Generate
-        const { generateRouteFromTemplate } = await import('@/lib/route-utils');
-        const newRouteId = await generateRouteFromTemplate(ozkanId, targetDate, true);
+        // 4. INLINE GENERATION (No utilities)
+        const newRouteId = await firestoreDb.routes.add({
+          driverId: ozkanId,
+          driverSnapshotName: ozkanDriver.name,
+          date: targetDate,
+          status: 'pending',
+          createdAt: new Date(),
+          history: [{ action: 'created', timestamp: new Date(), note: 'Acil durum motoru ile inline oluşturuldu' }]
+        });
 
-        if (newRouteId) {
-          const finalStops = await firestoreDb.routeStops.where('routeId').equals(newRouteId).toArray();
-          console.log(`Successfully generated route with ${finalStops.length} stops.`);
-          toast.success(`Özkan Bey'in rotası ${finalStops.length} hane ile kurtarıldı!`, { duration: 5000 });
+        if (!newRouteId) return;
+
+        const householdList = await firestoreDb.households.where('id').anyOf(targetHouseholdIds).toArray();
+        const householdMap = new Map(householdList.map(h => [h.id, h]));
+        
+        const finalStops: RouteStop[] = [];
+        for (const tS of templateStops) {
+          const h = householdMap.get(tS.householdId);
+          if (!h) continue;
+
+          const isDeleted = h.pausedUntil === '9999-12-31';
+          const isPaused = h.pausedUntil && h.pausedUntil >= targetDate;
+          const isInactive = !h.isActive && !h.pausedUntil;
+          const isActuallyPassive = isDeleted || isPaused || isInactive;
+
+          finalStops.push({
+            routeId: newRouteId,
+            householdId: h.id!,
+            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+            householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
+            order: tS.order,
+            status: isActuallyPassive ? 'failed' : 'pending',
+            mealType: 'standard'
+          });
+        }
+
+        if (finalStops.length > 0) {
+          await firestoreDb.routeStops.bulkAdd(finalStops);
+          toast.success(`Özkan Bey'in rotası ${finalStops.length} haneyle başarıyla OLUŞTURULDU!`, { duration: 8000 });
           localStorage.setItem(fixKey, 'true');
         } else {
-           console.error('Final attempt failed to generate route. generateRouteFromTemplate returned null.');
-           localStorage.setItem(fixKey, 'failed_to_gen_final');
+          await firestoreDb.routes.delete(newRouteId);
         }
       } catch (err) {
         console.error('Emergency fix error:', err);

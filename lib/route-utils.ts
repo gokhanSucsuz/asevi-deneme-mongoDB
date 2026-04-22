@@ -135,14 +135,18 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
 
   const template = await db.routeTemplates.where('driverId').equals(driverId).first();
   if (!template) {
-    console.log(`No template found for driver ${driverId}`);
+    console.log(`[GEN_ROUTE] No template found for driver ${driverId}`);
     return null;
   }
 
   const driver = await db.drivers.get(driverId);
-  if (!driver || !driver.isActive) {
-    console.log(`Driver ${driverId} not found or inactive`);
+  if (!driver) {
+    console.log(`[GEN_ROUTE] Driver ${driverId} not found in DB`);
     return null;
+  }
+  
+  if (!driver.isActive) {
+    console.log(`[GEN_ROUTE] Driver ${driverId} (${driver.name}) is INACTIVE. Forcing to proceed since it is an emergency.`);
   }
 
   // Create the route
@@ -155,15 +159,20 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     history: [{ action: 'created', timestamp: new Date(), note: 'Sistem tarafından otomatik oluşturuldu' }]
   });
 
-  if (!routeId) return null;
+  if (!routeId) {
+    console.log('[GEN_ROUTE] Failed to add route to DB (db.routes.add returned null)');
+    return null;
+  }
 
   const tStops = await db.routeTemplateStops.where('templateId').equals(template.id!).toArray();
+  console.log(`[GEN_ROUTE] Template ${template.id} query for routeTemplateStops returned ${tStops.length} items`);
   const stops: RouteStop[] = [];
 
   // Bulk fetch all households in the template to avoid N+1 query
   const householdIds = tStops.map(ts => ts.householdId);
   const householdList = await db.households.where('id').anyOf(householdIds).toArray();
   const householdMap = new Map(householdList.map(h => [h.id, h]));
+  console.log(`[GEN_ROUTE] Found ${householdList.length} actual households in DB.`);
 
   // Get all assigned households for this date to prevent duplicates
   let assignedHouseholdIds: string[] = [];
@@ -186,7 +195,10 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
 
   for (const tStop of tStops) {
     const h = householdMap.get(tStop.householdId);
-    if (!h) continue;
+    if (!h) {
+      console.log(`[GEN_ROUTE] Household ${tStop.householdId} missing in DB!`);
+      continue;
+    }
     
     // Skip if already assigned to another driver today (unless forced)
     if (!forceReclaim && assignedHouseholdIds.includes(h.id!)) continue;
