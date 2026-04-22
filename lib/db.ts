@@ -459,6 +459,20 @@ export const db = {
       notifyDbChange('drivers');
       revalidateData('drivers');
     },
+    where: (field: string) => ({
+      equals: (val: any) => ({
+        toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_DRIVERS.filter(d => (d as any)[field] === val);
+          const data = await callApi('drivers', 'list', { query: { [field]: val } });
+          return data.map(processData) as Driver[];
+        },
+        first: async () => {
+          if (isDemoMode()) return MOCK.MOCK_DRIVERS.find(d => (d as any)[field] === val) || null;
+          const data = await callApi('drivers', 'list', { query: { [field]: val }, limit: 1 });
+          return data.length > 0 ? processData(data[0]) as Driver : null;
+        }
+      })
+    })
   },
   routes: {
     toArray: async () => {
