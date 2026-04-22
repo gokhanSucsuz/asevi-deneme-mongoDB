@@ -640,7 +640,7 @@ export default function DriverPage() {
 
     const tableColumn = ["Sıra", "Hane Sorumlusu", "Adres", "Yemek", "Ekmek", "Teslim Durumu"];
     const tableRows = routeStops.map((stop: RouteStop, i: number) => {
-      const household = households?.find(h => h.id === stop.householdId);
+      const household = households?.find((h: Household) => h.id === stop.householdId);
       const memberCount = stop.householdSnapshotMemberCount || household?.memberCount || 0;
       const breadCount = stop.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
       
