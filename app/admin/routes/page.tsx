@@ -733,20 +733,28 @@ export default function RoutesPage() {
     if (confirm(`${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için tüm aktif şoförlerin rotalarını otomatik oluşturmak istediğinize emin misiniz?`)) {
       const loadingToast = toast.loading('Rotalar oluşturuluyor...');
       try {
-        const drivers = await db.drivers.toArray();
+        if (!drivers) {
+          toast.error('Şoför verileri henüz yüklenmedi, lütfen bekleyin.', { id: loadingToast });
+          return;
+        }
+        const activeDriversToProcess = drivers.filter(d => d.isActive);
         let generatedCount = 0;
-        for (const driver of drivers) {
-          if (driver.isActive) {
-            const routeId = await generateRouteFromTemplate(driver.id!, selectedDate);
-            if (routeId) generatedCount++;
+        let alreadyExistsCount = 0;
+        
+        for (const driver of activeDriversToProcess) {
+          const routeId = await generateRouteFromTemplate(driver.id!, selectedDate);
+          if (routeId) {
+            generatedCount++;
+          } else {
+            alreadyExistsCount++;
           }
         }
         
         if (generatedCount > 0) {
-          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için ${generatedCount} adet rota otomatik oluşturuldu.`);
-          toast.success(`${generatedCount} adet rota başarıyla oluşturuldu.`, { id: loadingToast });
+          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için ${generatedCount} adet yeni rota oluşturuldu.`);
+          toast.success(`${generatedCount} adet yeni rota başarıyla yüklendi.`, { id: loadingToast });
         } else {
-          toast.info('Oluşturulacak yeni rota bulunamadı (Zaten mevcut olabilir veya şoförlerin ana rotası yok).', { id: loadingToast });
+          toast.info('Tüm rotalar zaten güncel veya oluşturulacak yeni hane kaydı bulunamadı.', { id: loadingToast });
         }
       } catch (error) {
         console.error(error);
@@ -1603,12 +1611,18 @@ export default function RoutesPage() {
                   let institutionPeople = 0;
 
                   Array.from(uniqueHouseholds).forEach(hId => {
-                    const firstStop = stops.find(s => s.householdId === hId);
-                    const memberCount = firstStop?.householdSnapshotMemberCount || 0;
+                    const householdStops = stops.filter(s => s.householdId === hId);
+                    // Ana teslimat kaydını (standard) buluyoruz, yoksa ilkini alıyoruz
+                    const mainStop = householdStops.find(s => s.mealType === 'standard') || householdStops[0];
+                    const memberCount = mainStop?.householdSnapshotMemberCount || 0;
+                    
                     const h = households?.find(hh => hh.id === hId);
                     const isInstitution = h?.type === 'institution';
 
-                    if (memberCount > 0 && !h?.headName?.toLowerCase().includes('deneme') && !firstStop?.householdSnapshotName?.toLowerCase().includes('deneme')) {
+                    // Eğer kişi sayısı 0 ise (Pasif hane demektir) veya adı "deneme" ise saymıyoruz
+                    const isDeneme = h?.headName?.toLowerCase().includes('deneme') || mainStop?.householdSnapshotName?.toLowerCase().includes('deneme');
+                    
+                    if (memberCount > 0 && !isDeneme) {
                       if (isInstitution) {
                         institutionCount++;
                         institutionPeople += memberCount;

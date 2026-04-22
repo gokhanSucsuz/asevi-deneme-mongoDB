@@ -116,14 +116,21 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
   // Check if route already exists
   const existing = await db.routes.where('driverId').equals(driverId).toArray();
   if (existing.find(r => r.date === dateStr)) {
+    console.log(`Route already exists for driver ${driverId} on ${dateStr}`);
     return null;
   }
 
   const template = await db.routeTemplates.where('driverId').equals(driverId).first();
-  if (!template) return null;
+  if (!template) {
+    console.log(`No template found for driver ${driverId}`);
+    return null;
+  }
 
   const driver = await db.drivers.get(driverId);
-  if (!driver || !driver.isActive) return null;
+  if (!driver || !driver.isActive) {
+    console.log(`Driver ${driverId} not found or inactive`);
+    return null;
+  }
 
   // Create the route
   const routeId = await db.routes.add({
@@ -146,12 +153,21 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
   const householdMap = new Map(householdList.map(h => [h.id, h]));
 
   // Get all assigned households for this date to prevent duplicates
+  // OPTIMIZATION: Only fetch routes for this date and then fetch stops for those routes
   const allRoutesOnDate = await db.routes.where('date').equals(dateStr).toArray();
-  const allRouteIdsOnDate = allRoutesOnDate.map(r => r.id);
-  const allStopsOnDate = await db.routeStops.toArray();
-  const assignedHouseholdIds = allStopsOnDate
-    .filter(rs => allRouteIdsOnDate.includes(rs.routeId))
-    .map(rs => rs.householdId);
+  // Don't include the current route in the "already assigned" check if it was just added
+  const otherRouteIdsOnDate = allRoutesOnDate
+    .map(r => r.id)
+    .filter(id => id !== routeId);
+    
+  let assignedHouseholdIds: string[] = [];
+  if (otherRouteIdsOnDate.length > 0) {
+    const assignedStops = await db.routeStops
+      .where('routeId')
+      .anyOf(otherRouteIdsOnDate as string[])
+      .toArray();
+    assignedHouseholdIds = assignedStops.map(rs => rs.householdId);
+  }
 
   for (const tStop of tStops) {
     const h = householdMap.get(tStop.householdId);
