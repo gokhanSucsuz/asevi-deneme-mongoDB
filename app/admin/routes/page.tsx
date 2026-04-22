@@ -1105,9 +1105,18 @@ export default function RoutesPage() {
       const breakfastStop = householdStops.find(s => s.mealType === 'breakfast');
       const household = households?.find(h => h.id === stop.householdId);
       
-      const memberCount = standardStop?.householdSnapshotMemberCount || breakfastStop?.householdSnapshotMemberCount || household?.memberCount || 0;
-      const breadCount = standardStop?.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
-      const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount || household?.memberCount || 0) : 0;
+      // Use snapshot values first, even if 0 (0 means they were passive during route generation)
+      const memberCount = standardStop?.householdSnapshotMemberCount !== undefined 
+        ? standardStop.householdSnapshotMemberCount 
+        : (household?.memberCount || 0);
+        
+      const breadCount = standardStop?.householdSnapshotBreadCount !== undefined 
+        ? standardStop.householdSnapshotBreadCount 
+        : (household?.breadCount ?? memberCount);
+        
+      const breakfastCount = breakfastStop 
+        ? (breakfastStop.householdSnapshotMemberCount !== undefined ? breakfastStop.householdSnapshotMemberCount : (household?.memberCount || 0)) 
+        : 0;
       
       const multiplier = 1;
       

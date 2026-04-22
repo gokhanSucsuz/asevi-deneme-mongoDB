@@ -397,6 +397,20 @@ export const db = {
           const data = await callApi('households', 'list', { query: { [field]: val } });
           return data.length;
         }
+      }),
+      anyOf: (vals: any[]) => ({
+        toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.filter(h => vals.includes((h as any)[field]));
+          const data = await callApi('households', 'list', { query: { [field]: { $in: vals } } });
+          return data.map(processData) as Household[];
+        }
+      }),
+      in: (vals: any[]) => ({
+        toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.filter(h => vals.includes((h as any)[field]));
+          const data = await callApi('households', 'list', { query: { [field]: { $in: vals } } });
+          return data.map(processData) as Household[];
+        }
       })
     })
   },
@@ -534,6 +548,20 @@ export const db = {
               await callApi('route_stops', 'delete', { query: { [queryArg]: val } });
               notifyDbChange('route_stops');
               revalidateData('route_stops');
+            }
+          }),
+          anyOf: (vals: any[]) => ({
+            toArray: async () => {
+              if (isDemoMode()) return MOCK.MOCK_ROUTE_STOPS.filter(s => vals.includes((s as any)[queryArg]));
+              const data = await callApi('route_stops', 'list', { query: { [queryArg]: { $in: vals } } });
+              return data.map(processData) as RouteStop[];
+            }
+          }),
+          in: (vals: any[]) => ({
+            toArray: async () => {
+              if (isDemoMode()) return MOCK.MOCK_ROUTE_STOPS.filter(s => vals.includes((s as any)[queryArg]));
+              const data = await callApi('route_stops', 'list', { query: { [queryArg]: { $in: vals } } });
+              return data.map(processData) as RouteStop[];
             }
           })
         };

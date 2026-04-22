@@ -139,6 +139,11 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
   const tStops = await db.routeTemplateStops.where('templateId').equals(template.id!).toArray();
   const stops: RouteStop[] = [];
 
+  // Bulk fetch all households in the template to avoid N+1 query
+  const householdIds = tStops.map(ts => ts.householdId);
+  const householdList = await db.households.where('id').anyOf(householdIds).toArray();
+  const householdMap = new Map(householdList.map(h => [h.id, h]));
+
   // Get all assigned households for this date to prevent duplicates
   const allRoutesOnDate = await db.routes.where('date').equals(dateStr).toArray();
   const allRouteIdsOnDate = allRoutesOnDate.map(r => r.id);
@@ -148,7 +153,7 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     .map(rs => rs.householdId);
 
   for (const tStop of tStops) {
-    const h = await db.households.get(tStop.householdId);
+    const h = householdMap.get(tStop.householdId);
     if (!h) continue;
     
     // Skip if already assigned to another driver today

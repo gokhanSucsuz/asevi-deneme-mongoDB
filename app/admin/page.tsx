@@ -19,15 +19,10 @@ export default function AdminDashboard() {
   const routes = useAppQuery(() => firestoreDb.routes.where('date').equals(today).toArray(), [today], 'routes') || [];
   const routeStops = useAppQuery(async () => {
     if (routes.length === 0) return [];
-    // Only fetch stops for today's routes to avoid performance issues
-    const allStops = [];
-    for (const r of routes) {
-      if (r.id) {
-        const stops = await firestoreDb.routeStops.where('routeId').equals(r.id).toArray();
-        allStops.push(...stops);
-      }
-    }
-    return allStops;
+    // Bulk fetch stops for all of today's routes to avoid N+1 query problem
+    const routeIds = routes.map(r => r.id).filter(id => !!id) as string[];
+    if (routeIds.length === 0) return [];
+    return await firestoreDb.routeStops.where('routeId').anyOf(routeIds).toArray();
   }, [routes, today], 'today_route_stops') || [];
 
   const nextMonthObj = new Date();

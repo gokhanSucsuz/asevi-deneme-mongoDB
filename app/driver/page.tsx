@@ -352,8 +352,14 @@ export default function DriverPage() {
   }, [routeStopsRaw, offlineUpdates]);
 
   const households = useAppQuery(
-    async () => routeStops ? Promise.all(routeStops.map((rs: RouteStop) => db.households.get(rs.householdId))) : [],
-    [routeStops]
+    async () => {
+      if (!routeStops || routeStops.length === 0) return [];
+      const householdIds = routeStops.map(rs => rs.householdId);
+      // Bulk fetch households to avoid N+1 query problem
+      return await db.households.where('id').anyOf(householdIds).toArray();
+    },
+    [routeStops],
+    'households'
   );
 
   const handleStartRoute = async () => {

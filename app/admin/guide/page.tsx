@@ -229,7 +229,7 @@ export default function GuidePage() {
                       <h5 className="font-bold text-gray-900 uppercase text-sm tracking-widest">Pasif Hane Denetimi</h5>
                     </div>
                     <p className="text-sm text-gray-500 leading-relaxed">
-                      Pasif duruma alınan haneler listede gösterilmeye devam eder ancak sistem tarafından otomatik olarak <strong>0 (sıfır)</strong> yemek/ekmek olarak işaretlenir. Bu sayede istatistiksel hata payı sıfıra indirilir.
+                      Durdurulan veya pasif duruma alınan haneler şoför listesinde gösterilmeye devam eder ancak sistem tarafından otomatik olarak <strong>0 (sıfır)</strong> yemek ve ekmek olarak işaretlenir. Bu hanelerin kişi sayıları rota toplamlarından düşülür. Raporlarda &quot;Pasif&quot; etiketiyle yer alırlar.
                     </p>
                   </div>
                 </div>
@@ -257,14 +257,14 @@ export default function GuidePage() {
                   <div>
                     <h4 className="font-bold text-gray-900 text-2xl mb-2">Vakıf Elden Teslimat (Pickup)</h4>
                     <p className="text-gray-600 leading-relaxed">
-                      Kendi imkanlarıyla vakfa gelerek yemek/ekmek alan haneler, şoför rotalarından bağımsız bir &quot;Pickup&quot; listesi üzerinde toplanır. 
+                      Kendi imkanlarıyla vakfa gelerek yemek ve ekmek alan haneler, şoför rotalarından bağımsız bir &quot;Self-Servis&quot; listesi üzerinde toplanır. 
                       Bu listeler günlük ekmek sipariş miktarını doğrudan etkiler ve şeffaf bir takip sunar.
                     </p>
                   </div>
                 </div>
                 <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex items-center gap-4 text-blue-900 text-sm font-medium">
                   <CheckCircle size={24} className="text-blue-600" />
-                  Kurumsal yemek alan birimler de bu modül üzerinden tek tuşla toplu onay alabilir.
+                  Günlük rotalarda pasif olan hane ve kişi sayıları, toplam istatistiklerden otomatik olarak düşülerek gerçek dağıtım verisi sunulur.
                 </div>
               </div>
             </div>
