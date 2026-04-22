@@ -343,6 +343,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthorized && isPublicPage) {
+        router.push('/admin');
+      } else if (!isAuthorized && !isPublicPage) {
+        router.push('/admin/login');
+      }
+    }
+  }, [isLoading, isAuthorized, isPublicPage, router]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -357,12 +367,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isPublicPage = publicPages.some(page => pathname.startsWith(page));
   
   if (isAuthorized && isPublicPage) {
-    router.push('/admin');
     return null;
   }
 
   if (!isAuthorized && !isPublicPage) {
-    router.push('/admin/login');
     return null;
   }
 
