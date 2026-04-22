@@ -136,7 +136,7 @@ export default function SystemSettingsPage() {
           }
       }
 
-      const newRouteId = await generateRouteFromTemplate(driverId, repairDate);
+      const newRouteId = await generateRouteFromTemplate(driverId, repairDate, true);
       
       if (newRouteId) {
         await addSystemLog(

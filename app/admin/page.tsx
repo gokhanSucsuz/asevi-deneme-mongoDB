@@ -86,12 +86,16 @@ export default function AdminDashboard() {
         // 3. Force Generate
         // We call the utility and wait for it
         const { generateRouteFromTemplate } = await import('@/lib/route-utils');
-        const newRouteId = await generateRouteFromTemplate(ozkanId, targetDate);
+        const newRouteId = await generateRouteFromTemplate(ozkanId, targetDate, true);
 
         if (newRouteId) {
           const finalStops = await firestoreDb.routeStops.where('routeId').equals(newRouteId).toArray();
-          toast.success(`Özkan Bey'in rotası ${finalStops.length} durakla sistemsel olarak kurtarıldı!`, { duration: 5000 });
+          toast.success(`${finalStops.length} durak sistemsel olarak kurtarıldı! (Zorla Geri Alındı)`, { duration: 5000 });
           localStorage.setItem(fixKey, 'true');
+        } else {
+           // If it still returns null, maybe the template is missing?
+           console.error('Final attempt failed to generate route.');
+           localStorage.setItem(fixKey, 'failed_to_gen');
         }
       } catch (err) {
         console.error('Emergency fix error:', err);

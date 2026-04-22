@@ -111,8 +111,9 @@ export async function getPreviousWorkingDay(date: Date): Promise<Date> {
 
 /**
  * Generates a daily route for a driver from their template for a specific date
+ * If forceReclaim is true, it will take households even if they are already assigned to other routes on that date.
  */
-export async function generateRouteFromTemplate(driverId: string, dateStr: string): Promise<string | null> {
+export async function generateRouteFromTemplate(driverId: string, dateStr: string, forceReclaim: boolean = false): Promise<string | null> {
   // Check if route already exists
   // OPTIMIZATION: Check for exact date and driver to avoid loading all driver routes
   const existingOnDate = await db.routes.where('date').equals(dateStr).toArray();
@@ -165,28 +166,30 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
   const householdMap = new Map(householdList.map(h => [h.id, h]));
 
   // Get all assigned households for this date to prevent duplicates
-  // OPTIMIZATION: Only fetch routes for this date and then fetch stops for those routes
-  const allRoutesOnDate = await db.routes.where('date').equals(dateStr).toArray();
-  // Don't include the current route in the "already assigned" check if it was just added
-  const otherRouteIdsOnDate = allRoutesOnDate
-    .map(r => r.id)
-    .filter(id => id !== routeId);
-    
   let assignedHouseholdIds: string[] = [];
-  if (otherRouteIdsOnDate.length > 0) {
-    const assignedStops = await db.routeStops
-      .where('routeId')
-      .anyOf(otherRouteIdsOnDate as string[])
-      .toArray();
-    assignedHouseholdIds = assignedStops.map((rs: RouteStop) => rs.householdId);
+  if (!forceReclaim) {
+    // OPTIMIZATION: Only fetch routes for this date and then fetch stops for those routes
+    const allRoutesOnDate = await db.routes.where('date').equals(dateStr).toArray();
+    // Don't include the current route in the "already assigned" check if it was just added
+    const otherRouteIdsOnDate = allRoutesOnDate
+      .map(r => r.id)
+      .filter(id => id !== routeId);
+      
+    if (otherRouteIdsOnDate.length > 0) {
+      const assignedStops = await db.routeStops
+        .where('routeId')
+        .anyOf(otherRouteIdsOnDate as string[])
+        .toArray();
+      assignedHouseholdIds = assignedStops.map((rs: RouteStop) => rs.householdId);
+    }
   }
 
   for (const tStop of tStops) {
     const h = householdMap.get(tStop.householdId);
     if (!h) continue;
     
-    // Skip if already assigned to another driver today
-    if (assignedHouseholdIds.includes(h.id!)) continue;
+    // Skip if already assigned to another driver today (unless forced)
+    if (!forceReclaim && assignedHouseholdIds.includes(h.id!)) continue;
 
     // Skip if deleted or paused (unless we want to show them as requested)
     // The user wants paused/deleted households shown at the bottom.
