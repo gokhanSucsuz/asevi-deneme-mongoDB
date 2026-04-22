@@ -39,6 +39,7 @@ const publicPages = ['/admin/login', '/admin/register', '/admin/forgot-password'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isPublicPage = publicPages.some(page => pathname.startsWith(page));
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -364,8 +365,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const isPublicPage = publicPages.some(page => pathname.startsWith(page));
-  
   if (isAuthorized && isPublicPage) {
     return null;
   }
