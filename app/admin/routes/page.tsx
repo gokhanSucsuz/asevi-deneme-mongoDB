@@ -83,7 +83,7 @@ export default function RoutesPage() {
       setSelectedDate(targetDate);
       setHasAutoSelectedDate(true);
     }
-  }, [routes, hasAutoSelectedDate, safeFormatTRT, safeFormat]);
+  }, [routes, hasAutoSelectedDate]);
 
   const routeStops = useAppQuery(async () => {
     if (!routes || routes.length === 0) return [];
@@ -1272,8 +1272,21 @@ export default function RoutesPage() {
     // Get all routes for this driver in this week
     const weekDates = weekDays.map(d => safeFormat(d, 'yyyy-MM-dd'));
     const weekRoutes = routes?.filter(r => r.driverId === driverId && weekDates.includes(r.date)) || [];
-    const weekRouteIds = weekRoutes.map(r => r.id);
-    const weekStops = routeStops?.filter(rs => weekRouteIds.includes(rs.routeId)) || [];
+    const weekRouteIds = weekRoutes.map(r => r.id).filter(id => !!id) as string[];
+    
+    // FETCH DIRECTLY FROM DB: The global routeStops hook is now filtered by selectedDate.
+    // Weekly reports need the whole week + previous week for the "last week note", so we fetch them here.
+    const weekStops: RouteStop[] = await db.routeStops.where('routeId').anyOf(weekRouteIds).toArray();
+
+    // 1. Get all routes for PREVIOUS week for the "Last Week Note"
+    const previousWeekStart = addDays(start, -7);
+    const previousWeekEnd = addDays(start, -1);
+    const prevStartDateStr = safeFormat(previousWeekStart, 'yyyy-MM-dd');
+    const prevEndDateStr = safeFormat(previousWeekEnd, 'yyyy-MM-dd');
+
+    const prevWeekRoutes = routes?.filter(r => r.driverId === driverId && r.date >= prevStartDateStr && r.date <= prevEndDateStr) || [];
+    const prevWeekRouteIds = prevWeekRoutes.map(r => r.id).filter(id => !!id) as string[];
+    const prevWeekStops: RouteStop[] = await db.routeStops.where('routeId').anyOf(prevWeekRouteIds).toArray();
 
     // Sorting households by template order
     const template = await db.routeTemplates.where('driverId').equals(driverId).first();
@@ -1307,15 +1320,15 @@ export default function RoutesPage() {
       );
 
       let prevWeekNote = '';
-      const prevStops = routeStops?.filter(rs => 
+      const householdPrevStops = prevWeekStops.filter((rs: RouteStop) => 
         rs.householdId === hId && 
         rs.status === 'delivered'
-      ) || [];
+      );
       
       const servedDates: string[] = [];
-      for (const ps of prevStops) {
-        const r = routes?.find(route => route.id === ps.routeId);
-        if (r && r.date >= prevStartDateStr && r.date <= prevEndDateStr) {
+      for (const ps of householdPrevStops) {
+        const r = prevWeekRoutes.find(route => route.id === ps.routeId);
+        if (r) {
           servedDates.push(safeFormat(new Date(r.date), 'EEEE').substring(0, 3));
         }
       }
