@@ -30,7 +30,7 @@ export default function RoutesPage() {
   const [selectedDate, setSelectedDate] = useState(() => {
     // Initial guess, will be refined in useEffect based on routes
     const now = new Date();
-    return safeFormat(now, 'yyyy-MM-dd');
+    return safeFormatTRT(now, 'yyyy-MM-dd');
   });
   
   // Track if we have already auto-selected the date to prevent infinite re-renders
@@ -62,7 +62,7 @@ export default function RoutesPage() {
   useEffect(() => {
     if (routes && routes.length > 0 && !hasAutoSelectedDate) {
       const today = new Date();
-      const todayStr = safeFormat(today, 'yyyy-MM-dd');
+      const todayStr = safeFormatTRT(today, 'yyyy-MM-dd');
       const todaysRoutes = routes.filter(r => r.date === todayStr);
       
       let targetDate = todayStr;
@@ -1325,7 +1325,7 @@ export default function RoutesPage() {
         h?.address || '',
       ];
 
-      const reportDateStr = safeFormat(new Date(), 'yyyy-MM-dd');
+      const reportDateStr = safeFormatTRT(new Date(), 'yyyy-MM-dd');
 
       weekDates.forEach(dateStr => {
         const route = weekRoutes.find(r => r.date === dateStr);
@@ -1449,9 +1449,9 @@ export default function RoutesPage() {
       });
 
       // Sync with daily routes (if pending)
-      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+      const todayStr = safeFormatTRT(new Date(), 'yyyy-MM-dd');
       const nextDay = await getNextWorkingDay(new Date());
-      const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+      const nextDayStr = safeFormatTRT(nextDay, 'yyyy-MM-dd');
       
       const syncDates = [todayStr, nextDayStr];
       for (const dateStr of syncDates) {

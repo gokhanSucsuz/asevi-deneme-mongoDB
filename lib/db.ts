@@ -481,6 +481,13 @@ export const db = {
           return data.length;
         }
       }),
+      anyOf: (vals: any[]) => ({
+        toArray: async () => {
+          if (isDemoMode()) return MOCK.MOCK_ROUTES.filter(r => vals.includes((r as any)[field]));
+          const data = await callApi('routes', 'list', { query: { [field]: { $in: vals } } });
+          return data.map(processData) as Route[];
+        }
+      }),
       notEqual: (val: any) => ({
         toArray: async () => {
           const data = await callApi('routes', 'list', { query: { [field]: { $ne: val } } });

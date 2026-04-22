@@ -1,13 +1,14 @@
 import { db, Route, RouteStop } from './db';
 import { format, addDays, isWeekend, startOfWeek, endOfWeek } from 'date-fns';
 import { calculateBreadForNextDay } from './breadUtils';
+import { safeFormatTRT } from './date-utils';
 
 /**
  * Checks if a given date is a working day
  */
 export async function checkIsWorkingDay(date: Date): Promise<boolean> {
-  const dateStr = format(date, 'yyyy-MM-dd');
-  const monthStr = format(date, 'yyyy-MM');
+  const dateStr = safeFormatTRT(date, 'yyyy-MM-dd');
+  const monthStr = safeFormatTRT(date, 'yyyy-MM');
   
   const workingDay = await db.working_days.where('date').equals(dateStr).first();
   if (workingDay) {
@@ -51,7 +52,7 @@ export async function isLastWorkingDayOfWeek(date: Date): Promise<boolean> {
  */
 export async function getNextWorkingDay(date: Date): Promise<Date> {
   let next = addDays(date, 1);
-  const nextMonth = format(next, 'yyyy-MM');
+  const nextMonth = safeFormatTRT(next, 'yyyy-MM');
   
   // Check if working days are defined for this month
   const workingDays = await db.working_days.where('month').equals(nextMonth).toArray();
@@ -59,8 +60,8 @@ export async function getNextWorkingDay(date: Date): Promise<Date> {
   if (workingDays.length > 0) {
     // Search in defined working days
     let searchDate = next;
-    while (format(searchDate, 'yyyy-MM') === nextMonth) {
-      const dateStr = format(searchDate, 'yyyy-MM-dd');
+    while (safeFormatTRT(searchDate, 'yyyy-MM') === nextMonth) {
+      const dateStr = safeFormatTRT(searchDate, 'yyyy-MM-dd');
       const wd = workingDays.find(d => d.date === dateStr);
       if (wd && wd.isWorkingDay) return searchDate;
       searchDate = addDays(searchDate, 1);
@@ -82,7 +83,7 @@ export async function getNextWorkingDay(date: Date): Promise<Date> {
  */
 export async function getPreviousWorkingDay(date: Date): Promise<Date> {
   let prev = addDays(date, -1);
-  const prevMonth = format(prev, 'yyyy-MM');
+  const prevMonth = safeFormatTRT(prev, 'yyyy-MM');
   
   // Check if working days are defined for this month
   const workingDays = await db.working_days.where('month').equals(prevMonth).toArray();
@@ -90,8 +91,8 @@ export async function getPreviousWorkingDay(date: Date): Promise<Date> {
   if (workingDays.length > 0) {
     // Search in defined working days
     let searchDate = prev;
-    while (format(searchDate, 'yyyy-MM') === prevMonth) {
-      const dateStr = format(searchDate, 'yyyy-MM-dd');
+    while (safeFormatTRT(searchDate, 'yyyy-MM') === prevMonth) {
+      const dateStr = safeFormatTRT(searchDate, 'yyyy-MM-dd');
       const wd = workingDays.find(d => d.date === dateStr);
       if (wd && wd.isWorkingDay) return searchDate;
       searchDate = addDays(searchDate, -1);
@@ -222,7 +223,7 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
  * Automatically generates routes for all active drivers for the next working day
  */
 export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
-  const dateStr = format(currentDate, 'yyyy-MM-dd');
+  const dateStr = safeFormatTRT(currentDate, 'yyyy-MM-dd');
   const allRoutesForDate = await db.routes.where('date').equals(dateStr).toArray();
   
   if (allRoutesForDate.length === 0) return;
@@ -231,7 +232,7 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
 
   if (allCompletedOrApproved) {
     const nextDay = await getNextWorkingDay(currentDate);
-    const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+    const nextDayStr = safeFormatTRT(nextDay, 'yyyy-MM-dd');
     
     // Check if routes for next day already exist
     const existingRoutes = await db.routes.where('date').equals(nextDayStr).toArray();

@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db as firestoreDb } from '@/lib/db';
 import { format } from 'date-fns';
-import { safeFormat } from '@/lib/date-utils';
+import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
 import { Truck, MapPin, CheckCircle, Clock, XCircle, ShoppingBasket, Users, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Route, RouteStop, Driver, Household, BreadTracking } from '@/lib/db';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
 export default function AdminDashboard() {
-  const today = safeFormat(new Date(), 'yyyy-MM-dd');
+  const today = safeFormatTRT(new Date(), 'yyyy-MM-dd');
   
   const drivers = useAppQuery(() => firestoreDb.drivers.toArray(), [], 'drivers') || [];
   const households = useAppQuery(() => firestoreDb.households.toArray(), [], 'households') || [];
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         lastHousehold: lastHousehold?.headName || '-',
         lastStopStatus: lastStop?.status || 'pending',
         lastStopIssue: lastStop?.issueReport || '',
-        lastDeliveryTime: safeFormat(lastStop?.deliveredAt, 'HH:mm'),
+        lastDeliveryTime: safeFormatTRT(lastStop?.deliveredAt, 'HH:mm'),
       };
     });
   };

@@ -129,7 +129,7 @@ export default function DriverPage() {
   }, []);
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
-  const today = safeFormat(new Date(), 'yyyy-MM-dd');
+  const today = safeFormatTRT(new Date(), 'yyyy-MM-dd');
   const driverName = useMemo(() => {
     const d = drivers?.find(dr => dr.id === selectedDriverId);
     return d?.name || 'Bilinmeyen Şoför';
@@ -1296,7 +1296,7 @@ export default function DriverPage() {
             </div>
 
             <div className="pt-2">
-              {(!isDemo && (safeFormat(new Date(), 'yyyy-MM-dd') > todayRoute.date || new Date().getHours() >= 11)) ? (
+              {(!isDemo && (safeFormatTRT(new Date(), 'yyyy-MM-dd') > todayRoute.date || new Date().getHours() >= 11)) ? (
                 <button
                   onClick={handleEndRoute}
                   className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:-translate-y-0.5"
@@ -1305,7 +1305,7 @@ export default function DriverPage() {
                 </button>
               ) : !isDemo && (
                 <div className="w-full py-4 rounded-2xl font-bold text-sm bg-slate-100 text-slate-500 border border-slate-200 text-center">
-                  {safeFormat(new Date(), 'yyyy-MM-dd') === todayRoute.date ? 'Saat 11:00\'den Sonra Tamamlanabilir' : 'Bu Rota Gelecek Tarihlidir'}
+                  {safeFormatTRT(new Date(), 'yyyy-MM-dd') === todayRoute.date ? 'Saat 11:00\'den Sonra Tamamlanabilir' : 'Bu Rota Gelecek Tarihlidir'}
                 </div>
               )}
               
