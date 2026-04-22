@@ -866,8 +866,8 @@ export default function DriverPage() {
   }
 
   const sortedStops = routeStops ? [...routeStops].sort((a, b) => {
-    const hA = households?.find(h => h?.id === a.householdId);
-    const hB = households?.find(h => h?.id === b.householdId);
+    const hA = households?.find((h: Household) => h?.id === a.householdId);
+    const hB = households?.find((h: Household) => h?.id === b.householdId);
     
     const isDeletedA = hA?.pausedUntil === '9999-12-31';
     const isDeletedB = hB?.pausedUntil === '9999-12-31';
@@ -886,12 +886,12 @@ export default function DriverPage() {
   }) : [];
 
   const nextStop = sortedStops.find((rs: RouteStop) => {
-    const h = households?.find(hh => hh?.id === rs.householdId);
+    const h = households?.find((hh: Household) => hh?.id === rs.householdId);
     const isDeleted = h?.pausedUntil === '9999-12-31';
     const isPaused = h?.pausedUntil && h.pausedUntil >= todayRoute.date;
     return rs.status === 'pending' && !isDeleted && !isPaused;
   });
-  const nextHousehold = nextStop ? (households?.find(hh => hh?.id === nextStop.householdId) as Household | null) : null;
+  const nextHousehold = nextStop ? (households?.find((hh: Household) => hh?.id === nextStop.householdId) as Household | null) : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 pb-12 font-sans selection:bg-blue-100">
