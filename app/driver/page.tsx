@@ -511,7 +511,7 @@ export default function DriverPage() {
   const households = useAppQuery(
     async () => {
       if (!routeStopsRaw || routeStopsRaw.length === 0) return [];
-      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter(id => !!id) as string[];
+      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter((id: string | undefined) => !!id) as string[];
       if (householdIds.length === 0) return [];
       
       // Bulk fetch households to avoid N+1 query problem using parallel requests
