@@ -22,6 +22,7 @@ export default function DriverPage() {
   const isDemo = role === 'demo';
   const router = useRouter();
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [loadingRoute, setLoadingRoute] = useState(false);
   const [todayRoute, setTodayRoute] = useState<Route | null>(null);
   const [startKm, setStartKm] = useState<string>('');
   const [endKm, setEndKm] = useState<string>('');
@@ -185,19 +186,36 @@ export default function DriverPage() {
     }
   }, [isSyncing, driverName]);
 
-  // Auto-select driver based on google email
+  // Auto-detect or load driver from localStorage
   useEffect(() => {
     const detectDriver = async () => {
+      // 1. Check local storage first for persistence
+      const savedId = localStorage.getItem('last_driver_id');
+      
       if (user?.email && drivers && drivers.length > 0) {
         const matchingDriver = drivers.find(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
-        if (matchingDriver && !selectedDriverId) {
-          setSelectedDriverId(matchingDriver.id!);
-          toast.success(`Hoş geldiniz, ${matchingDriver.name}`);
+        
+        if (matchingDriver) {
+          if (selectedDriverId !== matchingDriver.id!) {
+            setSelectedDriverId(matchingDriver.id!);
+            localStorage.setItem('last_driver_id', matchingDriver.id!);
+            toast.success(`Hoş geldiniz, ${matchingDriver.name}`);
+          }
+        } else if (savedId && !selectedDriverId) {
+          // If not matching by email (e.g. admin spoofing), but we have a saved ID
+          setSelectedDriverId(savedId);
         }
       }
     };
     detectDriver();
   }, [user, drivers, selectedDriverId]);
+
+  // Persist selectedDriverId manually when changed
+  const handleSetDriverId = (id: string | null) => {
+    setSelectedDriverId(id);
+    if (id) localStorage.setItem('last_driver_id', id);
+    else localStorage.removeItem('last_driver_id');
+  };
 
   // Sync paused state from DB
   useEffect(() => {
@@ -276,8 +294,8 @@ export default function DriverPage() {
         }
 
         // 1. Check expired pauses and activate them
-        const householdsData = await db.households.toArray();
-        const expired = householdsData.filter(h => !h.isActive && h.pausedUntil && h.pausedUntil !== '9999-12-31' && h.pausedUntil < todayStr);
+        const expired = await db.households.where('isActive').equals(0).toArray() // isActive is boolean but stored as 0/1 usually, but filter check is safer
+          .then(list => list.filter(h => h.pausedUntil && h.pausedUntil !== '9999-12-31' && h.pausedUntil < todayStr));
         for (const h of expired) {
           await db.households.update(h.id!, {
             isActive: true,
@@ -292,8 +310,7 @@ export default function DriverPage() {
         }
 
         // 2. Auto-complete past routes
-        const allRoutes = await db.routes.toArray();
-        const pendingRoutes = allRoutes.filter(r => r.status !== 'completed' && r.status !== 'approved');
+        const pendingRoutes = await db.routes.where('status').anyOf(['pending', 'in_progress']).toArray();
         
         for (const route of pendingRoutes) {
           const isPastDay = route.date < todayStr;
@@ -343,41 +360,57 @@ export default function DriverPage() {
   useEffect(() => {
     const fetchRoute = async () => {
       if (selectedDriverId) {
-        const now = new Date();
-        const todayStr = safeFormat(now, 'yyyy-MM-dd');
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const isWithinWorkHours = (currentHour > 8 || (currentHour === 8 && currentMinute >= 30)) && (currentHour < 17 || (currentHour === 17 && currentMinute <= 30));
+        setLoadingRoute(true);
+        try {
+          const now = new Date();
+          const todayStr = safeFormat(now, 'yyyy-MM-dd');
 
-        // 1. Check for any "in_progress" route first (resume capability)
-        const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
-        const inProgressRoute = driverRoutes.find(r => r.status === 'in_progress');
-        
-        if (inProgressRoute) {
-          setTodayRoute(inProgressRoute);
-          return;
-        }
+          // 1. Check for any "in_progress" route first (resume capability)
+          const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
+          const inProgressRoute = driverRoutes.find(r => r.status === 'in_progress');
+          
+          if (inProgressRoute) {
+            setTodayRoute(inProgressRoute);
+            return;
+          }
 
-        // 2. Check for today's route (even if pending) if within hours
-        const existingTodayRoute = driverRoutes.find(r => r.date === todayStr);
-        if (existingTodayRoute && (existingTodayRoute.status === 'pending' || isWithinWorkHours)) {
-          setTodayRoute(existingTodayRoute);
-          return;
-        }
+          // 2. Check for today's route (even if pending or completed)
+          // We always prefer SHOWING today's route even if it's afternoon
+          const existingTodayRoute = driverRoutes.find(r => r.date === todayStr);
+          if (existingTodayRoute) {
+            setTodayRoute(existingTodayRoute);
+            return;
+          }
 
-        // 3. Fallback to logic for generating/finding next route
-        let targetDate = new Date();
-        if (currentHour > 9 || (currentHour === 9 && currentMinute >= 30)) {
-          targetDate.setDate(targetDate.getDate() + 1);
+          // 3. If no route exists for today, let's see if we should generate it or look for tomorrow's
+          const currentHour = now.getHours();
+          const currentMinute = now.getMinutes();
+          
+          let targetDateStr = todayStr;
+          // If it's late afternoon (past 15:00) and no route exists for today, maybe we look for tomorrow
+          if (currentHour >= 15) {
+            const nextWorkDay = await getNextWorkingDay(now);
+            targetDateStr = safeFormat(nextWorkDay, 'yyyy-MM-dd');
+          }
+          
+          // Try to generate if missing
+          const routeId = await generateRouteFromTemplate(selectedDriverId, targetDateStr);
+          if (routeId) {
+             const newRoute = await db.routes.get(routeId);
+             if (newRoute) {
+                setTodayRoute(newRoute);
+                return;
+             }
+          }
+          
+          // Last resort: find the latest route for this driver to show something
+          const latestRoute = driverRoutes.sort((a, b) => b.date.localeCompare(a.date))[0];
+          setTodayRoute(latestRoute || null);
+        } catch (err) {
+          console.error("Fetch route error:", err);
+        } finally {
+          setLoadingRoute(false);
         }
-        while (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
-          targetDate.setDate(targetDate.getDate() + 1);
-        }
-        const targetDateStr = safeFormat(targetDate, 'yyyy-MM-dd');
-        
-        await generateRouteFromTemplate(selectedDriverId, targetDateStr);
-        const route = driverRoutes.find(r => r.date === targetDateStr);
-        setTodayRoute(route || null);
       }
     };
     fetchRoute();
@@ -502,9 +535,8 @@ export default function DriverPage() {
         const totalRemainingBread = autoRemainingBread + Number(extraBread);
 
         // Fetch remaining points that are still "pending" (bekliyor) and update them to "delivered".
-        const pendingStops = await db.routeStops.toArray().then(arr => 
-          arr.filter(s => s.routeId === todayRoute!.id && s.status === 'pending')
-        );
+        const pendingStops = await db.routeStops.where('routeId').equals(todayRoute!.id!).toArray()
+          .then(arr => arr.filter(s => s.status === 'pending'));
 
         if (pendingStops.length > 0) {
           toast.info(`${pendingStops.length} adet bekleyen teslimat otomatik olarak kaydediliyor...`);
@@ -729,7 +761,7 @@ export default function DriverPage() {
                 <label className="text-sm font-bold text-slate-600 px-1">Lütfen isminizi seçiniz</label>
                 <select
                   className="w-full bg-slate-50 border-0 rounded-2xl ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-inset focus:ring-blue-600 text-slate-900 text-base font-medium py-4 px-4 appearance-none shadow-sm disabled:opacity-60 disabled:bg-slate-100 transition-all"
-                  onChange={(e) => setSelectedDriverId(e.target.value)}
+                  onChange={(e) => handleSetDriverId(e.target.value)}
                   defaultValue=""
                   disabled={isDriverRole}
                 >
@@ -777,6 +809,20 @@ export default function DriverPage() {
 
   const isDriverRole = !!(user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase()));
 
+  if (loadingRoute) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 bg-slate-50">
+        <div className="relative">
+          <div className="h-20 w-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <MapPin className="text-indigo-600 animate-pulse" size={24} />
+          </div>
+        </div>
+        <p className="mt-6 text-sm font-bold text-slate-500 animate-pulse">Rota bilgileriniz getiriliyor...</p>
+      </div>
+    );
+  }
+
   if (!todayRoute) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
@@ -789,7 +835,7 @@ export default function DriverPage() {
             Bugün için size atanmış herhangi bir dağıtım rotası görünmüyor. Lütfen yönetim birimi ile iletişime geçiniz.
           </p>
           <button 
-            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
             {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Farklı Şoför Seç'}
@@ -802,25 +848,30 @@ export default function DriverPage() {
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-  const isWithinWorkingHours = (currentHour > 8 || (currentHour === 8 && currentMinute >= 30)) && (currentHour < 17 || (currentHour === 17 && currentMinute <= 30));
+  const isWithinWorkingHours = (currentHour > 8 || (currentHour === 8 && currentMinute >= 30)) && (currentHour < 18 || (currentHour === 18 && currentMinute <= 30));
   const isRouteToday = todayRoute.date === today;
+  const isInProgress = todayRoute.status === 'in_progress';
+  const isCompleted = todayRoute.status === 'completed' || todayRoute.status === 'approved';
 
-  if (!isRouteToday || !isWithinWorkingHours) {
+  // Allow if: route is today, OR route is in progress, OR route is already completed (viewing mode)
+  const canViewRoute = isRouteToday || isInProgress || isCompleted;
+
+  if (!canViewRoute && !isWithinWorkingHours) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center max-w-sm w-full">
           <div className="h-20 w-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-orange-50/50">
             <Clock className="h-10 w-10 text-orange-400" />
           </div>
-          <h2 className="text-xl font-black text-slate-800 mb-2">Mesai Saatleri Dışındayız</h2>
+          <h2 className="text-xl font-black text-slate-800 mb-2">Henüz Dağıtım Başlamadı</h2>
           <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-            Günlük rotanızı ve teslimat programınızı sadece mesai saatleri içerisinde (08:30 - 17:30) ve ilgili günde görüntüleyebilirsiniz.
+            Seçilen rota <b>{safeFormat(new Date(todayRoute.date), 'dd.MM.yyyy')}</b> tarihlidir. Dağıtım işlemleri mesai saatlerinde gerçekleştirilmektedir.
           </p>
           <button 
-            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
-            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Farklı Şoför Seç'}
+            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Geri Dön'}
           </button>
         </div>
       </div>
@@ -927,19 +978,12 @@ export default function DriverPage() {
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={requestLocationPermission}
-            disabled={locationPermission === 'granted'}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wide transition-all border ${
-              locationPermission === 'granted' 
-                ? 'bg-slate-50 text-slate-400 border-slate-100 cursor-not-allowed opacity-60' 
-                : 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 shadow-sm active:scale-95'
-            }`}
-            title={locationPermission === 'granted' ? 'Konum İzni Verildi' : 'Konum İzni İste'}
-          >
-            <MapPin size={14} className={locationPermission === 'granted' ? '' : 'animate-bounce'} />
-            <span className="hidden sm:inline">{locationPermission === 'granted' ? 'İzin Tamam' : 'Konum İzni'}</span>
-          </button>
+          {locationPermission === 'granted' && (
+            <div className="flex items-center gap-1 bg-green-50 text-green-600 text-[10px] px-2 py-1 rounded-full font-bold border border-green-100">
+              <MapPin size={10} />
+              Konum OK
+            </div>
+          )}
           {offlineUpdates.length > 0 && (
             <div className="flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full font-bold shadow-sm">
               <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
@@ -948,7 +992,7 @@ export default function DriverPage() {
           )}
           {!isDriverRole && (
             <button
-              onClick={() => setSelectedDriverId(null)}
+              onClick={() => handleSetDriverId(null)}
               className="text-[11px] font-bold uppercase tracking-wide text-slate-600 bg-slate-100 px-3 py-2 rounded-lg hover:bg-slate-200 transition-colors"
             >
               Değiştir
@@ -963,6 +1007,31 @@ export default function DriverPage() {
           </button>
         </div>
       </header>
+
+      {locationPermission !== 'granted' && (
+        <div className="mx-4 mt-6 bg-indigo-600 rounded-2xl p-4 shadow-lg shadow-indigo-200 animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden relative">
+           <div className="absolute top-0 right-0 p-4 opacity-10">
+              <MapPin size={80} />
+           </div>
+           <div className="flex items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-3">
+                 <div className="p-2.5 bg-white/20 rounded-xl">
+                    <MapPin size={24} className="text-white animate-bounce" />
+                 </div>
+                 <div>
+                    <h4 className="text-white font-bold text-sm italic tracking-tight leading-none">Konum Hizmeti Gerekli</h4>
+                    <p className="text-indigo-100 text-[10px] font-medium max-w-[180px] mt-1.5 leading-tight">Teslimat konumlarını doğrulamak için konum iznine ihtiyacımız var.</p>
+                 </div>
+              </div>
+              <button 
+                 onClick={requestLocationPermission}
+                 className="bg-white text-indigo-600 px-5 py-2.5 rounded-xl text-[11px] font-black shadow-lg shadow-indigo-900/20 active:scale-95 transition-transform uppercase tracking-wider shrink-0"
+              >
+                 İzin Ver
+              </button>
+           </div>
+        </div>
+      )}
 
       <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-6 space-y-6">
         {isPanelPassive && (
@@ -1259,7 +1328,7 @@ export default function DriverPage() {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Elinize Sağlık!</h2>
           <p className="text-slate-500 font-medium mb-8">Bugünkü görevlerinizi başarıyla tamamladınız. Artık çıkış yapabilirsiniz.</p>
           <button 
-            onClick={isDriverRole ? handleLogout : () => setSelectedDriverId(null)}
+            onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:-translate-y-0.5"
           >
             <LogOut size={20} />
