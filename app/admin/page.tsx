@@ -43,6 +43,64 @@ export default function AdminDashboard() {
 
   const todayBread = breadTracking.find(b => b.date === today);
   
+  // EMERGENCY AUTO-FIX FOR OZKAN 22.04.2026
+  useEffect(() => {
+    const executeEmergencyFix = async () => {
+      const targetDate = '2026-04-22';
+      const ozkanId = '69e28cd7c6c220fd2a8360da';
+      const fixKey = `emergency_fix_ozkan_final_v5_${targetDate}`;
+      
+      if (localStorage.getItem(fixKey)) return;
+
+      try {
+        console.log('--- EMERGENCY REPAIR STARTING ---');
+        
+        // 1. Delete Ozkan's corrupted routes for today
+        const existingRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
+        const ozkanRoutes = existingRoutes.filter(r => r.driverId === ozkanId);
+        
+        for (const r of ozkanRoutes) {
+          await firestoreDb.routeStops.where('routeId').equals(r.id!).delete();
+          await firestoreDb.routes.delete(r.id!);
+        }
+
+        // 2. Clear conflicts (Households stuck in other routes)
+        const template = await firestoreDb.routeTemplates.where('driverId').equals(ozkanId).first();
+        if (!template) return;
+        
+        const templateStops = await firestoreDb.routeTemplateStops.where('templateId').equals(template.id!).toArray();
+        const targetHouseholdIds = templateStops.map(ts => ts.householdId);
+
+        const allTodayRoutes = await firestoreDb.routes.where('date').equals(targetDate).toArray();
+        for (const otherRoute of allTodayRoutes) {
+           const otherRouteStops = await firestoreDb.routeStops.where('routeId').equals(otherRoute.id!).toArray();
+           const conflicts = otherRouteStops.filter((s: RouteStop) => targetHouseholdIds.includes(s.householdId));
+           
+           if (conflicts.length > 0) {
+             for (const c of conflicts) {
+               await firestoreDb.routeStops.delete(c.id!);
+             }
+           }
+        }
+
+        // 3. Force Generate
+        // We call the utility and wait for it
+        const { generateRouteFromTemplate } = await import('@/lib/route-utils');
+        const newRouteId = await generateRouteFromTemplate(template.id!, targetDate);
+
+        if (newRouteId) {
+          const finalStops = await firestoreDb.routeStops.where('routeId').equals(newRouteId).toArray();
+          toast.success(`Özkan Bey'in rotası ${finalStops.length} durakla sistemsel olarak kurtarıldı!`, { duration: 5000 });
+          localStorage.setItem(fixKey, 'true');
+        }
+      } catch (err) {
+        console.error('Emergency fix error:', err);
+      }
+    };
+
+    executeEmergencyFix();
+  }, []);
+
   useEffect(() => {
     if (todayBread && todayBread.leftoverAmount > 0) {
       toast.warning(`Artan ekmek ${todayBread.leftoverAmount} adet. Sipariş miktarı güncellendi.`);
