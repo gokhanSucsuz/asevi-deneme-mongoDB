@@ -1302,11 +1302,6 @@ export default function RoutesPage() {
       return orderA - orderB;
     });
 
-    const previousWeekStart = addDays(start, -7);
-    const previousWeekEnd = addDays(start, -1);
-    const prevStartDateStr = safeFormat(previousWeekStart, 'yyyy-MM-dd');
-    const prevEndDateStr = safeFormat(previousWeekEnd, 'yyyy-MM-dd');
-
     const tableColumn = ["Sıra", "Hane Adı", "Adres", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3)), "Açıklama (Geçen Hafta)"];
     const tableRows = householdIds.map((hId, index) => {
       const h = households?.find(hh => hh.id === hId);
