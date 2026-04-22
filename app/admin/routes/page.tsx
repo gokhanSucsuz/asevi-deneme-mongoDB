@@ -179,10 +179,10 @@ export default function RoutesPage() {
     if (routes && households) fixVakifCompletion();
   }, [routes, households]);
 
-  const routesOnDate = routes?.filter((r: Route) => r.date === selectedDate) || [];
+  const routesOnDate = (routes || []).filter((r: Route) => r.date === selectedDate);
   const routeIdsOnDate = routesOnDate.map((r: Route) => r.id);
-  const stopsOnDate = routeStops || [];
-  const assignedHouseholdIds = (stopsOnDate as RouteStop[])?.map((rs: RouteStop) => rs.householdId) || [];
+  const stopsOnDate = (routeStops || []) as RouteStop[];
+  const assignedHouseholdIds = stopsOnDate.map((rs: RouteStop) => rs.householdId);
 
   const assignedTemplateHouseholdIds = routeTemplateStops?.map((rts: RouteTemplateStop) => rts.householdId) || [];
 
@@ -1613,7 +1613,7 @@ export default function RoutesPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {routesOnDate.map((route) => {
-                  const stops = stopsOnDate?.filter(s => s.routeId === route.id) || [];
+                  const stops = stopsOnDate.filter((s: RouteStop) => s.routeId === route.id);
                   const uniqueHouseholds = new Set(stops.map(s => s.householdId));
                   
                   let householdCount = 0;
@@ -1622,9 +1622,9 @@ export default function RoutesPage() {
                   let institutionPeople = 0;
 
                   Array.from(uniqueHouseholds).forEach(hId => {
-                    const householdStops = stops.filter(s => s.householdId === hId);
+                    const householdStops = stops.filter((s: RouteStop) => s.householdId === hId);
                     // Ana teslimat kaydını (standard) buluyoruz, yoksa ilkini alıyoruz
-                    const mainStop = householdStops.find(s => s.mealType === 'standard') || householdStops[0];
+                    const mainStop = householdStops.find((s: RouteStop) => s.mealType === 'standard') || householdStops[0];
                     const h = households?.find(hh => hh.id === hId);
                     
                     // FALLBACK: If snapshot count is 0 or missing, trust the current household data for old records
