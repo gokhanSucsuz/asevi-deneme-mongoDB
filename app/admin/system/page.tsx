@@ -112,32 +112,37 @@ export default function SystemSettingsPage() {
         await db.routes.delete(r.id!);
       }
 
-      // 2. Deep clean orphaned stops that might be blocking the households
+      // 2. Deep clean orphaned stops AND conflicting stops from other routes
       const allRoutesThisDate = await db.routes.where('date').equals(repairDate).toArray();
       const allRouteIds = allRoutesThisDate.map(r => r.id!);
-      const currentStops = await db.routeStops.toArray();
-      for (const s of currentStops) {
-        if (s.routeId && !allRouteIds.includes(s.routeId)) {
-          // Check if this stop's route date was supposed to be repairDate
-          // (We'd need to fetch the deleted route, but we don't have it).
-          // So we'll just clean up ALL orphaned stops to be safe.
-          await db.routeStops.delete(s.id!);
-        }
-      }
-
-      // 3. Generate new route from template
+      
+      // Get the template stops to know which households we are trying to recover
       const template = await db.routeTemplates.where('driverId').equals(driverId).first();
       if (!template) {
-        toast.error(`"${driverName}" için bir rota şablonu (ana rota) bulunamadı. Önce şoföre bir ana rota atamalısınız.`, { id: loadingToast });
+        toast.error(`"${driverName}" için bir rota şablonu (ana rota) bulunamadı.`, { id: loadingToast });
         setIsRepairing(false);
         return;
       }
-
       const templateStops = await db.routeTemplateStops.where('templateId').equals(template.id!).toArray();
-      if (templateStops.length === 0) {
-        toast.error(`"${driverName}" ana rotasında hiç durak yok.`, { id: loadingToast });
-        setIsRepairing(false);
-        return;
+      const targetHouseholdIds = templateStops.map(ts => ts.householdId);
+
+      const currentStopsAll = await db.routeStops.toArray();
+      for (const s of currentStopsAll) {
+        // Orphaned stops cleanup
+        const isOrphaned = s.routeId && !allRouteIds.includes(s.routeId);
+        
+        // Conflict cleanup: If this household is already in SOMEONE ELSE'S route on this SAME DATE
+        let isConflict = false;
+        if (targetHouseholdIds.includes(s.householdId)) {
+          const stopRoute = allRoutesThisDate.find(r => r.id === s.routeId);
+          if (stopRoute && stopRoute.date === repairDate) {
+            isConflict = true;
+          }
+        }
+
+        if (isOrphaned || isConflict) {
+          await db.routeStops.delete(s.id!);
+        }
       }
 
       const newRouteId = await generateRouteFromTemplate(driverId, repairDate);
@@ -147,12 +152,13 @@ export default function SystemSettingsPage() {
           user,
           personnel,
           'Kritik Rota Onarımı',
-          `${repairDate} tarihinde "${driverName}" (${driverId}) için rota sıfırlandı ve yeniden oluşturuldu.`,
+          `${repairDate} tarihinde "${driverName}" (${driverId}) için rota sıfırlandı ve diğer rotalarla çakışmaları temizlenerek yeniden oluşturuldu.`,
           'route'
         );
-        toast.success(`Başarılı: "${driverName}" rotası ${templateStops.length} hane ile tertemiz bir şekilde yeniden oluşturuldu.`, { id: loadingToast });
+        const finalStopsCount = await db.routeStops.where('routeId').equals(newRouteId).toArray().then(arr => arr.length);
+        toast.success(`Başarılı: "${driverName}" rotası ${finalStopsCount} hane ile tertemiz bir şekilde yeniden oluşturuldu.`, { id: loadingToast });
       } else {
-        toast.error(`"${driverName}" için kayıtlar silindi ancak yeni rota oluşturulamadı. Şablondaki tüm haneler (toplam ${templateStops.length}) bugün diğer şoförlere atanmış olabilir.`, { id: loadingToast });
+        toast.error(`"${driverName}" için kayıtlar silindi ancak yeni rota oluşturulamadı. Şablondaki tüm haneler başka bir teknik engelle karşılaşıyor olabilir.`, { id: loadingToast });
       }
 
       setTimeout(() => window.location.reload(), 2000);
