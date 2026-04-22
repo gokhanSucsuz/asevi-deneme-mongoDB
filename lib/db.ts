@@ -56,6 +56,8 @@ export interface Driver {
   googleEmail?: string;
   vehiclePlate: string;
   isActive: boolean;
+  locationPermissionStatus?: 'granted' | 'denied' | 'prompt' | 'unknown';
+  locationPermissionRequestPending?: boolean;
 }
 
 export interface RouteHistory {

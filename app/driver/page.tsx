@@ -121,19 +121,79 @@ export default function DriverPage() {
     });
   }, []);
 
-  // Warm up geolocation permission
-  useEffect(() => {
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(() => {}, () => {});
-    }
-  }, []);
   const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormatTRT(new Date(), 'yyyy-MM-dd');
-  const driverName = useMemo(() => {
-    const d = drivers?.find(dr => dr.id === selectedDriverId);
-    return d?.name || 'Bilinmeyen Şoför';
-  }, [drivers, selectedDriverId]);
+  
+  const currentDriver = useMemo(() => drivers?.find(dr => dr.id === selectedDriverId), [drivers, selectedDriverId]);
+  const driverName = currentDriver?.name || 'Bilinmeyen Şoför';
+
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
+
+  // Sync geolocation permission
+  useEffect(() => {
+    if (!currentDriver || isDemo) return;
+
+    const checkPerms = async () => {
+      try {
+        if (navigator.permissions && navigator.permissions.query) {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          if ((currentDriver as any).locationPermissionStatus !== result.state) {
+            await db.drivers.update(currentDriver.id!, { locationPermissionStatus: result.state as any });
+          }
+
+          result.onchange = async () => {
+             await db.drivers.update(currentDriver.id!, { locationPermissionStatus: result.state as any });
+          };
+        } else if (navigator.geolocation) {
+           // Fallback for warming up and tracking if permissions API is not fully capable
+           navigator.geolocation.getCurrentPosition(
+             async () => await db.drivers.update(currentDriver.id!, { locationPermissionStatus: 'granted' }), 
+             async () => await db.drivers.update(currentDriver.id!, { locationPermissionStatus: 'denied' })
+           );
+        }
+      } catch (e) {
+        console.error("Permission check failed:", e);
+      }
+    };
+    checkPerms();
+  }, [currentDriver, isDemo]);
+
+  useEffect(() => {
+     const isPending = (currentDriver as any)?.locationPermissionRequestPending;
+     if (currentDriver && isPending) {
+        setShowLocationPrompt(true);
+     } else {
+        setShowLocationPrompt(false);
+     }
+  }, [currentDriver]);
+
+  const handleAcceptLocation = () => {
+     if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+             toast.success("Konum izni başarıyla alındı.");
+             if (currentDriver?.id) {
+               await db.drivers.update(currentDriver.id, { 
+                 locationPermissionStatus: 'granted', 
+                 locationPermissionRequestPending: false 
+               });
+             }
+             setShowLocationPrompt(false);
+          },
+          async (err) => {
+             toast.error("Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.");
+             if (currentDriver?.id) {
+               await db.drivers.update(currentDriver.id, { 
+                 locationPermissionStatus: 'denied', 
+                 locationPermissionRequestPending: false 
+               });
+             }
+             setShowLocationPrompt(false);
+          }
+        );
+     }
+  };
 
   const syncOfflineData = useCallback(async () => {
     if (isSyncing || !navigator.onLine) return;
@@ -536,7 +596,7 @@ export default function DriverPage() {
 
         // Fetch remaining points that are still "pending" (bekliyor) and update them to "delivered".
         const pendingStops = await db.routeStops.where('routeId').equals(todayRoute!.id!).toArray()
-          .then(arr => arr.filter(s => s.status === 'pending'));
+          .then((arr: RouteStop[]) => arr.filter(s => s.status === 'pending'));
 
         if (pendingStops.length > 0) {
           toast.info(`${pendingStops.length} adet bekleyen teslimat otomatik olarak kaydediliyor...`);
@@ -1555,6 +1615,28 @@ export default function DriverPage() {
                 className={`w-full sm:w-auto px-6 py-3 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 ${confirmAction.type === 'delivered' ? 'bg-green-500 hover:bg-green-600 shadow-green-600/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'}`}
               >
                 Evet, Onayla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showLocationPrompt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl relative animate-in zoom-in-95 duration-300">
+            <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 ring-8 ring-blue-50/50">
+              <MapPin className="h-8 w-8 text-blue-500" />
+            </div>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">Konum İzni Gerekli</h3>
+            <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6">
+              Sistem yöneticiniz takibi sağlayabilmek için konum iznine ihtiyaç duyuyor. Lütfen konum erişimine izin verin.
+            </p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handleAcceptLocation}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold transition-all shadow-md hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5"
+              >
+                Konuma İzin Ver
               </button>
             </div>
           </div>

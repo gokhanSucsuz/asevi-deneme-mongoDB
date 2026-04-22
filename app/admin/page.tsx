@@ -99,11 +99,23 @@ export default function AdminDashboard() {
         lastStopStatus: lastStop?.status || 'pending',
         lastStopIssue: lastStop?.issueReport || '',
         lastDeliveryTime: safeFormatTRT(lastStop?.deliveredAt, 'HH:mm'),
+        locationPermissionStatus: (driver as any).locationPermissionStatus || 'unknown',
+        locationPermissionRequestPending: (driver as any).locationPermissionRequestPending || false,
       };
     });
   };
 
   const driverStatuses = getDriverStatus();
+
+  const requestLocationPermission = async (driverId: string) => {
+    try {
+      await firestoreDb.drivers.update(driverId, { locationPermissionRequestPending: true });
+      toast.success('Şoföre konum izni bildirimi gönderildi.');
+    } catch (e) {
+      toast.error('Bildirim gönderilirken hata oluştu.');
+    }
+  };
+
   
   const activeHouseholds = households.filter(h => {
     if (!h.isActive) return false;
@@ -255,16 +267,28 @@ export default function AdminDashboard() {
                 <h4 className="font-bold text-gray-900 text-lg">{status.driverName}</h4>
                 <p className="text-sm text-gray-500">{status.vehiclePlate}</p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                status.status === 'completed' ? 'bg-green-100 text-green-800' :
-                status.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                status.status === 'no_route' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {status.status === 'completed' ? 'Tamamlandı' :
-                 status.status === 'in_progress' ? 'Dağıtımda' : 
-                 status.status === 'no_route' ? 'Rota Yok' : 'Bekliyor'}
-              </span>
+              <div className="flex items-center gap-3">
+                {status.locationPermissionStatus !== 'granted' && (
+                  <button
+                    onClick={() => requestLocationPermission(status.driverId!)}
+                    disabled={status.locationPermissionRequestPending}
+                    className="px-3 py-1.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl hover:bg-amber-200 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm border border-amber-200"
+                  >
+                    <MapPin size={12} />
+                    {status.locationPermissionRequestPending ? 'İstek Gönderildi' : 'Konum İzni İste'}
+                  </button>
+                )}
+                <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                  status.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200 border' :
+                  status.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200 border' :
+                  status.status === 'no_route' ? 'bg-red-100 text-red-800 border-red-200 border' :
+                  'bg-gray-100 text-gray-800 border-gray-200 border'
+                }`}>
+                  {status.status === 'completed' ? 'Tamamlandı' :
+                   status.status === 'in_progress' ? 'Dağıtımda' : 
+                   status.status === 'no_route' ? 'Rota Yok' : 'Bekliyor'}
+                </span>
+              </div>
             </div>
             <div className="p-5">
               {status.status === 'no_route' ? (
