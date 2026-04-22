@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         };
       }
 
-      const stops = routeStops.filter(rs => rs.routeId === route.id).sort((a, b) => a.order - b.order);
+      const stops = routeStops.filter((rs: RouteStop) => rs.routeId === route.id).sort((a: RouteStop, b: RouteStop) => a.order - b.order);
       
       // Filter out actually passive stops from status calculation if we want them "dropped" from totals
       // In generateRouteFromTemplate we set memberCount to 0 for passive ones

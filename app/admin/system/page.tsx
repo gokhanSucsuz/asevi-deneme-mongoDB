@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { Download, Database, Clock, AlertTriangle, ShieldCheck, Lock, Upload } from 'lucide-react';
+import { Download, Database, Clock, AlertTriangle, ShieldCheck, Lock, Upload, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, differenceInDays } from 'date-fns';
 import * as XLSX from 'xlsx';

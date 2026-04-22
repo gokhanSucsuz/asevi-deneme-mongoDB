@@ -359,15 +359,21 @@ export default function RoutesPage() {
         const h = households?.find(hh => hh.id === sh.householdId);
         if (!h) return;
         
+        const isDeleted = h.pausedUntil === '9999-12-31';
+        const isPaused = h.pausedUntil && h.pausedUntil >= selectedDate;
+        const isInactive = !h.isActive && !h.pausedUntil;
+        const isActuallyPassive = isDeleted || isPaused || isInactive;
+        
         // Standard Meal
         stops.push({
           routeId: routeId as string,
           householdId: sh.householdId,
-          householdSnapshotName: h.headName,
-          householdSnapshotMemberCount: h.memberCount,
-          householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+          householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+          householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+          householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
           order: sh.order * 2 - 1, // Multiply by 2 so we have space for breakfast
-          status: 'pending',
+          status: isActuallyPassive ? 'failed' : 'pending',
+          issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
           isManual: true,
           mealType: 'standard'
         });
@@ -377,11 +383,12 @@ export default function RoutesPage() {
           stops.push({
             routeId: routeId as string,
             householdId: sh.householdId,
-            householdSnapshotName: `${h.headName} (Kahvaltı)`,
-            householdSnapshotMemberCount: h.memberCount,
+            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF - Kahvaltı)` : `${h.headName} (Kahvaltı)`,
+            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
             householdSnapshotBreadCount: 0,
             order: sh.order * 2,
-            status: 'pending',
+            status: isActuallyPassive ? 'failed' : 'pending',
+            issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
             isManual: true,
             mealType: 'breakfast'
           });

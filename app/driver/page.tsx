@@ -334,10 +334,14 @@ export default function DriverPage() {
     [todayRoute]
   );
 
-  // Merge raw stops with offline updates for current UI state
+  // Merge raw stops with offline updates for current UI state and FILTER OUT PASSIVE ONES
   const routeStops = useMemo(() => {
     if (!routeStopsRaw) return [];
-    return routeStopsRaw.map((stop: RouteStop) => {
+    // Only show active stops to the driver (member count > 0)
+    // Passive/Paused households have householdSnapshotMemberCount set to 0 during route generation
+    const activeStopsRaw = routeStopsRaw.filter((s: RouteStop) => (s.householdSnapshotMemberCount || 0) > 0);
+    
+    return activeStopsRaw.map((stop: RouteStop) => {
       const offline = offlineUpdates.find(u => u.stopId === stop.id);
       if (offline) {
         return {
@@ -356,7 +360,9 @@ export default function DriverPage() {
       if (!routeStops || routeStops.length === 0) return [];
       const householdIds = routeStops.map(rs => rs.householdId);
       // Bulk fetch households to avoid N+1 query problem
-      return await db.households.where('id').anyOf(householdIds).toArray();
+      const fetchedHouseholds = await db.households.where('id').anyOf(householdIds).toArray();
+      // Maintain the order of routeStops
+      return householdIds.map(id => fetchedHouseholds.find(h => h.id === id));
     },
     [routeStops],
     'households'
