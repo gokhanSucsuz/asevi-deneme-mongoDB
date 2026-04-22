@@ -47,91 +47,103 @@ export default function AdminDashboard() {
   useEffect(() => {
     const executeEmergencyFix = async () => {
       const targetDate = '2026-04-22';
-      const fixKey = `emergency_fix_ozkan_final_v12_inline_${targetDate}`;
+      const fixKey = `emergency_fix_ozkan_final_v13_brute_${targetDate}`;
       
       if (localStorage.getItem(fixKey)) return;
 
       try {
-        console.log('--- EMERGENCY REPAIR STARTING (INLINE V12) ---');
+        console.log('--- EMERGENCY REPAIR STARTING (BRUTE FORCE V13) ---');
         
         // 1. Find Ozkan Driver
         const allDrivers = await firestoreDb.drivers.toArray();
         const ozkanDriver = allDrivers.find(d => d.name.toUpperCase().includes('ÖZKAN'));
-        if (!ozkanDriver) return;
+        if (!ozkanDriver) {
+          console.error('Ozkan not found in drivers list');
+          return;
+        }
         const ozkanId = ozkanDriver.id!;
+        console.log(`Ozkan Driver Found: ${ozkanDriver.name} (${ozkanId})`);
 
         // 2. Find Template
         const template = await firestoreDb.routeTemplates.where('driverId').equals(ozkanId).first();
-        if (!template) return;
+        if (!template) {
+          console.error('No template found for Ozkan');
+          return;
+        }
         
         const templateStops = await firestoreDb.routeTemplateStops.where('templateId').equals(template.id!).toArray();
-        if (templateStops.length === 0) return;
+        if (templateStops.length === 0) {
+          console.error('Template is EMPTY');
+          return;
+        }
         
         const targetHouseholdIds = templateStops.map(ts => ts.householdId);
+        console.log(`Template has ${targetHouseholdIds.length} stops.`);
 
         // 3. Clean up Existing & Conflicts
-        const existingRoutes = (await firestoreDb.routes.toArray()).filter(r => r.date === targetDate);
+        const allTodayRoutes = await firestoreDb.routes.toArray();
+        const routesToday = allTodayRoutes.filter(r => r.date === targetDate);
         
         // Delete Ozkan's specific routes for today
-        const ozkanRoutes = existingRoutes.filter(r => r.driverId === ozkanId);
+        const ozkanRoutes = routesToday.filter(r => r.driverId === ozkanId);
         for (const r of ozkanRoutes) {
           await firestoreDb.routeStops.where('routeId').equals(r.id!).delete();
           await firestoreDb.routes.delete(r.id!);
         }
 
-        // De-orphan households from other routes
-        for (const otherRoute of existingRoutes.filter(r => r.driverId !== ozkanId)) {
+        // De-orphan households from other routes (The Force)
+        for (const otherRoute of routesToday.filter(r => r.driverId !== ozkanId)) {
            const otherRouteStops = await firestoreDb.routeStops.where('routeId').equals(otherRoute.id!).toArray();
            const conflicts = otherRouteStops.filter((s: RouteStop) => targetHouseholdIds.includes(s.householdId));
            if (conflicts.length > 0) {
+             console.log(`Clearing ${conflicts.length} from ${otherRoute.driverSnapshotName}`);
              for (const c of conflicts) {
                await firestoreDb.routeStops.delete(c.id!);
              }
            }
         }
 
-        // 4. INLINE GENERATION (No utilities)
+        // 4. Force Generation with JS Flattening
         const newRouteId = await firestoreDb.routes.add({
           driverId: ozkanId,
           driverSnapshotName: ozkanDriver.name,
           date: targetDate,
           status: 'pending',
           createdAt: new Date(),
-          history: [{ action: 'created', timestamp: new Date(), note: 'Acil durum motoru ile inline oluşturuldu' }]
+          history: [{ action: 'created', timestamp: new Date(), note: 'Zorunlu motor V13 ile oluşturuldu' }]
         });
 
         if (!newRouteId) return;
 
-        const householdList = await firestoreDb.households.where('id').anyOf(targetHouseholdIds).toArray();
-        const householdMap = new Map(householdList.map(h => [h.id, h]));
+        // CRITICAL: Fetch ALL households and filter in JS to bypass ID query bug
+        const allHouseholds = await firestoreDb.households.toArray();
+        const householdMap = new Map(allHouseholds.map(h => [h.id, h]));
         
         const finalStops: RouteStop[] = [];
         for (const tS of templateStops) {
           const h = householdMap.get(tS.householdId);
           if (!h) continue;
 
-          const isDeleted = h.pausedUntil === '9999-12-31';
-          const isPaused = h.pausedUntil && h.pausedUntil >= targetDate;
-          const isInactive = !h.isActive && !h.pausedUntil;
-          const isActuallyPassive = isDeleted || isPaused || isInactive;
+          const isPassive = (h.pausedUntil === '9999-12-31') || (h.pausedUntil && h.pausedUntil >= targetDate) || !h.isActive;
 
           finalStops.push({
             routeId: newRouteId,
             householdId: h.id!,
-            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
-            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
-            householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
+            householdSnapshotName: isPassive ? `${h.headName} (PASİF)` : h.headName,
+            householdSnapshotMemberCount: isPassive ? 0 : h.memberCount,
+            householdSnapshotBreadCount: isPassive ? 0 : (h.breadCount ?? h.memberCount),
             order: tS.order,
-            status: isActuallyPassive ? 'failed' : 'pending',
+            status: isPassive ? 'failed' : 'pending',
             mealType: 'standard'
           });
         }
 
         if (finalStops.length > 0) {
           await firestoreDb.routeStops.bulkAdd(finalStops);
-          toast.success(`Özkan Bey'in rotası ${finalStops.length} haneyle başarıyla OLUŞTURULDU!`, { duration: 8000 });
+          toast.success(`Özkan Bey'in rotası ${finalStops.length} haneyle TAMAMLANDI!`, { duration: 10000 });
           localStorage.setItem(fixKey, 'true');
         } else {
+          console.error('Final stops length is 0 even after JS filtering');
           await firestoreDb.routes.delete(newRouteId);
         }
       } catch (err) {

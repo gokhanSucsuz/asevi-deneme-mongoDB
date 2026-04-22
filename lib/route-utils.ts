@@ -168,11 +168,10 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
   console.log(`[GEN_ROUTE] Template ${template.id} query for routeTemplateStops returned ${tStops.length} items`);
   const stops: RouteStop[] = [];
 
-  // Bulk fetch all households in the template to avoid N+1 query
-  const householdIds = tStops.map(ts => ts.householdId);
-  const householdList = await db.households.where('id').anyOf(householdIds).toArray();
-  const householdMap = new Map(householdList.map(h => [h.id, h]));
-  console.log(`[GEN_ROUTE] Found ${householdList.length} actual households in DB.`);
+  // CRITICAL FIX: Fetch all and filter in JS due to potential ObjectID mapping issues with anyOf
+  const allHouseholds = await db.households.toArray();
+  const householdMap = new Map(allHouseholds.map(h => [h.id, h]));
+  console.log(`[GEN_ROUTE] Processed ${allHouseholds.length} total households for matching.`);
 
   // Get all assigned households for this date to prevent duplicates
   let assignedHouseholdIds: string[] = [];

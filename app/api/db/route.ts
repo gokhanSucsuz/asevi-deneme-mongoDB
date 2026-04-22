@@ -203,32 +203,55 @@ export async function POST(req: NextRequest) {
         ];
 
         for (const [key, value] of Object.entries(obj)) {
-          if (key === 'id' || key === '_id') {
-            if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
-              newObj[key] = new ObjectId(value);
-            } else {
-              newObj[key] = value;
-            }
-          } else if (typeof value === 'string') {
-            // Check if it's an ID
-            if (/^[0-9a-fA-F]{24}$/.test(value) && (key.endsWith('Id') || key === 'defaultDriverId')) {
-              newObj[key] = new ObjectId(value);
+          // Rule 1: Map 'id' to '_id' for MongoDB compat
+          const targetKey = (key === 'id') ? '_id' : key;
+          
+          if (typeof value === 'string') {
+            // Check if it's a 24-char hex ID
+            if (/^[0-9a-fA-F]{24}$/.test(value)) {
+              // Primary ID or field ending with Id
+              if (targetKey === '_id' || targetKey.endsWith('Id') || targetKey === 'defaultDriverId') {
+                 newObj[targetKey] = new ObjectId(value);
+              } else {
+                 newObj[targetKey] = value;
+              }
             } 
             // Check if it's a date string that should be a Date object
-            else if (key.endsWith('At') || dateFields.includes(key)) {
+            else if (targetKey.endsWith('At') || dateFields.includes(targetKey)) {
               const d = new Date(value);
               if (!isNaN(d.getTime())) {
-                newObj[key] = d;
+                newObj[targetKey] = d;
               } else {
-                newObj[key] = value;
+                newObj[targetKey] = value;
               }
             } else {
-              newObj[key] = value;
+              newObj[targetKey] = value;
             }
           } else if (typeof value === 'object' && value !== null) {
-            newObj[key] = convertIncomingObjectIds(value);
+            // Case for $in, $nin or nested objects
+            if (!Array.isArray(value)) {
+               // Handle MongoDB operators like $in
+               const processedVal: any = {};
+               for (const [opKey, opVal] of Object.entries(value)) {
+                 if (['$in', '$nin', '$ne', '$eq'].includes(opKey) && Array.isArray(opVal)) {
+                    processedVal[opKey] = opVal.map(item => {
+                      if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item) && (targetKey === '_id' || targetKey.endsWith('Id'))) {
+                        return new ObjectId(item);
+                      }
+                      return item;
+                    });
+                 } else if (typeof opVal === 'object' && opVal !== null) {
+                    processedVal[opKey] = convertIncomingObjectIds(opVal);
+                 } else {
+                    processedVal[opKey] = opVal;
+                 }
+               }
+               newObj[targetKey] = processedVal;
+            } else {
+               newObj[targetKey] = convertIncomingObjectIds(value);
+            }
           } else {
-            newObj[key] = value;
+            newObj[targetKey] = value;
           }
         }
         return newObj;
