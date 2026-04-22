@@ -166,7 +166,7 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
       .where('routeId')
       .anyOf(otherRouteIdsOnDate as string[])
       .toArray();
-    assignedHouseholdIds = assignedStops.map(rs => rs.householdId);
+    assignedHouseholdIds = assignedStops.map((rs: RouteStop) => rs.householdId);
   }
 
   for (const tStop of tStops) {
