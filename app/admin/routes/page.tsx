@@ -83,9 +83,14 @@ export default function RoutesPage() {
       setSelectedDate(targetDate);
       setHasAutoSelectedDate(true);
     }
-  }, [routes, hasAutoSelectedDate]);
+  }, [routes, hasAutoSelectedDate, safeFormatTRT, safeFormat]);
 
-  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
+  const routeStops = useAppQuery(async () => {
+    if (!routes || routes.length === 0) return [];
+    const targetedIds = routes.filter(r => r.date === selectedDate).map(r => r.id!);
+    if (targetedIds.length === 0) return [];
+    return db.routeStops.where('routeId').anyOf(targetedIds).toArray();
+  }, [selectedDate, routes], 'route_stops');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
@@ -176,8 +181,8 @@ export default function RoutesPage() {
 
   const routesOnDate = routes?.filter((r: Route) => r.date === selectedDate) || [];
   const routeIdsOnDate = routesOnDate.map((r: Route) => r.id);
-  const stopsOnDate = routeStops?.filter((rs: RouteStop) => routeIdsOnDate.includes(rs.routeId)) || [];
-  const assignedHouseholdIds = stopsOnDate.map((rs: RouteStop) => rs.householdId);
+  const stopsOnDate = routeStops || [];
+  const assignedHouseholdIds = (stopsOnDate as RouteStop[])?.map((rs: RouteStop) => rs.householdId) || [];
 
   const assignedTemplateHouseholdIds = routeTemplateStops?.map((rts: RouteTemplateStop) => rts.householdId) || [];
 
@@ -1612,9 +1617,11 @@ export default function RoutesPage() {
                     const householdStops = stops.filter(s => s.householdId === hId);
                     // Ana teslimat kaydını (standard) buluyoruz, yoksa ilkini alıyoruz
                     const mainStop = householdStops.find(s => s.mealType === 'standard') || householdStops[0];
-                    const memberCount = mainStop?.householdSnapshotMemberCount || 0;
-                    
                     const h = households?.find(hh => hh.id === hId);
+                    
+                    // FALLBACK: If snapshot count is 0 or missing, trust the current household data for old records
+                    const memberCount = mainStop?.householdSnapshotMemberCount || h?.memberCount || 0;
+                    
                     const isInstitution = h?.type === 'institution';
 
                     // Eğer kişi sayısı 0 ise (Pasif hane demektir) veya adı "deneme" ise saymıyoruz

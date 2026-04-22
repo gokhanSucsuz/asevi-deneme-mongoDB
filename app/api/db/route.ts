@@ -211,7 +211,8 @@ export async function POST(req: NextRequest) {
             if (/^[0-9a-fA-F]{24}$/.test(value)) {
               // Primary ID or field ending with Id
               if (targetKey === '_id' || targetKey.endsWith('Id') || targetKey === 'defaultDriverId') {
-                 newObj[targetKey] = new ObjectId(value);
+                 // Use $in to support both string and ObjectId for mixed data migration
+                 newObj[targetKey] = { $in: [value, new ObjectId(value)] };
               } else {
                  newObj[targetKey] = value;
               }
@@ -234,11 +235,12 @@ export async function POST(req: NextRequest) {
                const processedVal: any = {};
                for (const [opKey, opVal] of Object.entries(value)) {
                  if (['$in', '$nin', '$ne', '$eq'].includes(opKey) && Array.isArray(opVal)) {
-                    processedVal[opKey] = opVal.map(item => {
+                    processedVal[opKey] = opVal.flatMap(item => {
                       if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item) && (targetKey === '_id' || targetKey.endsWith('Id'))) {
-                        return new ObjectId(item);
+                         // Support both formats in the $in/$nin array
+                        return [item, new ObjectId(item)];
                       }
-                      return item;
+                      return [item];
                     });
                  } else if (typeof opVal === 'object' && opVal !== null) {
                     processedVal[opKey] = convertIncomingObjectIds(opVal);
