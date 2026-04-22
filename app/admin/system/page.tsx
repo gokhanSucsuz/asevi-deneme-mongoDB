@@ -415,33 +415,39 @@ export default function SystemSettingsPage() {
   const isBackupCritical = daysSinceLastBackup >= 10;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-10">
-      <div className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="flex items-center gap-5">
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-4 rounded-[2rem] shadow-2xl shadow-indigo-100 ring-8 ring-indigo-50/50">
-              <ShieldCheck className="text-white" size={32} />
-            </div>
-            <div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight">Güvenlik Kontrol Merkezi</h1>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-1 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Edirne SYDV Siber Güvenlik Altyapısı Aktif
-              </p>
-            </div>
+    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 ring-1 ring-slate-50 overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none translate-x-1/2 -translate-y-1/2">
+          <ShieldCheck size={200} className="text-indigo-600" />
+        </div>
+        
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-5 rounded-[2rem] shadow-xl shadow-indigo-100 ring-4 ring-indigo-50">
+            <ShieldCheck className="text-white" size={32} />
           </div>
-          <div className="hidden lg:flex items-center gap-4 bg-white px-6 py-4 rounded-3xl border border-slate-100 shadow-sm">
-            <div className="text-right">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistem Durumu</p>
-              <p className="text-sm font-black text-slate-900">Korumalı Veri Akışı</p>
-            </div>
-            <Lock className="text-blue-600" size={24} />
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Sistem & Güvenlik</h1>
+            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-1 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Veri Koruma ve Yedekleme Altyapısı Aktif
+            </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-4 bg-slate-50 px-6 py-4 rounded-3xl border border-slate-100 relative z-10">
+          <div className="text-right">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Son Yedekleme</p>
+            <p className="text-sm font-black text-slate-900">
+              {lastBackup ? safeFormat(lastBackup, 'dd.MM.yyyy HH:mm') : 'HİÇ YAPILMADI'}
+            </p>
+          </div>
+          <Clock className="text-blue-600" size={24} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Güvenlik Duvarı & AES-256 Bilgilendirme */}
+        {/* Güvenlik Bilgilendirme - Büyük Kart */}
         <div className="lg:col-span-3 bg-slate-900 p-8 md:p-12 rounded-[3.5rem] shadow-2xl relative overflow-hidden group border border-slate-800">
           <div className="absolute top-0 right-0 p-16 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
             <ShieldCheck size={280} className="text-blue-500" />
@@ -452,21 +458,22 @@ export default function SystemSettingsPage() {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8">
                 PROD-SEC-SHIELD v4.0.2
               </div>
-              <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-                Dünya Standartlarında <br/>
-                <span className="text-blue-500 italic">Veri Koruması</span>
+              <h2 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">
+                Askeri Düzey <br/>
+                <span className="text-blue-500">Veri Şifreleme</span>
               </h2>
               <p className="text-slate-400 text-base font-medium leading-relaxed max-w-lg">
-                Aşevi yönetim sistemimiz, hassas vakıf verilerini korumak için askeri düzeyde <strong>AES-256 GCM</strong> şifreleme ve gelişmiş oturum gizleme mimarisi kullanmaktadır. KVKK uyumluluğu her işlem adımında en üst düzeyde sağlanır.
+                Hassas vakıf verileri (TC No, Hane No, Telefon) <strong>AES-256 GCM</strong> standardı ile şifreli olarak saklanır. 
+                KVKK uyumluluğu ve veri bütünlüğü sistem çekirdeğinde en üst düzeyde sağlanmaktadır.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
-                { label: 'AES-256', detail: 'End-to-End Encryption', icon: ShieldCheck, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-                { label: 'OBFUSCATION', detail: 'Secure Local Session', icon: Lock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-                { label: 'RBAC 2.0', detail: 'Advanced Access Control', icon: Database, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                { label: 'TLS 1.3', detail: 'Encrypted Data Stream', icon: ShieldCheck, color: 'text-blue-400', bg: 'bg-blue-500/10' }
+                { label: 'AES-256', detail: 'End-to-End Encryption', icon: Lock, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+                { label: 'OBFUSCATION', detail: 'Secure Sessions', icon: ShieldCheck, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+                { label: 'KVKK-2026', detail: 'Data Privacy Rules', icon: Database, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                { label: 'BACKUP-PRO', detail: 'Scheduled Recovery', icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10' }
               ].map((item, i) => (
                 <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group/card">
                   <div className={`w-12 h-12 ${item.bg} rounded-2xl flex items-center justify-center mb-4 group-hover/card:scale-110 transition-transform`}>
@@ -479,202 +486,160 @@ export default function SystemSettingsPage() {
             </div>
           </div>
         </div>
-        {/* Dağıtım Paneli Kontrolü */}
-        <div className="lg:col-span-3 bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 ring-1 ring-slate-50">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-            <div className="flex items-center gap-5">
-              <div className={`p-5 rounded-[2rem] ${isDistributionPanelActive ? 'bg-green-50 shadow-green-100' : 'bg-red-50 shadow-red-100'} shadow-inner ring-4 ring-white`}>
-                <ShieldCheck className={isDistributionPanelActive ? 'text-green-600' : 'text-red-600'} size={32} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Global Sistem Erişimi</h2>
-                <p className="text-sm text-slate-500 font-medium">Şoför mobil paneli ve saha operasyonları aktiflik durumunu yönetir.</p>
-              </div>
+
+        {/* Dağıtım Paneli Erişimi */}
+        <div className="lg:col-span-3 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-6">
+            <div className={`p-5 rounded-[2rem] ${isDistributionPanelActive ? 'bg-green-50 shadow-green-100' : 'bg-red-50 shadow-red-100'} shadow-inner`}>
+              {isDistributionPanelActive ? <ShieldCheck className="text-green-600" size={32} /> : <AlertTriangle className="text-red-600" size={32} />}
             </div>
-            
-            <div className="flex items-center gap-6 bg-slate-50 p-4 rounded-3xl w-full lg:w-auto justify-between border border-slate-100">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Mevcut Durum</span>
-                <span className={`text-xs font-black uppercase ${isDistributionPanelActive ? 'text-green-600' : 'text-red-600'}`}>
-                  {isDistributionPanelActive ? 'OPERASYON AKTİF' : 'OPERASYON DURDURULDU'}
-                </span>
-              </div>
-              {!isDemo && (
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={toggleDistributionPanel}
-                    className={`px-8 py-3 rounded-2xl text-white font-black text-sm transition-all active:scale-95 shadow-xl ${
-                      isDistributionPanelActive 
-                        ? 'bg-red-500 hover:bg-red-600 shadow-red-200' 
-                        : 'bg-green-600 hover:bg-green-700 shadow-green-200'
-                    }`}
-                  >
-                    {isDistributionPanelActive ? 'SİSTEMİ DURDUR' : 'SİSTEMİ BAŞLAT'}
-                  </button>
-                </div>
-              )}
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Saha Operasyon Kilidi</h2>
+              <p className="text-sm text-slate-500 font-medium">Şoför paneli ve teslimat girişlerini anlık olarak yönetir.</p>
             </div>
           </div>
-          {!isDistributionPanelActive && (
-            <div className="mt-8 p-6 bg-red-50/50 border border-red-100 rounded-[2rem] flex items-start gap-4">
-              <div className="bg-red-100 p-2 rounded-xl">
-                <AlertTriangle className="text-red-600" size={20} />
-              </div>
-              <p className="text-sm text-red-900 font-medium leading-relaxed">
-                Dağıtım paneli şu an <strong>PASİF</strong> durumdadır. Şoförler teslimat girişi yapamazlar. 
-                Yönetim panelinden manuel artan ekmek girişi yapılabilir.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Yedekleme Durumu */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <Clock className="text-green-600" size={24} />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Yedekleme Durumu</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-100">
-              <span className="text-gray-600">Son Yedekleme:</span>
-              <span className="font-medium text-gray-900">
-                {lastBackup ? safeFormat(lastBackup, 'dd.MM.yyyy HH:mm') : 'Hiç yedekleme yapılmadı'}
+          
+          <div className="flex items-center gap-6 bg-slate-50 p-3 pr-6 rounded-3xl border border-slate-100 min-w-[320px] justify-between">
+            <div className="flex items-center gap-3 ml-3">
+              <div className={`w-3 h-3 rounded-full ${isDistributionPanelActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className={`text-xs font-black uppercase ${isDistributionPanelActive ? 'text-green-600' : 'text-red-600'}`}>
+                {isDistributionPanelActive ? 'SİSTEM AÇIK' : 'SİSTEM KAPALI'}
               </span>
             </div>
-
-            <div className={`flex justify-between items-center p-4 rounded-lg border ${
-              isBackupCritical ? 'bg-red-50 border-red-100 text-red-700' : 'bg-blue-50 border-blue-100 text-blue-700'
-            }`}>
-              <div className="flex items-center gap-2">
-                {isBackupCritical ? <AlertTriangle size={20} /> : <ShieldCheck size={20} />}
-                <span className="font-medium">
-                  {isBackupCritical ? 'Yedekleme Zamanı Geçti!' : 'Sistem Güvende'}
-                </span>
-              </div>
-              <span className="text-sm">
-                {lastBackup ? `${daysSinceLastBackup} gün önce` : 'Kritik'}
-              </span>
-            </div>
-
-            {isBackupCritical && (
-              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
-                Dikkat: Son yedekleme üzerinden 10 günden fazla süre geçti. Veri güvenliği için lütfen yedek alınız.
-              </p>
+            {!isDemo && (
+              <button
+                onClick={toggleDistributionPanel}
+                className={`px-8 py-3 rounded-2xl text-white font-black text-sm transition-all shadow-lg active:scale-95 ${
+                  isDistributionPanelActive 
+                    ? 'bg-red-500 hover:bg-red-600 shadow-red-100' 
+                    : 'bg-green-600 hover:bg-green-700 shadow-green-100'
+                }`}
+              >
+                {isDistributionPanelActive ? 'KAPAT' : 'BAŞLAT'}
+              </button>
             )}
           </div>
         </div>
 
-        {/* Yedekleme İşlemleri */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Download className="text-blue-600" size={24} />
+        {/* Yedekleme Bölümü - 2 Kart */}
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+              <Download size={24} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Yedekleme İşlemleri</h2>
+            <h2 className="text-xl font-black text-slate-900 uppercase">Yedekleme Merkezi</h2>
           </div>
-
+          
           <div className="space-y-4">
             <button
               onClick={() => handleBackup('excel')}
               disabled={isExporting}
-              className="w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+              className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-green-50 border border-slate-100 hover:border-green-200 rounded-3xl transition-all group"
             >
-              <Download size={20} />
-              Excel Olarak Yedekle (.xlsx)
+              <div className="flex items-center gap-4">
+                <div className="bg-white p-3 rounded-2xl shadow-sm text-green-600 group-hover:scale-110 transition-transform">
+                  <Database size={20} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-black text-slate-900 uppercase">Excel Raporu</p>
+                  <p className="text-[10px] font-bold text-slate-400">Tüm veriler .xlsx formatında</p>
+                </div>
+              </div>
+              <Download className="text-slate-300 group-hover:text-green-600" size={20} />
             </button>
 
             <button
               onClick={() => handleBackup('json')}
               disabled={isExporting}
-              className="w-full flex items-center justify-center gap-3 bg-slate-700 hover:bg-slate-800 text-white py-4 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+              className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-3xl transition-all group"
             >
-              <Download size={20} />
-              JSON Olarak Yedekle (.json)
-            </button>
-
-            {!isDemo && (
-              <div className="pt-4 border-t border-gray-100">
-                <label className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50">
+              <div className="flex items-center gap-4">
+                <div className="bg-white p-3 rounded-2xl shadow-sm text-blue-600 group-hover:scale-110 transition-transform">
                   <Upload size={20} />
-                  {isImporting ? 'Yükleniyor...' : 'Yedekten Geri Yükle (.json)'}
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleRestore}
-                    disabled={isImporting}
-                    className="hidden"
-                  />
-                </label>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-black text-slate-900 uppercase">JSON Tam Yedek</p>
+                  <p className="text-[10px] font-bold text-slate-400">Sistem geri yükleme verisi</p>
+                </div>
               </div>
-            )}
-
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Yedekleme işlemi tüm haneleri, şoförleri, rotaları ve sistem günlüklerini kapsar.
-            </p>
+              <Download className="text-slate-300 group-hover:text-blue-600" size={20} />
+            </button>
           </div>
         </div>
 
-        {/* Veri Güvenliği ve Şifreleme */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 md:col-span-2">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-amber-100 p-2 rounded-lg">
-              <Lock className="text-amber-600" size={24} />
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="bg-amber-50 p-3 rounded-2xl text-amber-600">
+              <Upload size={24} />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Veri Güvenliği ve Şifreleme</h2>
+            <h2 className="text-xl font-black text-slate-900 uppercase">Geri Yükleme</h2>
           </div>
 
-          <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="max-w-xl">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">AES-256 Simetrik Şifreleme</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  TC Kimlik No, Hane No ve Telefon gibi hassas veriler veritabanına kaydedilmeden önce AES-256 standardı ile şifrelenir. 
-                  Bu sayede veritabanına doğrudan erişim sağlansa bile hassas bilgiler okunamaz. 
-                  Şifreleme anahtarı güvenli bir şekilde sunucu tarafında saklanır. 
-                  (Veritaraklarının arka planda dönüşümü tamamlanmıştır.)
-                </p>
-              </div>
-              {/*
-              {!isDemo && (
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={handleEncryptionMigration}
-                    disabled={isEncrypting}
-                    className="whitespace-nowrap flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
-                  >
-                    <ShieldCheck size={20} />
-                    {isEncrypting ? 'İşleniyor...' : 'Tüm Verileri Şifrele'}
-                  </button>
-                  <button
-                    onClick={handleFixDataFormats}
-                    disabled={isFixing}
-                    className="whitespace-nowrap flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
-                  >
-                    <Clock size={20} />
-                    {isFixing ? 'Düzeltiliyor...' : 'Veri Formatlarını Düzelt'}
-                  </button>
+          <div className="flex-1 flex flex-col justify-center">
+            {!isDemo ? (
+              <label className="flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] hover:bg-blue-50 hover:border-blue-300 transition-all cursor-pointer group">
+                <div className="bg-white p-4 rounded-2xl shadow-sm mb-4 group-hover:scale-110 transition-transform text-blue-600">
+                  <Upload size={28} />
                 </div>
-              )}
-              */}
+                <p className="text-sm font-black text-slate-900 uppercase">Dosya Seçin</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-1">Sadece .json dosyaları</p>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleRestore}
+                  disabled={isImporting}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div className="p-8 bg-slate-50 border border-slate-100 rounded-[2rem] text-center">
+                <Lock className="mx-auto text-slate-300 mb-4" size={32} />
+                <p className="text-xs font-bold text-slate-400 uppercase">Bu işlem Demo kullanıcıları için kapalıdır</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6 flex flex-col justify-between">
+          <div className="flex items-center gap-4 mb-2">
+            <div className={`p-3 rounded-2xl ${isBackupCritical ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              <ShieldCheck size={24} />
             </div>
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Sağlık Kontrolü</h2>
+          </div>
+
+          <div className={`p-6 rounded-[2rem] ${isBackupCritical ? 'bg-red-50 border border-red-100' : 'bg-slate-50 border border-slate-100'}`}>
+            <div className="flex justify-between items-center mb-4 text-xs font-black uppercase tracking-widest">
+              <span className="text-slate-400">Kritiklik Seviyesi</span>
+              <span className={isBackupCritical ? 'text-red-600' : 'text-green-600'}>{isBackupCritical ? 'YÜKSEK' : 'DÜŞÜK'}</span>
+            </div>
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-4">
+              <div 
+                className={`h-full rounded-full ${isBackupCritical ? 'bg-red-500' : 'bg-green-500'}`} 
+                style={{ width: `${Math.min(100, (daysSinceLastBackup / 14) * 100)}%` }} 
+              />
+            </div>
+            <p className="text-xs font-bold text-slate-600 leading-relaxed">
+              {isBackupCritical 
+                ? 'Son yedekleme üzerinden 10 günden fazla geçti. Veri kaybı riski mevcut!' 
+                : 'Sistem yedekleme periyodu sağlıklı görünüyor. İyi çalışmalar.'}
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 bg-amber-50 border border-amber-200 rounded-xl p-6">
-        <div className="flex gap-3">
-          <AlertTriangle className="text-amber-600 shrink-0" size={24} />
-          <div>
-            <h3 className="font-semibold text-amber-900 mb-1">Önemli Bilgilendirme</h3>
-            <p className="text-sm text-amber-800 leading-relaxed">
-              Sistem güvenliği gereği, 10 gün boyunca manuel yedekleme yapılmazsa sistem otomatik olarak 
-              <strong> edirneysdv@gmail.com</strong> adresine yedekleme bildirimi gönderecek ve durumu 
-              kayıt altına alacaktır. Lütfen haftalık olarak yedeklerinizi alıp güvenli bir ortamda saklayınız.
-            </p>
-          </div>
+      {/* Footer Alert */}
+      <div className="bg-amber-50 border border-amber-200 p-8 rounded-[2.5rem] flex items-start gap-6">
+        <div className="bg-amber-200/50 p-4 rounded-[1.5rem] shrink-0 text-amber-700">
+          <AlertTriangle size={32} />
+        </div>
+        <div>
+          <h3 className="text-xl font-black text-amber-900 uppercase tracking-tighter mb-2">Önemli Protokol Hatırlatması</h3>
+          <p className="text-sm text-amber-800 font-medium leading-relaxed max-w-4xl">
+            Sistem güvenliği gereği, her hafta Cuma günü operasyon bitiminde yedek alınması tavsiye edilir. 
+            Yedekleme yapılmadığında sistem ototmatik olarak <strong>edirneysdv@gmail.com</strong> adresine durum raporu iletir.
+            Veri bütünlüğünü korumak için alınan yedekleri kurum dışı ortamlarda saklamayınız.
+          </p>
         </div>
       </div>
     </div>

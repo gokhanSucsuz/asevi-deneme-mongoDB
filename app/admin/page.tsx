@@ -63,6 +63,7 @@ export default function AdminDashboard() {
           progress: 0,
           completedStops: 0,
           successfulCount: 0,
+          successfulPeopleCount: 0,
           totalStops: 0,
           lastHousehold: '-',
           lastStopStatus: 'pending',
@@ -73,12 +74,16 @@ export default function AdminDashboard() {
 
       const stops = routeStops.filter(rs => rs.routeId === route.id).sort((a, b) => a.order - b.order);
       
-      const processedStops = stops.filter(s => s.status === 'delivered' || s.status === 'failed');
-      const successfulStops = stops.filter(s => s.status === 'delivered');
+      // Filter out actually passive stops from status calculation if we want them "dropped" from totals
+      // In generateRouteFromTemplate we set memberCount to 0 for passive ones
+      const actualStops = stops.filter(s => (s.householdSnapshotMemberCount || 0) > 0);
+      
+      const processedStops = actualStops.filter(s => s.status === 'delivered' || s.status === 'failed');
+      const successfulStops = actualStops.filter(s => s.status === 'delivered');
       const lastStop = processedStops.length > 0 ? processedStops[processedStops.length - 1] : null;
       const lastHousehold = lastStop ? households.find(h => h.id === lastStop.householdId) : null;
 
-      const totalStops = stops.length;
+      const totalStops = actualStops.length;
       const completedStops = processedStops.length;
       const successfulCount = successfulStops.length;
       const progress = totalStops > 0 ? Math.round((completedStops / totalStops) * 100) : 0;
@@ -105,7 +110,11 @@ export default function AdminDashboard() {
 
   const driverStatuses = getDriverStatus();
   
-  const activeHouseholds = households.filter(h => h.isActive);
+  const activeHouseholds = households.filter(h => {
+    if (!h.isActive) return false;
+    if (h.pausedUntil && (h.pausedUntil >= today || h.pausedUntil === '9999-12-31')) return false;
+    return true;
+  });
   const totalHouseholdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household').length;
   const totalInstitutions = activeHouseholds.filter(h => h.type === 'institution').length;
   const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);

@@ -5,7 +5,7 @@ import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household, RouteTemplateStop, RouteTemplate, SystemLog } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, isLastWorkingDayOfWeek } from '@/lib/route-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
-import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info, Navigation, MapPin } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Clock, Eye, FileText, History, Download, ArrowRight, AlertTriangle, CheckCircle, BarChart3, Info, Navigation, MapPin, Users, ShoppingBasket } from 'lucide-react';
 import { format, subMonths, startOfDay, differenceInDays, addDays, startOfWeek } from 'date-fns';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import { safeFormat, safeFormatTRT } from '@/lib/date-utils';
@@ -646,15 +646,10 @@ export default function RoutesPage() {
   const handleGenerateVakifPickupRoute = async () => {
     const loadingToast = toast.loading('Vakıf\'tan yemek alanlar listesi oluşturuluyor...');
     try {
-      const pickupHouseholds = households?.filter(h => {
-        if (!h.isActive || !h.isSelfService) return false;
-        // Skip if paused
-        if (h.pausedUntil && h.pausedUntil >= selectedDate) return false;
-        return true;
-      }) || [];
+      const pickupHouseholds = households?.filter(h => h.isSelfService) || [];
 
       if (pickupHouseholds.length === 0) {
-        toast.error('Vakıf\'tan kendi imkanlarıyla yemek alan aktif hane/kurum bulunamadı.', { id: loadingToast });
+        toast.error('Vakıf\'tan kendi imkanlarıyla yemek alan hane/kurum bulunamadı.', { id: loadingToast });
         return;
       }
 
@@ -679,15 +674,21 @@ export default function RoutesPage() {
       let orderIdx = 1;
 
       pickupHouseholds.forEach(h => {
+        const isDeleted = h.pausedUntil === '9999-12-31';
+        const isPaused = h.pausedUntil && h.pausedUntil >= selectedDate;
+        const isInactive = !h.isActive && !h.pausedUntil;
+        const isActuallyPassive = isDeleted || isPaused || isInactive;
+
         // Standard
         stops.push({
           routeId: routeId as string,
           householdId: h.id!,
-          householdSnapshotName: h.headName,
-          householdSnapshotMemberCount: h.memberCount,
-          householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+          householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+          householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+          householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
           order: orderIdx++,
-          status: 'pending',
+          status: isActuallyPassive ? 'failed' : 'pending',
+          issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
           mealType: 'standard'
         });
 
@@ -696,11 +697,12 @@ export default function RoutesPage() {
           stops.push({
             routeId: routeId as string,
             householdId: h.id!,
-            householdSnapshotName: `${h.headName} (Kahvaltı)`,
-            householdSnapshotMemberCount: h.memberCount,
+            householdSnapshotName: isActuallyPassive ? `${h.headName} (Kahvaltı-PASİF)` : `${h.headName} (Kahvaltı)`,
+            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
             householdSnapshotBreadCount: 0,
             order: orderIdx++,
-            status: 'pending',
+            status: isActuallyPassive ? 'failed' : 'pending',
+            issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
             mealType: 'breakfast'
           });
         }
@@ -1588,42 +1590,63 @@ export default function RoutesPage() {
                     const h = households?.find(hh => hh.id === hId);
                     const isInstitution = h?.type === 'institution';
 
-                    if (isInstitution) {
-                      institutionCount++;
-                      institutionPeople += memberCount;
-                    } else {
-                      householdCount++;
-                      householdPeople += memberCount;
+                    if (memberCount > 0) {
+                      if (isInstitution) {
+                        institutionCount++;
+                        institutionPeople += memberCount;
+                      } else {
+                        householdCount++;
+                        householdPeople += memberCount;
+                      }
                     }
                   });
 
                   return (
-                    <tr key={route.id}>
-                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">
-                        {safeFormat(route.date, 'dd.MM.yyyy')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                        {route.driverSnapshotName || getDriverName(route.driverId)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                        <div className="font-medium text-gray-900">
-                          {householdCount} Hane {institutionCount > 0 && <span className="text-blue-600">/ {institutionCount} Kurum</span>}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {householdPeople} Kişi {institutionPeople > 0 && <span className="text-blue-600">/ {institutionPeople} Kurum Kişisi</span>}
+                    <tr key={route.id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-slate-100 p-2 rounded-xl text-slate-500">
+                            <Clock size={16} />
+                          </div>
+                          <span className="text-sm font-black text-slate-900">{safeFormat(route.date, 'dd.MM.yyyy')}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${route.status === 'approved' ? 'bg-purple-100 text-purple-800' :
-                          route.status === 'completed' ? 'bg-green-100 text-green-800' : 
-                          route.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 
-                          'bg-yellow-100 text-yellow-800'}`}>
-                        {route.status === 'approved' ? 'Onaylandı' :
-                         route.status === 'completed' ? 'Tamamlandı' : 
-                         route.status === 'in_progress' ? 'Devam Ediyor' : 'Bekliyor'}
-                      </span>
-                    </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-black text-slate-900 uppercase tracking-tight">{route.driverSnapshotName || getDriverName(route.driverId)}</span>
+                          <span className="text-[10px] text-slate-400 font-bold tracking-widest">{route.driverId === 'vakif_pickup' ? 'SİSTEM LİSTESİ' : (drivers?.find(d => d.id === route.driverId)?.vehiclePlate || 'OTOMATİK')}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <Users className="text-indigo-500" size={14} />
+                            <span className="text-sm font-black text-slate-900">{householdCount + institutionCount} <span className="text-slate-400 font-bold font-sans">HANEYE</span></span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <ShoppingBasket className="text-amber-500" size={14} />
+                            <span className="text-sm font-black text-slate-900">{householdPeople + institutionPeople} <span className="text-slate-400 font-bold font-sans">PORSİYON</span></span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
+                          route.status === 'approved' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          route.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                          route.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
+                            route.status === 'approved' ? 'bg-purple-600' :
+                            route.status === 'completed' ? 'bg-green-600' :
+                            route.status === 'in_progress' ? 'bg-blue-600 animate-pulse' :
+                            'bg-amber-600 animate-pulse'
+                          }`} />
+                          {route.status === 'approved' ? 'ONAYLANDI' :
+                           route.status === 'completed' ? 'TAMAMLANDI' : 
+                           route.status === 'in_progress' ? 'DAĞITIMDA' : 'BEKLİYOR'}
+                        </span>
+                      </td>
                     <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
                       <div className="flex justify-end gap-2">
                         {route.status === 'pending' && (safeFormat(new Date(), 'yyyy-MM-dd') > route.date || (safeFormat(new Date(), 'yyyy-MM-dd') === route.date && new Date().getHours() >= 11)) && (

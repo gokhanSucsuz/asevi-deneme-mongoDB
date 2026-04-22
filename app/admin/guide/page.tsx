@@ -4,7 +4,7 @@ import {
   FileText, Users, Truck, Map, ShieldAlert, BarChart, 
   Calendar, Smartphone, CheckCircle, Database, Lock, ShieldCheck,
   Search, History, ClipboardList, AlertTriangle, Info, Zap, Download,
-  ArrowRight, Menu, X, Plus
+  ArrowRight, Menu, X, Plus, Clock
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -194,29 +194,43 @@ export default function GuidePage() {
                   <Map className="text-orange-600" size={36} />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Rota & Dağıtım</h2>
-                  <p className="text-gray-500 font-medium">Lojistik planlama ve saha yönetim süreçleri</p>
+                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Rota & Lojistik</h2>
+                  <p className="text-gray-500 font-medium">Saha operasyonlarının akıllı yönetimi</p>
                 </div>
               </div>
 
               <div className="bg-white p-10 rounded-[2.5rem] border border-gray-200">
-                <h4 className="font-bold text-gray-900 text-xl mb-6 flex items-center gap-3">
-                  <Zap className="text-orange-600" />
-                  Global Sistem Kilidi
-                </h4>
-                <p className="text-gray-600 text-sm leading-relaxed mb-8">
-                  Yöneticiler, &quot;Sistem Yönetimi&quot; panelinden saha operasyonlarını tek tuşla durdurabilir. 
-                  Bu durumda şoförlerin mobil cihazlarındaki teslimat ekranları kilitlenir ve yetkisiz veri girişi engellenir.
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                    <h5 className="font-bold text-gray-900 mb-2">Rota Şablonları</h5>
-                    <p className="text-xs text-gray-500 leading-relaxed">Haneler için önceden hazırlanan sabit listelerdir.</p>
+                <div className="flex items-start gap-6 mb-10">
+                  <div className="w-16 h-16 bg-orange-50 rounded-3xl flex items-center justify-center shrink-0">
+                    <Zap className="text-orange-600" size={32} />
                   </div>
-                  <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                    <h5 className="font-bold text-gray-900 mb-2">Canlı Listeler</h5>
-                    <p className="text-xs text-gray-500 leading-relaxed">Günlük olarak türetilen anlık çalışma kağıtlarıdır.</p>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-2xl mb-2">Dinamik Rota Şablonları</h4>
+                    <p className="text-gray-600 leading-relaxed italic">
+                      Sistem, her şoför için &quot;Ana Rota&quot; mantığıyla çalışır. Bir kez tanımlanan ana rota, sistem tarafından her iş günü sonunda otomatik olarak bir sonraki güne kopyalanır. 
+                      Bu sayede yöneticilerin her gün manuel rota oluşturmasına gerek kalmaz.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Clock className="text-orange-600" size={20} />
+                      <h5 className="font-bold text-gray-900 uppercase text-sm tracking-widest">Akıllı Durum Takibi</h5>
+                    </div>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Saha ekiplerinin (şoförler) teslimatları gerçek zamanlı olarak merkeze duser. Bekleyen, teslim edilen ve hatalı (evde yok, vb.) durumlar anlık olarak izlenebilir.
+                    </p>
+                  </div>
+                  <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <div className="flex items-center gap-3 mb-4">
+                      <ShieldAlert className="text-orange-600" size={20} />
+                      <h5 className="font-bold text-gray-900 uppercase text-sm tracking-widest">Pasif Hane Denetimi</h5>
+                    </div>
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      Pasif duruma alınan haneler listede gösterilmeye devam eder ancak sistem tarafından otomatik olarak <strong>0 (sıfır)</strong> yemek/ekmek olarak işaretlenir. Bu sayede istatistiksel hata payı sıfıra indirilir.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -230,19 +244,27 @@ export default function GuidePage() {
                   <Truck className="text-blue-600" size={36} />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Vakıf Elden Teslimat</h2>
-                  <p className="text-gray-500 font-medium">Bina içinden yapılan toplu teslimatlar</p>
+                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Merkezi Teslimat</h2>
+                  <p className="text-gray-500 font-medium">Bina içi ve toplu kurum dağıtım yönetimi</p>
                 </div>
               </div>
 
               <div className="bg-white p-10 rounded-[2.5rem] border border-gray-200">
-                <p className="text-gray-600 leading-relaxed font-medium">
-                  Vakfa gelerek yemek alan haneler &quot;Piyanos (Pickup)&quot; listesi üzerinden yönetilir. 
-                  Bu teslimatlar şoför rotasından bağımsızdır ancak günlük ekmek sayımına dahildir.
-                </p>
-                <div className="mt-6 flex items-center gap-4 p-5 bg-blue-50 rounded-2xl border border-blue-100 italic text-sm text-blue-800">
-                  <Info size={20} />
-                  Toplu yemek alan kurumlar da bu liste üzerinden saniyeler içinde onaylanır.
+                <div className="flex items-start gap-6 mb-8">
+                  <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center shrink-0 text-blue-600">
+                    <Info size={32} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-2xl mb-2">Vakıf Elden Teslimat (Pickup)</h4>
+                    <p className="text-gray-600 leading-relaxed">
+                      Kendi imkanlarıyla vakfa gelerek yemek/ekmek alan haneler, şoför rotalarından bağımsız bir &quot;Pickup&quot; listesi üzerinde toplanır. 
+                      Bu listeler günlük ekmek sipariş miktarını doğrudan etkiler ve şeffaf bir takip sunar.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 flex items-center gap-4 text-blue-900 text-sm font-medium">
+                  <CheckCircle size={24} className="text-blue-600" />
+                  Kurumsal yemek alan birimler de bu modül üzerinden tek tuşla toplu onay alabilir.
                 </div>
               </div>
             </div>

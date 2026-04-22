@@ -168,8 +168,10 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     const isPaused = h.pausedUntil && h.pausedUntil >= dateStr;
     const isInactive = !h.isActive && !h.pausedUntil;
 
-    // If it's hard inactive (not paused/deleted), we skip it.
-    if (isInactive) continue;
+    // We include all households from the template.
+    // If they are passive/paused/deleted, we set their counts to 0 in the snapshot.
+    // This allows them to be shown in reports with 0 meals/bread.
+    const isActuallyPassive = isDeleted || isPaused || isInactive;
 
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
 
@@ -177,11 +179,12 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     stops.push({
       routeId: routeId as string,
       householdId: tStop.householdId,
-      householdSnapshotName: h.headName,
-      householdSnapshotMemberCount: h.memberCount,
-      householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+      householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+      householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+      householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
       order: tStop.order * 2 - 1,
-      status: 'pending',
+      status: isActuallyPassive ? 'failed' : 'pending',
+      issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
       mealType: 'standard'
     });
 
@@ -190,11 +193,12 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
       stops.push({
         routeId: routeId as string,
         householdId: tStop.householdId,
-        householdSnapshotName: `${h.headName} (Kahvaltı)`,
-        householdSnapshotMemberCount: h.memberCount,
+        householdSnapshotName: isActuallyPassive ? `${h.headName} (Kahvaltı-PASİF)` : `${h.headName} (Kahvaltı)`,
+        householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
         householdSnapshotBreadCount: 0, // Breakfast has no bread
         order: tStop.order * 2,
-        status: 'pending',
+        status: isActuallyPassive ? 'failed' : 'pending',
+        issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
         mealType: 'breakfast'
       });
     }
@@ -234,13 +238,7 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
       
       // Generate Vakif Pickup Route
       const allHouseholds = await db.households.toArray();
-      const pickupHouseholds = allHouseholds.filter(h => {
-        if (!h.isActive) return false;
-        if (!h.isSelfService) return false;
-        if (h.pausedUntil === '9999-12-31') return false;
-        if (h.pausedUntil && h.pausedUntil >= nextDayStr) return false;
-        return true;
-      });
+      const pickupHouseholds = allHouseholds.filter(h => h.isSelfService);
 
       if (pickupHouseholds.length > 0) {
         const routeId = await db.routes.add({
@@ -257,15 +255,21 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
         const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(nextDayStr));
 
         for (const h of pickupHouseholds) {
+          const isDeleted = h.pausedUntil === '9999-12-31';
+          const isPaused = h.pausedUntil && h.pausedUntil >= nextDayStr;
+          const isInactive = !h.isActive && !h.pausedUntil;
+          const isActuallyPassive = isDeleted || isPaused || isInactive;
+
           // Standard
           stops.push({
             routeId: routeId as string,
             householdId: h.id!,
-            householdSnapshotName: h.headName,
-            householdSnapshotMemberCount: h.memberCount,
-            householdSnapshotBreadCount: h.breadCount ?? h.memberCount,
+            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+            householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
             order: order++,
-            status: 'pending',
+            status: isActuallyPassive ? 'failed' : 'pending',
+            issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
             mealType: 'standard'
           });
 
@@ -274,11 +278,12 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
             stops.push({
               routeId: routeId as string,
               householdId: h.id!,
-              householdSnapshotName: `${h.headName} (Kahvaltı)`,
-              householdSnapshotMemberCount: h.memberCount,
+              householdSnapshotName: isActuallyPassive ? `${h.headName} (Kahvaltı-PASİF)` : `${h.headName} (Kahvaltı)`,
+              householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
               householdSnapshotBreadCount: 0,
               order: order++,
-              status: 'pending',
+              status: isActuallyPassive ? 'failed' : 'pending',
+              issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
               mealType: 'breakfast'
             });
           }

@@ -22,9 +22,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [personnel, setPersonnel] = useState<any | null>(null);
   const [role, setRole] = useState<'admin' | 'driver' | 'demo' | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toastShown, setToastShown] = useState<string | null>(null); // To prevent duplicate toasts for the same session
+  const [toastShown, setToastShown] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    // Clear toast state on logout
+    if (!user && toastShown) {
+      setToastShown(null);
+    }
+  }, [user, toastShown]);
 
   useEffect(() => {
     const isDemo = typeof window !== 'undefined' && localStorage.getItem('isDemoUser') === 'true';
@@ -120,9 +127,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             signOut(auth);
           });
           
-          if (toastShown !== fbUser.uid + '_error') {
-            toast.error('Giriş başarısız. Sistemde kayıtlı yetkili bir hesap bulunamadı.');
-            setToastShown(fbUser.uid + '_error');
+          if (toastShown !== 'error_' + fbUser.uid) {
+            toast.error('Yetkisiz Hesap', {
+              description: 'Giriş yaptığınız hesap sistemde yetkilendirilmemiş. Lütfen yöneticinizle iletişime geçin.',
+              id: 'auth-error'
+            });
+            setToastShown('error_' + fbUser.uid);
           }
           
           setUser(null);
@@ -134,9 +144,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         // Authorized
-        if (toastShown !== fbUser.uid + '_success') {
-          toast.success('Başarıyla giriş yapıldı');
-          setToastShown(fbUser.uid + '_success');
+        if (toastShown !== 'success_' + fbUser.uid) {
+          toast.success('Giriş Başarılı', {
+            description: `Hoş geldiniz, ${fbUser.displayName || 'Kullanıcı'}`,
+            id: 'auth-success'
+          });
+          setToastShown('success_' + fbUser.uid);
         }
         
         setUser(fbUser);
