@@ -1107,10 +1107,12 @@ export default function RoutesPage() {
     for (const stop of sortedStops) {
       if (processedHouseholdIdsForTutanak.has(stop.householdId)) continue;
       
+      const household = households?.find(h => h.id === stop.householdId);
+      if (household?.headName?.toLowerCase().includes('deneme') || stop.householdSnapshotName?.toLowerCase().includes('deneme')) continue;
+      
       const householdStops = sortedStops.filter(s => s.householdId === stop.householdId);
       const standardStop = householdStops.find(s => s.mealType === 'standard' || !s.mealType);
       const breakfastStop = householdStops.find(s => s.mealType === 'breakfast');
-      const household = households?.find(h => h.id === stop.householdId);
       
       // Use snapshot values first, even if 0 (0 means they were passive during route generation)
       const memberCount = standardStop?.householdSnapshotMemberCount !== undefined 
@@ -1606,7 +1608,7 @@ export default function RoutesPage() {
                     const h = households?.find(hh => hh.id === hId);
                     const isInstitution = h?.type === 'institution';
 
-                    if (memberCount > 0) {
+                    if (memberCount > 0 && !h?.headName?.toLowerCase().includes('deneme') && !firstStop?.householdSnapshotName?.toLowerCase().includes('deneme')) {
                       if (isInstitution) {
                         institutionCount++;
                         institutionPeople += memberCount;

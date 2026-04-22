@@ -51,8 +51,11 @@ export default function AdminDashboard() {
   
   const getDriverStatus = () => {
     if (!drivers.length) return [];
+    
+    // Test (deneme) şoförlerini istatistikten ve arayüzden gizle
+    const activeStatsDrivers = drivers.filter(d => !d.name.toLowerCase().includes('deneme'));
 
-    return drivers.map(driver => {
+    return activeStatsDrivers.map(driver => {
       const route = routes.find(r => r.driverId === driver.id && r.status === 'in_progress') || 
                     routes.find(r => r.driverId === driver.id && r.date === today) ||
                     routes.find(r => r.driverId === driver.id && r.status === 'pending');
@@ -130,6 +133,7 @@ export default function AdminDashboard() {
   
   const activeHouseholds = households.filter(h => {
     if (!h.isActive) return false;
+    if (h.headName?.toLowerCase().includes('deneme')) return false;
     if (h.pausedUntil && (h.pausedUntil >= today || h.pausedUntil === '9999-12-31')) return false;
     return true;
   });

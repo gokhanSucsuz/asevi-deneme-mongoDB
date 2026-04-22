@@ -66,7 +66,7 @@ export default function ReportsPage() {
     effectiveEndDate = endDate;
   }
 
-  const activeHouseholds = households?.filter(h => h.isActive) || [];
+  const activeHouseholds = households?.filter(h => h.isActive && !h.headName?.toLowerCase().includes('deneme')) || [];
   const householdsOnlyList = activeHouseholds.filter(h => !h.type || h.type === 'household');
   const institutionsOnlyList = activeHouseholds.filter(h => h.type === 'institution');
   
@@ -84,9 +84,10 @@ export default function ReportsPage() {
   const vakifContainerPeople = totalPeople - ownContainerPeople;
 
   // Timeframe Stats
-  const filteredRoutes = routes?.filter(r => r.date >= effectiveStartDate && r.date <= effectiveEndDate) || [];
+  // Deneme isimli şoför/rotalar filtreleniyor
+  const filteredRoutes = routes?.filter(r => r.date >= effectiveStartDate && r.date <= effectiveEndDate && !r.driverSnapshotName?.toLowerCase().includes('deneme')) || [];
   const filteredRouteIds = filteredRoutes.map(r => r.id);
-  const filteredStops = routeStops?.filter(rs => filteredRouteIds.includes(rs.routeId)) || [];
+  const filteredStops = routeStops?.filter(rs => filteredRouteIds.includes(rs.routeId) && !rs.householdSnapshotName?.toLowerCase().includes('deneme')) || [];
   const filteredLeftovers = leftoverFoods?.filter(l => l.date >= effectiveStartDate && l.date <= effectiveEndDate) || [];
   const filteredBreads = breadTrackings?.filter(b => b.date >= effectiveStartDate && b.date <= effectiveEndDate) || [];
 

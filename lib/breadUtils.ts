@@ -17,7 +17,9 @@ export async function calculateBreadForNextDay(dateStr: string) {
     leftoverAmount = existing.leftoverAmount;
   } else {
     const routes = await db.routes.where('date').equals(dateStr).toArray();
-    const routeLeftover = routes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
+    // Deneme içeren test rotalarından artan ekmek sayımını çıkarıyoruz
+    const validRoutes = routes.filter(r => !r.driverSnapshotName?.toLowerCase().includes('deneme'));
+    const routeLeftover = validRoutes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
     const manualLeftover = existing?.manualLeftoverAmount || 0;
     leftoverAmount = routeLeftover + manualLeftover;
   }
@@ -46,6 +48,7 @@ export async function calculateBreadForNextDay(dateStr: string) {
     const allHouseholds = await db.households.toArray();
     const activeHouseholds = allHouseholds.filter(h => {
       if (!h.isActive) return false;
+      if (h.headName?.toLowerCase().includes('deneme')) return false;
       if (h.pausedUntil && h.pausedUntil >= dateStr) return false;
       if (h.pausedUntil === '9999-12-31') return false;
       return true;
