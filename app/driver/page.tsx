@@ -199,50 +199,74 @@ export default function DriverPage() {
     if (isSyncing || !navigator.onLine) return;
     
     try {
+      setIsSyncing(true);
+      
+      // 1. Sync Stop Updates
       const updates = await localDb.offlineUpdates.toArray();
-      if (updates.length === 0) {
-        setOfflineUpdates([]);
-        return;
+      if (updates.length > 0) {
+        for (const update of updates) {
+          try {
+            const stop = await db.routeStops.get(update.stopId);
+            if (stop) {
+              const newHistory = stop.history || [];
+              newHistory.push({
+                status: update.status,
+                timestamp: new Date(update.deliveredAt),
+                note: update.issueReport || (update.lat ? `Konum kaydedildi: ${update.lat}, ${update.lng}` : 'Çevrimdışı işlendi ve senkronize edildi'),
+                personnelName: driverName
+              });
+
+              await db.routeStops.update(stop.id!, {
+                status: update.status,
+                deliveredAt: new Date(update.deliveredAt),
+                issueReport: update.issueReport,
+                history: newHistory,
+                lat: update.lat,
+                lng: update.lng
+              });
+            }
+            await localDb.offlineUpdates.delete(update.id!);
+          } catch (innerError) {
+            console.error('Error syncing stop update:', innerError);
+          }
+        }
       }
 
-      setIsSyncing(true);
-      for (const update of updates) {
-        try {
-          const stop = await db.routeStops.get(update.stopId);
-          if (stop) {
-            const newHistory = stop.history || [];
-            newHistory.push({
-              status: update.status,
-              timestamp: new Date(update.deliveredAt),
-              note: update.issueReport || (update.lat ? `Konum kaydedildi: ${update.lat}, ${update.lng}` : 'Çevrimdışı işlendi ve senkronize edildi'),
-              personnelName: driverName
-            });
-
-            await db.routeStops.update(stop.id!, {
-              status: update.status,
-              deliveredAt: new Date(update.deliveredAt),
-              issueReport: update.issueReport,
-              history: newHistory,
-              lat: update.lat,
-              lng: update.lng
-            });
+      // 2. Sync Route Updates (Pause/Resume)
+      const routeUpdates = await localDb.offlineRouteUpdates.toArray();
+      if (routeUpdates.length > 0) {
+        for (const update of routeUpdates) {
+          try {
+            const route = await db.routes.get(update.routeId);
+            if (route) {
+              await db.routes.update(update.routeId, {
+                isPaused: update.isPaused,
+                history: update.history || route.history
+              });
+            }
+            await localDb.offlineRouteUpdates.delete(update.id!);
+          } catch (innerError) {
+            console.error('Error syncing route update:', innerError);
           }
-          await localDb.offlineUpdates.delete(update.id!);
-        } catch (innerError) {
-          console.error('Error syncing single update:', innerError);
         }
       }
       
-      const remaining = await localDb.offlineUpdates.toArray();
-      setOfflineUpdates(remaining);
-      if (remaining.length === 0) {
+      const remainingStops = await localDb.offlineUpdates.count();
+      const remainingRoutes = await localDb.offlineRouteUpdates.count();
+      
+      if (remainingStops === 0 && remainingRoutes === 0) {
+        setOfflineUpdates([]);
         toast.success('Tüm veriler başarıyla senkronize edildi.');
+      } else {
+        const remaining = await localDb.offlineUpdates.toArray();
+        setOfflineUpdates(remaining);
       }
     } catch (error) {
       console.error('Sync error:', error);
     } finally {
       setIsSyncing(false);
       notifyDbChange('route_stops');
+      notifyDbChange('routes');
     }
   }, [isSyncing, driverName]);
 
@@ -564,13 +588,26 @@ export default function DriverPage() {
         note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
       });
 
-      await db.routes.update(todayRoute.id!, {
-        isPaused: newPausedState,
-        history: newHistory
-      });
+      // Update locally immediately
       setIsPausedLocal(newPausedState);
       setTodayRoute({ ...todayRoute, isPaused: newPausedState, history: newHistory });
-      toast.info(newPausedState ? 'Rota duraklatıldı (Mola)' : 'Rota devam ettiriliyor');
+
+      if (navigator.onLine) {
+        await db.routes.update(todayRoute.id!, {
+          isPaused: newPausedState,
+          history: newHistory
+        });
+        toast.info(newPausedState ? 'Rota duraklatıldı (Mola)' : 'Rota devam ettiriliyor');
+      } else {
+        // Save for later sync
+        await localDb.offlineRouteUpdates.add({
+          routeId: todayRoute.id!,
+          isPaused: newPausedState,
+          timestamp: now.getTime(),
+          history: newHistory
+        });
+        toast.warning(newPausedState ? 'Mola yerel olarak kaydedildi (Çevrimdışı)' : 'Devam durumu yerel olarak kaydedildi (Çevrimdışı)');
+      }
     } catch (error) {
       console.error(error);
       toast.error('İşlem sırasında bir hata oluştu');

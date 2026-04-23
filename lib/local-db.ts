@@ -12,13 +12,23 @@ export interface OfflineStopUpdate {
   lng?: number;
 }
 
+export interface OfflineRouteUpdate {
+  id?: number;
+  routeId: string;
+  isPaused: boolean;
+  timestamp: number;
+  history?: any[];
+}
+
 export class LocalRouteDatabase extends Dexie {
   offlineUpdates!: Table<OfflineStopUpdate>;
+  offlineRouteUpdates!: Table<OfflineRouteUpdate>;
 
   constructor() {
     super('DriverLocalDB');
-    this.version(1).stores({
-      offlineUpdates: '++id, stopId, timestamp'
+    this.version(2).stores({
+      offlineUpdates: '++id, stopId, timestamp',
+      offlineRouteUpdates: '++id, routeId, timestamp'
     });
   }
 }

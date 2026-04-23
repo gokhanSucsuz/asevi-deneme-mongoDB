@@ -100,6 +100,64 @@ export default function RoutesPage() {
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
+  // Live polling for real-time updates from drivers (Instant feedback for admin)
+  useEffect(() => {
+    if (isDemo) return;
+    
+    // Refresh data every 10 seconds to show live driver status and deliveries
+    const pollInterval = setInterval(() => {
+       // Only poll if window is active to save resources
+       if (document.visibilityState === 'visible') {
+          // Triggering re-fetch for routes and stops
+          notifyDbChange('routes');
+          notifyDbChange('route_stops');
+       }
+    }, 10000); // 10 seconds polling for live updates
+
+    return () => clearInterval(pollInterval);
+  }, [isDemo]);
+
+  // Keep route details updated in real-time if modal is open
+  useEffect(() => {
+    if (viewRouteDetails && routeStops && routes && !isEditingRouteDetails) {
+      const currentRoute = routes.find(r => r.id === viewRouteDetails.id);
+      if (currentRoute) {
+        // Update the route state if data changed (status, km, bread, etc.)
+        if (JSON.stringify(currentRoute) !== JSON.stringify(viewRouteDetails)) {
+          setViewRouteDetails(currentRoute);
+        }
+        
+        // Find latest stops for this route from the already fetched routeStops
+        const latestStops = routeStops.filter(s => s.routeId === currentRoute.id);
+        
+        // Sort and update if counts or statuses changed
+        const sortedStops = [...latestStops].sort((a, b) => {
+          const hA = households?.find(h => h.id === a.householdId);
+          const hB = households?.find(h => h.id === b.householdId);
+          const isDeletedA = hA?.pausedUntil === '9999-12-31';
+          const isDeletedB = hB?.pausedUntil === '9999-12-31';
+          const isPausedA = hA?.pausedUntil && hA.pausedUntil >= currentRoute.date;
+          const isPausedB = hB?.pausedUntil && hB.pausedUntil >= currentRoute.date;
+
+          if (isDeletedA && !isDeletedB) return 1;
+          if (!isDeletedA && isDeletedB) return -1;
+          if (isPausedA && !isPausedB && !isDeletedB) return 1;
+          if (!isPausedA && isPausedB && !isDeletedA) return -1;
+
+          return a.order - b.order;
+        });
+
+        // Compare simple representation to avoid unnecessary state updates
+        const currentStopsHash = routeDetailsStops.map(s => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
+        const latestStopsHash = sortedStops.map(s => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
+        
+        if (currentStopsHash !== latestStopsHash) {
+          setRouteDetailsStops(sortedStops);
+        }
+      }
+    }
+  }, [routeStops, routes, households, isEditingRouteDetails, viewRouteDetails, routeDetailsStops]);
+
   const addLog = async (action: string, details?: string, category: string = 'route') => {
     await addSystemLog(user, personnel, action, details, category);
   };
@@ -1949,13 +2007,14 @@ export default function RoutesPage() {
               const institutionCount = selfServiceHouseholds.filter(h => h.type === 'institution').length;
 
               // Find deliveries for self-service households today
-              const todaysStops = routeStops?.filter(s => {
+              const typeofRouteStops = (routeStops || []) as RouteStop[];
+              const todaysStops = typeofRouteStops.filter((s: RouteStop) => {
                 const route = routes?.find(r => r.id === s.routeId);
                 return route?.date === selectedDate;
-              }) || [];
+              });
               
               const selfServiceCompleted = selfServiceHouseholds.filter(h => 
-                todaysStops.some(s => s.householdId === h.id && (s.status === 'delivered' || s.status === 'failed'))
+                todaysStops.some((s: RouteStop) => s.householdId === h.id && (s.status === 'delivered' || s.status === 'failed'))
               ).length;
 
               const ratio = totalEntities > 0 ? Math.round((selfServiceCompleted / totalEntities) * 100) : 0;
