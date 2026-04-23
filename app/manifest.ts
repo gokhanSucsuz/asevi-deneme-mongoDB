@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: 'https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg',
         sizes: '400x400 192x192 512x512',
         type: 'image/jpeg',
-        purpose: 'any maskable',
+        purpose: 'any',
       }
     ],
   };
