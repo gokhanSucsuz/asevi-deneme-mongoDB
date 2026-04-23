@@ -28,7 +28,7 @@ async function fixDb() {
          );
          fixedStops++;
        } catch (err) {
-         console.error(`Error fixing stop ${stop._id}:`, err.message);
+         console.error(`Error fixing stop ${stop._id}:`, (err as any).message);
        }
     }
     
@@ -48,7 +48,7 @@ async function fixDb() {
          );
          fixedStopsH++;
        } catch (err) {
-         console.error(`Error fixing stop householdId ${stop._id}:`, err.message);
+         console.error(`Error fixing stop householdId ${stop._id}:`, (err as any).message);
        }
     }
     
