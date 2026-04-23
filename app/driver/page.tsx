@@ -1675,7 +1675,7 @@ export default function DriverPage() {
             </div>
             <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2">Konum İzni Gerekli</h3>
             <p className="text-sm text-slate-500 font-medium leading-relaxed mb-6">
-              Sistem yöneticiniz takibi sağlayabilmek için konum iznine ihtiyaç duyuyor. Lütfen konum erişimine izin verin.
+              Teslimat takibi yapabilmemiz için konum izni vermeniz gerekmektedir. Bir sonraki ekranda 'İzin Ver' butonuna tıklayın.
             </p>
             <div className="flex flex-col gap-2.5">
               <button
