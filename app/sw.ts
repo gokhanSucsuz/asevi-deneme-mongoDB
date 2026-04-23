@@ -1,3 +1,4 @@
+import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
@@ -16,34 +17,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [
-    {
-      matcher: ({ request }) => request.destination === "image",
-      handler: "CacheFirst",
-      options: {
-        cacheName: "images",
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
-        },
-      },
-    },
-    {
-      matcher: ({ request }) =>
-        request.destination === "script" || request.destination === "style",
-      handler: "StaleWhileRevalidate",
-      options: {
-        cacheName: "static-resources",
-      },
-    },
-    {
-      matcher: ({ request }) => request.destination === "document",
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "pages",
-      },
-    },
-  ],
+  runtimeCaching: defaultCache,
 });
 
 serwist.addEventListeners();
