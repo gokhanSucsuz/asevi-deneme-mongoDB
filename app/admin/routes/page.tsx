@@ -128,10 +128,10 @@ export default function RoutesPage() {
         }
         
         // Find latest stops for this route from the already fetched routeStops
-        const latestStops = routeStops.filter(s => s.routeId === currentRoute.id);
+        const latestStops = (routeStops as RouteStop[]).filter((s: RouteStop) => s.routeId === currentRoute.id);
         
         // Sort and update if counts or statuses changed
-        const sortedStops = [...latestStops].sort((a, b) => {
+        const sortedStops = [...latestStops].sort((a: RouteStop, b: RouteStop) => {
           const hA = households?.find(h => h.id === a.householdId);
           const hB = households?.find(h => h.id === b.householdId);
           const isDeletedA = hA?.pausedUntil === '9999-12-31';
@@ -148,8 +148,8 @@ export default function RoutesPage() {
         });
 
         // Compare simple representation to avoid unnecessary state updates
-        const currentStopsHash = routeDetailsStops.map(s => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
-        const latestStopsHash = sortedStops.map(s => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
+        const currentStopsHash = routeDetailsStops.map((s: RouteStop) => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
+        const latestStopsHash = sortedStops.map((s: RouteStop) => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
         
         if (currentStopsHash !== latestStopsHash) {
           setRouteDetailsStops(sortedStops);
