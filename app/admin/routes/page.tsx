@@ -799,21 +799,20 @@ export default function RoutesPage() {
           return;
         }
         const activeDriversToProcess = drivers.filter(d => d.isActive);
-        let generatedCount = 0;
-        let alreadyExistsCount = 0;
+        let processedCount = 0;
         
         for (const driver of activeDriversToProcess) {
           const routeId = await generateRouteFromTemplate(driver.id!, selectedDate);
           if (routeId) {
-            generatedCount++;
+            processedCount++;
           }
         }
         
-        if (generatedCount > 0) {
-          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için bekleyen rotalar oluşturuldu.`);
-          toast.success(`${generatedCount} şoför için rota durumu kontrol edildi ve işlem tamamlandı.`, { id: loadingToast });
+        if (processedCount > 0) {
+          await addLog('Otomatik Rota Oluşturma (Manuel Tetikleme)', `${safeFormat(selectedDate, 'dd.MM.yyyy')} tarihi için rotalar kontrol edildi.`);
+          toast.success(`${processedCount} aktif şoförün rotaları hazırlandı (mevcut olanlar korundu).`, { id: loadingToast });
         } else {
-          toast.info('Tüm rotalar zaten güncel veya oluşturulacak yeni rota bulunamadı.', { id: loadingToast });
+          toast.info('İşlem yapılacak aktif şoför veya şablon bulunamadı.', { id: loadingToast });
         }
       } catch (error) {
         console.error(error);

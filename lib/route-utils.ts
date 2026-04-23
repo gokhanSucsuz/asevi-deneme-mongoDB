@@ -115,33 +115,34 @@ export async function getPreviousWorkingDay(date: Date): Promise<Date> {
  */
 export async function generateRouteFromTemplate(driverId: string, dateStr: string, forceReclaim: boolean = false): Promise<string | null> {
   // Check if route already exists
-  // OPTIMIZATION: Check for exact date and driver to avoid loading all driver routes
   const existingOnDate = await db.routes.where('date').equals(dateStr).toArray();
   const duplicateRoute = existingOnDate.find(r => r.driverId === driverId);
   
   if (duplicateRoute) {
     // Check if it's an "orphaned" route without stops. If so, clean it up.
-    const stopsCount = await db.routeStops.where('routeId').equals(duplicateRoute.id!).toArray();
-    if (stopsCount.length === 0) {
-      console.log(`Cleaning up orphaned route ${duplicateRoute.id} for driver ${driverId} on ${dateStr}`);
+    const stopsForRoute = await db.routeStops.where('routeId').equals(duplicateRoute.id!).toArray();
+    if (stopsForRoute.length === 0) {
+      console.log(`[GEN_ROUTE] Cleaning up orphaned route ${duplicateRoute.id} for driver ${driverId} on ${dateStr}`);
       await db.routes.delete(duplicateRoute.id!);
+      // Continue to generate since it was an empty/orphaned route
     } else {
-      const msg = `Route already exists and has ${stopsCount.length} stops for driver ${driverId} on ${dateStr}. Please delete the existing route first if you want to re-generate.`;
-      console.log(msg);
-      // We return the existing route ID so the caller can know it's already there
+      // Route already exists and has stops, just return its ID
       return duplicateRoute.id!;
     }
   }
 
-  const template = await db.routeTemplates.where('driverId').equals(driverId).first();
+  // CRITICAL FIX: Fetch templates and filter in JS to avoid ObjectID vs String mismatch in queries
+  const allTemplates = await db.routeTemplates.toArray();
+  const template = allTemplates.find(t => t.driverId === driverId);
+  
   if (!template) {
-    console.log(`[GEN_ROUTE] No template found for driver ${driverId}`);
+    console.warn(`[GEN_ROUTE] No template found for driver ${driverId}`);
     return null;
   }
 
   const driver = await db.drivers.get(driverId);
   if (!driver) {
-    console.log(`[GEN_ROUTE] Driver ${driverId} not found in DB`);
+    console.error(`[GEN_ROUTE] Driver ${driverId} not found in DB`);
     return null;
   }
   
@@ -164,8 +165,11 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     return null;
   }
 
-  const tStops = await db.routeTemplateStops.where('templateId').equals(template.id!).toArray();
-  console.log(`[GEN_ROUTE] Template ${template.id} query for routeTemplateStops returned ${tStops.length} items`);
+  // Fetch all template stops to avoid ObjectID mismatch issues in queries
+  const allTemplateStops = await db.routeTemplateStops.toArray();
+  const tStops = allTemplateStops.filter(ts => ts.templateId === template.id);
+  
+  console.log(`[GEN_ROUTE] Template ${template.id} found with ${tStops.length} stops.`);
   const stops: RouteStop[] = [];
 
   // CRITICAL FIX: Fetch all and filter in JS due to potential ObjectID mapping issues with anyOf
