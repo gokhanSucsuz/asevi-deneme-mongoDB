@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Sıcak Yemek Dağıtım Sistemi',
-    short_name: 'SD Dağıtım',
+    short_name: 'Aşevi SYDV',
     description: 'Edirne SYDV Sıcak Yemek Dağıtım Sistemi ve Şoför Uygulaması',
     start_url: '/driver', // Drivers should start at the driver page (or root, which checks auth)
     display: 'standalone',

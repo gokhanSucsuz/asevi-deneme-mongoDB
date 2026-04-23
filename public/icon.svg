@@ -1,4 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#3b82f6"/>
-  <text x="256" y="270" font-family="Arial, sans-serif" font-size="200" font-weight="bold" fill="white" text-anchor="middle" alignment-baseline="middle">SD</text>
+  <rect width="512" height="512" fill="#E4002B"/>
+  <circle cx="256" cy="256" r="230" fill="transparent" stroke="white" stroke-width="12" stroke-dasharray="20, 15"/>
+  <text x="256" y="240" font-family="Arial, sans-serif" font-size="110" font-weight="900" fill="white" text-anchor="middle" letter-spacing="2">AŞEVİ</text>
+  <text x="256" y="340" font-family="Arial, sans-serif" font-size="70" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="4">SYDV</text>
+  <path d="M 180 390 L 332 390" stroke="white" stroke-width="8" stroke-linecap="round"/>
 </svg>

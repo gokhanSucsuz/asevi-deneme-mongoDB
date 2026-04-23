@@ -198,6 +198,11 @@ export default function DriverPage() {
   const syncOfflineData = useCallback(async () => {
     if (isSyncing || !navigator.onLine) return;
     
+    const initialStopsCount = await localDb.offlineUpdates.count();
+    const initialRoutesCount = await localDb.offlineRouteUpdates.count();
+    
+    if (initialStopsCount === 0 && initialRoutesCount === 0) return;
+
     try {
       setIsSyncing(true);
       
