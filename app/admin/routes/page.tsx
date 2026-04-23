@@ -85,13 +85,7 @@ export default function RoutesPage() {
     }
   }, [routes, hasAutoSelectedDate]);
 
-  const routeStops = useAppQuery(async () => {
-    if (!routes || routes.length === 0) return [];
-    const targetedRoutes = routes.filter(r => r.date === selectedDate);
-    const targetedIds = targetedRoutes.map(r => r.id!).filter(id => !!id);
-    if (targetedIds.length === 0) return [];
-    return db.routeStops.where('routeId').anyOf(targetedIds).toArray();
-  }, [selectedDate, (routes || []).length], 'route_stops');
+  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');

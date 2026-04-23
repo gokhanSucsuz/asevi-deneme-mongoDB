@@ -276,8 +276,14 @@ const processData = (data: any): any => {
     
     // First, process nested objects (including EJSON dates)
     if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
-      value = processData(value);
-      result[key] = value;
+      // Self-heal corrupted relational IDs that were accidentally saved as { $in: [...] } inside DB
+      if (Array.isArray((value as any).$in) && (value as any).$in.length > 0) {
+        value = (value as any).$in[0];
+        result[key] = typeof value === 'string' && typeof (value as any).$oid === 'string' ? (value as any).$oid : String(value);
+      } else {
+        value = processData(value);
+        result[key] = value;
+      }
     }
 
     // 1. Force conversion to Date for known Date fields or any key ending in 'At'

@@ -186,11 +186,11 @@ export async function POST(req: NextRequest) {
       return newObj;
     };
 
-    const convertIncomingObjectIds = (obj: any): any => {
+    const convertIncomingObjectIds = (obj: any, isQuery: boolean = false): any => {
       if (obj === null || obj === undefined) return obj;
       
       if (Array.isArray(obj)) {
-         return obj.map(item => convertIncomingObjectIds(item));
+         return obj.map(item => convertIncomingObjectIds(item, isQuery));
       }
       
       if (typeof obj === 'object') {
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
         ];
 
         for (const [key, value] of Object.entries(obj)) {
-          // Rule 1: Map 'id' to '_id' for MongoDB compat
+          // Rule 1: Map 'id' to '_id' for MongoDB compat ONLY if we are returning or querying by it... actually for inserts we should also strip 'id'
           const targetKey = (key === 'id') ? '_id' : key;
           
           if (typeof value === 'string') {
@@ -211,8 +211,15 @@ export async function POST(req: NextRequest) {
             if (/^[0-9a-fA-F]{24}$/.test(value)) {
               // Primary ID or field ending with Id
               if (targetKey === '_id' || targetKey.endsWith('Id') || targetKey === 'defaultDriverId') {
-                 // Use $in to support both string and ObjectId for mixed data migration
-                 newObj[targetKey] = { $in: [value, new ObjectId(value)] };
+                 if (isQuery) {
+                   // Use $in to support both string and ObjectId for mixed data queries
+                   newObj[targetKey] = { $in: [value, new ObjectId(value)] };
+                 } else {
+                   // For inserts/updates, strictly save as ObjectId if it's a 24-char hex, or save as string?
+                   // Currently, we'll store as string to be safe and consistent with React, 
+                   // except for _id which should be ObjectId (let mongo generate or parse correctly)
+                   newObj[targetKey] = targetKey === '_id' ? new ObjectId(value) : value; // DO NOT convert foreign keys to ObjectId forcibly unless required, string works.
+                 }
               } else {
                  newObj[targetKey] = value;
               }
@@ -243,14 +250,14 @@ export async function POST(req: NextRequest) {
                       return [item];
                     });
                  } else if (typeof opVal === 'object' && opVal !== null) {
-                    processedVal[opKey] = convertIncomingObjectIds(opVal);
+                    processedVal[opKey] = convertIncomingObjectIds(opVal, isQuery);
                  } else {
                     processedVal[opKey] = opVal;
                  }
                }
                newObj[targetKey] = processedVal;
             } else {
-               newObj[targetKey] = convertIncomingObjectIds(value);
+               newObj[targetKey] = convertIncomingObjectIds(value, isQuery);
             }
           } else {
             newObj[targetKey] = value;
@@ -262,8 +269,8 @@ export async function POST(req: NextRequest) {
       return obj;
     };
 
-    const safeData = data ? encryptSensitiveFields(convertIncomingObjectIds(data)) : {};
-    const safeQuery = queryObj ? encryptSensitiveFields(convertIncomingObjectIds(queryObj)) : {};
+    const safeData = data ? encryptSensitiveFields(convertIncomingObjectIds(data, false)) : {};
+    const safeQuery = queryObj ? encryptSensitiveFields(convertIncomingObjectIds(queryObj, true)) : {};
 
     switch (operation) {
       case 'count': {
