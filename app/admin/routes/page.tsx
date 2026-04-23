@@ -1697,13 +1697,17 @@ export default function RoutesPage() {
                     // Eğer kişi sayısı 0 ise (Pasif hane demektir) veya adı "deneme" ise saymıyoruz
                     const isDeneme = h?.headName?.toLowerCase().includes('deneme') || mainStop?.householdSnapshotName?.toLowerCase().includes('deneme');
                     
-                    if (memberCount > 0 && !isDeneme) {
+                    // Geçmiş rotalarda veri kayıplarını önlemek için, rota tamamlanmışsa ve memberCount 0 geliyorsa en az 1 hane olarak say
+                    const isCompleted = route.status === 'completed' || route.status === 'approved';
+                    const finalMemberCount = memberCount > 0 ? memberCount : (isCompleted ? 1 : 0);
+
+                    if (finalMemberCount > 0 && !isDeneme) {
                       if (isInstitution) {
                         institutionCount++;
-                        institutionPeople += memberCount;
+                        institutionPeople += finalMemberCount;
                       } else {
                         householdCount++;
-                        householdPeople += memberCount;
+                        householdPeople += finalMemberCount;
                       }
                     }
                   });
@@ -2403,11 +2407,15 @@ export default function RoutesPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                   {(isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).filter(stop => {
+                    const isCompletedRoute = viewRouteDetails.status === 'completed' || viewRouteDetails.status === 'approved';
+                    if (isCompletedRoute) return true; // Geçmiş rotalarda hiçbir durağı gizleme! Tarihi kayıtlar kalıcıdır.
+
                     const h = households?.find(hh => hh.id === stop.householdId);
                     const isDeleted = h?.pausedUntil === '9999-12-31';
                     const isPaused = h?.pausedUntil && h.pausedUntil >= viewRouteDetails.date;
                     const isInactive = h && !h.isActive && !h.pausedUntil;
                     const isPassive = isDeleted || isPaused || isInactive || stop.issueReport === 'Pasif/Duraklatılmış Kayıt' || (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)'));
+                    
                     return !isPassive;
                   }).map((stop, idx) => {
                     return (
