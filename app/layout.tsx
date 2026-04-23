@@ -13,7 +13,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="tr">
       <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+        <link rel="icon" href="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
