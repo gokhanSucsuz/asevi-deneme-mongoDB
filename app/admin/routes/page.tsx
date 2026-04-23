@@ -1873,6 +1873,14 @@ export default function RoutesPage() {
 
                   tStops.forEach(ts => {
                     const h = households?.find(hh => hh.id === ts.householdId);
+                    
+                    // Pasif olanları şablonda da sayıya dahil etme (Kullanıcı Talebi)
+                    const isDeleted = h?.pausedUntil === '9999-12-31';
+                    const isPaused = h?.pausedUntil && h.pausedUntil >= safeFormat(new Date(), 'yyyy-MM-dd');
+                    const isInactive = h && !h.isActive && !h.pausedUntil;
+                    
+                    if (isDeleted || isPaused || isInactive) return;
+
                     const isInstitution = h?.type === 'institution';
                     const memberCount = h?.memberCount || 0;
 
@@ -2001,7 +2009,11 @@ export default function RoutesPage() {
             </div>
 
             {(() => {
-              const selfServiceHouseholds = households?.filter(h => h.isSelfService && h.isActive) || [];
+              const selfServiceHouseholds = households?.filter(h => {
+                const isPaused = h.pausedUntil && h.pausedUntil >= selectedDate;
+                const isDeleted = h.pausedUntil === '9999-12-31';
+                return h.isSelfService && h.isActive && !isPaused && !isDeleted;
+              }) || [];
               const totalEntities = selfServiceHouseholds.length;
               
               const householdCount = selfServiceHouseholds.filter(h => !h.type || h.type === 'household').length;

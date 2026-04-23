@@ -578,14 +578,44 @@ export default function DriverPage() {
     'route_stops'
   );
 
+  const households = useAppQuery(
+    async () => {
+      if (!routeStopsRaw || routeStopsRaw.length === 0) return [];
+      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter((id: string | undefined) => !!id) as string[];
+      if (householdIds.length === 0) return [];
+      
+      // Bulk fetch households to avoid N+1 query problem using parallel requests
+      const householdPromises = householdIds.map(id => db.households.get(id));
+      const results = await Promise.all(householdPromises);
+      return results.filter(h => !!h) as Household[];
+    },
+    [routeStopsRaw],
+    'households'
+  );
+
   // Merge raw stops with offline updates for current UI state
   const routeStops = useMemo(() => {
     if (!routeStopsRaw) return [];
     
-    // Yalnızca pasif olduğu açıkça belirtilenleri filtrele
+    // Yalnızca pasif olduğu açıkça belirtilenleri filtrele (Şoför paneli temiz kalmalı)
     const activeStopsRaw = routeStopsRaw.filter((stop: RouteStop) => {
+      const h = households?.find(hh => hh.id === stop.householdId);
+      
+      // Hane seviyesinde kontrol
+      if (h) {
+        const isDeleted = h.pausedUntil === '9999-12-31';
+        const isPaused = h.pausedUntil && h.pausedUntil >= (todayRoute?.date || '');
+        const isInactive = !h.isActive && !h.pausedUntil;
+        if (isDeleted || isPaused || isInactive) return false;
+      }
+
+      // Snapshot/Flag seviyesinde kontrol
       if (stop.issueReport === 'Pasif/Duraklatılmış Kayıt') return false;
-      if (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)')) return false;
+      if (stop.householdSnapshotName && (
+        stop.householdSnapshotName.includes('(PASİF)') || 
+        stop.householdSnapshotName.includes('PASİF')
+      )) return false;
+
       return true;
     });
     
@@ -601,22 +631,7 @@ export default function DriverPage() {
       }
       return stop;
     });
-  }, [routeStopsRaw, offlineUpdates]);
-
-  const households = useAppQuery(
-    async () => {
-      if (!routeStopsRaw || routeStopsRaw.length === 0) return [];
-      const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter((id: string | undefined) => !!id) as string[];
-      if (householdIds.length === 0) return [];
-      
-      // Bulk fetch households to avoid N+1 query problem using parallel requests
-      const householdPromises = householdIds.map(id => db.households.get(id));
-      const results = await Promise.all(householdPromises);
-      return results.filter(h => !!h) as Household[];
-    },
-    [routeStopsRaw],
-    'households'
-  );
+  }, [routeStopsRaw, offlineUpdates, households, todayRoute?.date]);
 
   const handleStartRoute = async () => {
     if (!startKm) {
@@ -1100,27 +1115,26 @@ export default function DriverPage() {
   let autoRemainingBread = 0;
 
   if (routeStops && households) {
-    routeStops.forEach((stop: RouteStop) => {
+    // Sadece aktif (şoförün gördüğü) duraklar üzerinden hesaplama yap
+    const activeStopsForTotals = routeStops;
+
+    activeStopsForTotals.forEach((stop: RouteStop) => {
       const household = households.find((h: Household) => h.id === stop.householdId) as Household | undefined;
       if (household) {
-        // Skip deleted/paused from totals if they are not active
-        const isDeleted = household.pausedUntil === '9999-12-31';
-        const isPaused = household.pausedUntil && household.pausedUntil >= todayRoute.date;
+        const multiplier = isLastWorkingDay ? 2 : 1;
         
-        if (!isDeleted && !isPaused) {
-          const multiplier = isLastWorkingDay ? 2 : 1;
-          const breadCount = stop.householdSnapshotBreadCount ?? household.breadCount ?? household.memberCount;
-          totalFood += household.memberCount * multiplier;
-          totalBread += breadCount * multiplier;
-          if (stop.status === 'delivered') deliveredCount++;
-          if (stop.status === 'pending') pendingCount++;
-        }
+        // Snapshot değerlerini kullanmak her zaman daha güvenlidir (pasiflerde zaten 0 gelir)
+        const memberCount = stop.householdSnapshotMemberCount !== undefined ? stop.householdSnapshotMemberCount : household.memberCount;
+        const breadCount = stop.householdSnapshotBreadCount !== undefined ? stop.householdSnapshotBreadCount : (household.breadCount ?? household.memberCount);
+
+        totalFood += memberCount * multiplier;
+        totalBread += breadCount * multiplier;
+
+        if (stop.status === 'delivered') deliveredCount++;
+        if (stop.status === 'pending') pendingCount++;
         
         if (stop.status === 'failed') {
-          const count = stop.householdSnapshotMemberCount || household.memberCount;
-          const breadCount = stop.householdSnapshotBreadCount ?? household.breadCount ?? household.memberCount;
-          const multiplier = isLastWorkingDay ? 2 : 1;
-          autoRemainingFood += count * multiplier;
+          autoRemainingFood += memberCount * multiplier;
           autoRemainingBread += breadCount * multiplier;
         }
       }

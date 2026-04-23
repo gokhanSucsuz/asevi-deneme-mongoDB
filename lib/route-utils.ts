@@ -223,6 +223,7 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     // We include all households from the template.
     // If they are passive/paused/deleted, we set their counts to 0 in the snapshot.
     // This allows them to be shown in reports with 0 meals/bread.
+    // CRITICAL: They are HIDDEN from driver view but preserved in route for history/reporting.
     const isActuallyPassive = isDeleted || isPaused || isInactive;
 
     const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(dateStr));
