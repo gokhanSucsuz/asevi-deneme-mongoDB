@@ -4,6 +4,9 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 async function fixDb() {
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI is not defined in the environment variables');
+  }
   const client = new MongoClient(process.env.MONGODB_URI);
   try {
     await client.connect();
