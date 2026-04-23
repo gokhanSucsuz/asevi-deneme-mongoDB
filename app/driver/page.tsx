@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Route, RouteStop, Household } from '@/lib/db';
-import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes } from '@/lib/route-utils';
+import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, checkIsWorkingDay } from '@/lib/route-utils';
 import { safeFormat } from '@/lib/date-utils';
 import { getTurkishPdf, addVakifLogo } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
