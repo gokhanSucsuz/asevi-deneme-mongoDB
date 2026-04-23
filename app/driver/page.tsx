@@ -1289,31 +1289,33 @@ export default function DriverPage() {
         )}
         
         {/* Status Overview Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500"></div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Kalan Hane</p>
-            <p className="text-4xl font-black text-slate-800 tracking-tight">{pendingCount}</p>
+        {todayRoute.status !== 'completed' && todayRoute.status !== 'approved' && nextStop && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-blue-400 to-blue-500"></div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Kalan Hane</p>
+              <p className="text-4xl font-black text-slate-800 tracking-tight">{pendingCount}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
+              <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-500"></div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Teslim Edilen</p>
+              <p className="text-4xl font-black text-green-600 tracking-tight">{deliveredCount}</p>
+            </div>
+            
+            <div className="col-span-2 bg-slate-900 p-4 rounded-3xl shadow-md border border-slate-800 flex items-center justify-around text-center">
+               <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Yemek</p>
+                  <p className="text-xl font-black text-white">{totalFood} <span className="text-xs font-semibold text-slate-500">kişi</span></p>
+               </div>
+               <div className="w-px h-8 bg-slate-700"></div>
+               <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Ekmek</p>
+                  <p className="text-xl font-black text-white">{totalBread} <span className="text-xs font-semibold text-slate-500">adet</span></p>
+               </div>
+            </div>
           </div>
-          
-          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col items-center justify-center text-center relative overflow-hidden">
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-green-400 to-green-500"></div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 mt-1">Teslim Edilen</p>
-            <p className="text-4xl font-black text-green-600 tracking-tight">{deliveredCount}</p>
-          </div>
-          
-          <div className="col-span-2 bg-slate-900 p-4 rounded-3xl shadow-md border border-slate-800 flex items-center justify-around text-center">
-             <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Yemek</p>
-                <p className="text-xl font-black text-white">{totalFood} <span className="text-xs font-semibold text-slate-500">kişi</span></p>
-             </div>
-             <div className="w-px h-8 bg-slate-700"></div>
-             <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Toplam Ekmek</p>
-                <p className="text-xl font-black text-white">{totalBread} <span className="text-xs font-semibold text-slate-500">adet</span></p>
-             </div>
-          </div>
-        </div>
+        )}
 
       {todayRoute.status === 'pending' && (
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 text-center relative overflow-hidden">
@@ -1559,7 +1561,7 @@ export default function DriverPage() {
         </div>
       )}
 
-      {todayRoute.status === 'completed' && (
+      {(todayRoute.status === 'completed' || todayRoute.status === 'approved') && (
         <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/60 text-center relative overflow-hidden">
           <div className="absolute top-0 w-full h-1.5 bg-gradient-to-r from-teal-400 to-emerald-500"></div>
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-emerald-50 mb-6 ring-8 ring-emerald-50/50">
@@ -1584,7 +1586,7 @@ export default function DriverPage() {
       )}
 
       {/* Route List */}
-      {todayRoute.status !== 'completed' && (
+      {todayRoute.status !== 'completed' && todayRoute.status !== 'approved' && nextStop && (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <h3 className="font-bold text-slate-800">Tüm Teslimat Listesi</h3>
