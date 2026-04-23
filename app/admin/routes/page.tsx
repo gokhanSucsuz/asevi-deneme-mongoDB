@@ -87,10 +87,11 @@ export default function RoutesPage() {
 
   const routeStops = useAppQuery(async () => {
     if (!routes || routes.length === 0) return [];
-    const targetedIds = routes.filter(r => r.date === selectedDate).map(r => r.id!);
+    const targetedRoutes = routes.filter(r => r.date === selectedDate);
+    const targetedIds = targetedRoutes.map(r => r.id!).filter(id => !!id);
     if (targetedIds.length === 0) return [];
     return db.routeStops.where('routeId').anyOf(targetedIds).toArray();
-  }, [selectedDate, routes], 'route_stops');
+  }, [selectedDate, (routes || []).length], 'route_stops');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
@@ -117,13 +118,16 @@ export default function RoutesPage() {
     return () => clearInterval(pollInterval);
   }, [isDemo]);
 
-  // Keep route details updated in real-time if modal is open
+  // Keep route details updated in real-time if modal is open and observing the selected date
   useEffect(() => {
-    if (viewRouteDetails && routeStops && routes && !isEditingRouteDetails) {
+    if (viewRouteDetails && routeStops && routes && !isEditingRouteDetails && viewRouteDetails.date === selectedDate) {
       const currentRoute = routes.find(r => r.id === viewRouteDetails.id);
       if (currentRoute) {
         // Update the route state if data changed (status, km, bread, etc.)
-        if (JSON.stringify(currentRoute) !== JSON.stringify(viewRouteDetails)) {
+        // Using field comparison instead of JSON.stringify for better performance
+        if (currentRoute.status !== viewRouteDetails.status || 
+            currentRoute.endKm !== viewRouteDetails.endKm || 
+            currentRoute.isPaused !== viewRouteDetails.isPaused) {
           setViewRouteDetails(currentRoute);
         }
         
@@ -151,12 +155,12 @@ export default function RoutesPage() {
         const currentStopsHash = routeDetailsStops.map((s: RouteStop) => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
         const latestStopsHash = sortedStops.map((s: RouteStop) => `${s.id}-${s.status}-${s.deliveredAt}`).join('|');
         
-        if (currentStopsHash !== latestStopsHash) {
+        if (currentStopsHash !== latestStopsHash && latestStops.length > 0) {
           setRouteDetailsStops(sortedStops);
         }
       }
     }
-  }, [routeStops, routes, households, isEditingRouteDetails, viewRouteDetails, routeDetailsStops]);
+  }, [routeStops, routes, households, isEditingRouteDetails, viewRouteDetails, routeDetailsStops, selectedDate]);
 
   const addLog = async (action: string, details?: string, category: string = 'route') => {
     await addSystemLog(user, personnel, action, details, category);
