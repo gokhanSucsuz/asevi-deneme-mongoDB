@@ -1045,14 +1045,15 @@ export default function RoutesPage() {
       const breadCount = (standardStop && standardStop.householdSnapshotBreadCount !== undefined) ? standardStop.householdSnapshotBreadCount : (household?.breadCount ?? memberCount);
       const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount !== undefined ? breakfastStop.householdSnapshotMemberCount : (household?.memberCount || 0)) : 0;
       
-      const multiplier = isLastWorkingDay ? 2 : 1;
+      // Kullanıcı Talebi: Günlük raporlarda 2 kat (Cuma+Cumartesi birleşik) istemiyorlar, gerçek günlük sayıları istiyorlar.
+      const multiplier = 1; 
       
       groupedStops.push({
         name: stop.householdSnapshotName || household?.headName || '',
         address: household?.address || '',
         food: memberCount * multiplier,
         bread: breadCount * multiplier,
-        breakfast: breakfastCount, // Already 1x usually, or 0
+        breakfast: breakfastCount, 
         isManual: stop.isManual,
         isPaused: (household?.pausedUntil && household.pausedUntil >= route.date),
         isDeleted: household?.pausedUntil === '9999-12-31'
@@ -1156,6 +1157,7 @@ export default function RoutesPage() {
     // Fetch template to maintain original order
     const template = await db.routeTemplates.where('driverId').equals(route.driverId).first();
     const tStops = template ? await db.routeTemplateStops.where('templateId').equals(template.id!).toArray() : [];
+    const householdsList = await db.households.toArray();
 
     const sortedStops = [...stops].sort((a, b) => {
       const templateStopA = tStops.find(ts => ts.householdId === a.householdId);
@@ -1173,7 +1175,7 @@ export default function RoutesPage() {
     for (const stop of sortedStops) {
       if (processedHouseholdIdsForTutanak.has(stop.householdId)) continue;
       
-      const household = households?.find(h => h.id === stop.householdId);
+      const household = householdsList.find(h => h.id === stop.householdId);
       if (household?.headName?.toLowerCase().includes('deneme') || stop.householdSnapshotName?.toLowerCase().includes('deneme')) continue;
       
       const householdStops = sortedStops.filter(s => s.householdId === stop.householdId);
@@ -1181,11 +1183,11 @@ export default function RoutesPage() {
       const breakfastStop = householdStops.find(s => s.mealType === 'breakfast');
       
       // Use snapshot values first, even if 0 (0 means they were passive during route generation)
-      const memberCount = standardStop?.householdSnapshotMemberCount !== undefined 
+      const memberCount = (standardStop && standardStop.householdSnapshotMemberCount !== undefined) 
         ? standardStop.householdSnapshotMemberCount 
         : (household?.memberCount || 0);
         
-      const breadCount = standardStop?.householdSnapshotBreadCount !== undefined 
+      const breadCount = (standardStop && standardStop.householdSnapshotBreadCount !== undefined) 
         ? standardStop.householdSnapshotBreadCount 
         : (household?.breadCount ?? memberCount);
         
@@ -1350,6 +1352,8 @@ export default function RoutesPage() {
     // Get unique households in these routes
     const householdIds = Array.from(new Set(weekStops.map(rs => rs.householdId)));
     
+    const householdsList = await db.households.toArray();
+    
     // Sort householdIds by template order
     householdIds.sort((a, b) => {
       const orderA = tStops.find(ts => ts.householdId === a)?.order || 9999;
@@ -1357,9 +1361,9 @@ export default function RoutesPage() {
       return orderA - orderB;
     });
 
-    const tableColumn = ["Sıra", "Hane Adı", "Adres", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3)), "Açıklama (Geçen Hafta)"];
+    const tableColumn = ["Sıra", "Hane Adı", "Telefon", "Adres", "Y/K", ...weekDays.map(d => safeFormat(d, 'EEEE').substring(0, 3)), "Açıklama (Geçen Hafta)"];
     const tableRows = householdIds.map((hId, index) => {
-      const h = households?.find(hh => hh.id === hId);
+      const h = householdsList.find(hh => hh.id === hId);
       
       // Calculate previous week summary for this household
       const hHistory = h?.history || [];
@@ -1398,7 +1402,9 @@ export default function RoutesPage() {
       const row = [
         (index + 1).toString(),
         h?.headName || 'Bilinmeyen',
+        h?.phone || '-',
         h?.address || '',
+        h ? `${h.memberCount}/${h.memberCount}` : '-',
       ];
 
       const reportDateStr = safeFormatTRT(new Date(), 'yyyy-MM-dd');
@@ -1438,10 +1444,12 @@ export default function RoutesPage() {
       alternateRowStyles: { fillColor: [250, 250, 250] },
       columnStyles: {
         0: { halign: 'center', cellWidth: 8 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 50 },
+        1: { cellWidth: 30 }, // Hane Adı
+        2: { cellWidth: 30 }, // Telefon
+        3: { cellWidth: 40 }, // Adres
+        4: { cellWidth: 12, halign: 'center' }, // Y/K
         // Geri kalan günler otomatik yayılacak
-        8: { cellWidth: 35, fontSize: 6 } // Açıklama column
+        10: { cellWidth: 30, fontSize: 6 } // Açıklama column
       }
     });
 
