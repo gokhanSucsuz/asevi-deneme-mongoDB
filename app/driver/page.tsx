@@ -40,6 +40,37 @@ export default function DriverPage() {
   const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
   const [currentCoords, setCurrentCoords] = useState<{lat: number, lng: number} | null>(null);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallButtonClicked, setIsInstallButtonClicked] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      setDeferredPrompt(null);
+    };
+    window.addEventListener('appinstalled', handler);
+    return () => window.removeEventListener('appinstalled', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    setIsInstallButtonClicked(true);
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+       toast.success('Uygulama başarıyla indirildi!');
+    }
+    setDeferredPrompt(null);
+  };
 
   const checkLocationPermission = useCallback(async () => {
     if (!navigator.geolocation) {
@@ -894,6 +925,16 @@ export default function DriverPage() {
             </div>
           </div>
           
+          {/* App Install Button */}
+          {deferredPrompt && !isInstallButtonClicked && (
+            <button 
+              onClick={handleInstallClick}
+              className="w-full bg-indigo-600 text-white font-black uppercase tracking-wide py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+            >
+              Uygulamayı Cihazınıza Kurun
+            </button>
+          )}
+
           {/* Active Account Info at Bottom */}
           <div className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-200/60 flex items-center justify-between">
             <div className="flex items-center gap-3 overflow-hidden">
@@ -945,6 +986,14 @@ export default function DriverPage() {
           <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
             Bugün için size atanmış herhangi bir dağıtım rotası görünmüyor. Lütfen yönetim birimi ile iletişime geçiniz.
           </p>
+          {deferredPrompt && !isInstallButtonClicked && (
+            <button 
+              onClick={handleInstallClick}
+              className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 mb-3 shadow-lg shadow-indigo-200"
+            >
+              Uygulamayı Cihazınıza Kurun
+            </button>
+          )}
           <button 
             onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
@@ -978,6 +1027,14 @@ export default function DriverPage() {
           <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
             Seçilen rota <b>{safeFormat(new Date(todayRoute.date), 'dd.MM.yyyy')}</b> tarihlidir. Dağıtım işlemleri mesai saatlerinde gerçekleştirilmektedir.
           </p>
+          {deferredPrompt && !isInstallButtonClicked && (
+            <button 
+              onClick={handleInstallClick}
+              className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 mb-3 shadow-lg shadow-indigo-200"
+            >
+              Uygulamayı Cihazınıza Kurun
+            </button>
+          )}
           <button 
             onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
@@ -1089,6 +1146,15 @@ export default function DriverPage() {
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
+          {deferredPrompt && !isInstallButtonClicked && (
+            <button
+              onClick={handleInstallClick}
+              className="text-[11px] font-bold uppercase tracking-wide text-white bg-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              title="Uygulamayı Cihazınıza Yükleyin"
+            >
+              Uygulamayı İndir
+            </button>
+          )}
           {locationPermission === 'granted' && (
             <div className="flex items-center gap-1 bg-green-50 text-green-600 text-[10px] px-2 py-1 rounded-full font-bold border border-green-100">
               <MapPin size={10} />
