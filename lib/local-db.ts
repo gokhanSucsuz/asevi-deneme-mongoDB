@@ -16,6 +16,8 @@ export interface OfflineRouteUpdate {
   id?: number;
   routeId: string;
   isPaused: boolean;
+  status?: string;
+  startKm?: number;
   timestamp: number;
   history?: any[];
 }

@@ -61,6 +61,34 @@ export default function DriverPage() {
     return () => window.removeEventListener('appinstalled', handler);
   }, []);
 
+  // PWA Auto Update Trigger
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      // Refresh context when a completely new SW takes over
+      const swListener = () => {
+        toast.loading('Yeni bir güncelleme yüklendi, uygulama yeniden başlatılıyor...', { duration: 3000 });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      };
+      
+      navigator.serviceWorker.addEventListener('controllerchange', swListener);
+      
+      // Periodically check for updates and on initial mount
+      navigator.serviceWorker.ready.then(reg => {
+        reg.update();
+        // Check every 30 mins
+        setInterval(() => {
+          reg.update();
+        }, 30 * 60 * 1000);
+      });
+
+      return () => {
+        navigator.serviceWorker.removeEventListener('controllerchange', swListener);
+      };
+    }
+  }, []);
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     setIsInstallButtonClicked(true);
@@ -275,10 +303,14 @@ export default function DriverPage() {
           try {
             const route = await db.routes.get(update.routeId);
             if (route) {
-              await db.routes.update(update.routeId, {
+              const patchData: any = {
                 isPaused: update.isPaused,
                 history: update.history || route.history
-              });
+              };
+              if (update.status) patchData.status = update.status;
+              if (update.startKm !== undefined) patchData.startKm = update.startKm;
+
+              await db.routes.update(update.routeId, patchData);
             }
             await localDb.offlineRouteUpdates.delete(update.id!);
           } catch (innerError) {
@@ -595,13 +627,24 @@ export default function DriverPage() {
     const loadingToast = toast.loading('Rota başlatılıyor...');
     try {
       if (todayRoute) {
-        await db.routes.update(todayRoute.id!, {
-          status: 'in_progress',
-          startKm: Number(startKm),
-          isPaused: false
-        });
+        if (navigator.onLine) {
+          await db.routes.update(todayRoute.id!, {
+            status: 'in_progress',
+            startKm: Number(startKm),
+            isPaused: false
+          });
+          toast.success('Rota başarıyla başlatıldı', { id: loadingToast });
+        } else {
+          await localDb.offlineRouteUpdates.add({
+            routeId: todayRoute.id!,
+            isPaused: false,
+            status: 'in_progress',
+            startKm: Number(startKm),
+            timestamp: Date.now()
+          });
+          toast.success('Çevrimdışı: Rota yerel olarak başlatıldı.', { id: loadingToast });
+        }
         setTodayRoute({ ...todayRoute, status: 'in_progress', startKm: Number(startKm), isPaused: false });
-        toast.success('Rota başarıyla başlatıldı', { id: loadingToast });
       }
     } catch (error) {
       console.error(error);
@@ -1146,15 +1189,6 @@ export default function DriverPage() {
         </div>
         
         <div className="flex items-center gap-2 shrink-0">
-          {deferredPrompt && !isInstallButtonClicked && (
-            <button
-              onClick={handleInstallClick}
-              className="text-[11px] font-bold uppercase tracking-wide text-white bg-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-              title="Uygulamayı Cihazınıza Yükleyin"
-            >
-              Uygulamayı İndir
-            </button>
-          )}
           {locationPermission === 'granted' && (
             <div className="flex items-center gap-1 bg-green-50 text-green-600 text-[10px] px-2 py-1 rounded-full font-bold border border-green-100">
               <MapPin size={10} />
@@ -1184,6 +1218,21 @@ export default function DriverPage() {
           </button>
         </div>
       </header>
+      
+      {/* PWA Install Banner */}
+      {deferredPrompt && !isInstallButtonClicked && (
+        <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between sticky top-[62px] z-30 shadow-md">
+          <span className="text-white text-[11px] font-bold uppercase tracking-wider">
+            Daha Hızlı Deneyim İçin
+          </span>
+          <button
+            onClick={handleInstallClick}
+            className="bg-white text-indigo-600 text-[11px] font-black uppercase tracking-wide px-4 py-1.5 rounded-full hover:bg-indigo-50 active:scale-95 transition-transform"
+          >
+            Uygulamayı Kur
+          </button>
+        </div>
+      )}
 
       {locationPermission !== 'granted' && (
         <div className="mx-4 mt-6 bg-indigo-600 rounded-2xl p-4 shadow-lg shadow-indigo-200 animate-in fade-in slide-in-from-top-4 duration-500 overflow-hidden relative">
