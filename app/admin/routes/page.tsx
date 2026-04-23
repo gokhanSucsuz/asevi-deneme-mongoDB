@@ -1041,9 +1041,9 @@ export default function RoutesPage() {
       
       if (!standardStop && !breakfastStop) continue;
 
-      const memberCount = standardStop?.householdSnapshotMemberCount || breakfastStop?.householdSnapshotMemberCount || household?.memberCount || 0;
-      const breadCount = standardStop?.householdSnapshotBreadCount ?? household?.breadCount ?? memberCount;
-      const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount || household?.memberCount || 0) : 0;
+      const memberCount = (standardStop && standardStop.householdSnapshotMemberCount !== undefined) ? standardStop.householdSnapshotMemberCount : (breakfastStop?.householdSnapshotMemberCount !== undefined ? breakfastStop.householdSnapshotMemberCount : (household?.memberCount || 0));
+      const breadCount = (standardStop && standardStop.householdSnapshotBreadCount !== undefined) ? standardStop.householdSnapshotBreadCount : (household?.breadCount ?? memberCount);
+      const breakfastCount = breakfastStop ? (breakfastStop.householdSnapshotMemberCount !== undefined ? breakfastStop.householdSnapshotMemberCount : (household?.memberCount || 0)) : 0;
       
       const multiplier = isLastWorkingDay ? 2 : 1;
       
@@ -1682,17 +1682,19 @@ export default function RoutesPage() {
                     const mainStop = householdStops.find((s: RouteStop) => s.mealType === 'standard') || householdStops[0];
                     const h = households?.find(hh => hh.id === hId);
                     
-                    // FALLBACK: If snapshot count is 0 or missing, trust the current household data for old records
-                    const memberCount = mainStop?.householdSnapshotMemberCount || h?.memberCount || 0;
+                    // Respect snapshot if present (it will be 0 for passive), otherwise fallback to hane datası
+                    const memberCount = (mainStop && mainStop.householdSnapshotMemberCount !== undefined) ? mainStop.householdSnapshotMemberCount : (h?.memberCount || 0);
                     
                     const isInstitution = h?.type === 'institution';
 
                     // Eğer kişi sayısı 0 ise (Pasif hane demektir) veya adı "deneme" ise saymıyoruz
                     const isDeneme = h?.headName?.toLowerCase().includes('deneme') || mainStop?.householdSnapshotName?.toLowerCase().includes('deneme');
+                    const isPassiveBySnapshot = mainStop?.householdSnapshotName?.includes('PASİF') || mainStop?.issueReport === 'Pasif/Duraklatılmış Kayıt';
                     
                     // Geçmiş rotalarda veri kayıplarını önlemek için, rota tamamlanmışsa ve memberCount 0 geliyorsa en az 1 hane olarak say
+                    // ANCAK: Pasif olduğu belirtilmişse kesinlikle 0 say (Kullanıcı Talebi)
                     const isCompleted = route.status === 'completed' || route.status === 'approved';
-                    const finalMemberCount = memberCount > 0 ? memberCount : (isCompleted ? 1 : 0);
+                    const finalMemberCount = (memberCount === 0 && !isPassiveBySnapshot && isCompleted) ? 1 : memberCount;
 
                     if (finalMemberCount > 0 && !isDeneme) {
                       if (isInstitution) {

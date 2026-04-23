@@ -1566,7 +1566,13 @@ export default function DriverPage() {
             <CheckCircle className="h-12 w-12 text-emerald-500" />
           </div>
           <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Elinize Sağlık!</h2>
-          <p className="text-slate-500 font-medium mb-8">Bugünkü görevlerinizi başarıyla tamamladınız. Artık çıkış yapabilirsiniz.</p>
+          <p className="text-slate-500 font-medium mb-4">Bugünkü görevlerinizi başarıyla tamamladınız. Artık çıkış yapabilirsiniz.</p>
+          
+          <div className="bg-blue-50 p-4 rounded-2xl mb-8 border border-blue-100 flex items-center gap-3 justify-center">
+            <Info size={20} className="text-blue-500" />
+            <p className="text-blue-800 font-bold text-sm text-center">Bugüne ait başka rotanız bulunmamaktadır.</p>
+          </div>
+
           <button 
             onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
             className="w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-lg hover:-translate-y-0.5"
@@ -1578,15 +1584,16 @@ export default function DriverPage() {
       )}
 
       {/* Route List */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-          <h3 className="font-bold text-slate-800">Tüm Teslimat Listesi</h3>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
-            {sortedStops.length} Hane
-          </span>
-        </div>
-        <ul className="divide-y divide-slate-100">
-          {sortedStops.map((stop: RouteStop) => {
+      {todayRoute.status !== 'completed' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+            <h3 className="font-bold text-slate-800">Tüm Teslimat Listesi</h3>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
+              {sortedStops.length} Hane
+            </span>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {sortedStops.map((stop: RouteStop) => {
             const household = households?.find((h: Household) => h?.id === stop.householdId);
             if (!household) return null;
             
@@ -1672,6 +1679,7 @@ export default function DriverPage() {
           })}
         </ul>
       </div>
+      )}
 
       {/* Edit Past Stop Modal */}
       {editingPastStopId && (() => {
