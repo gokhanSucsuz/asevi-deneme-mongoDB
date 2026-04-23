@@ -41,8 +41,58 @@ export default function DriverPage() {
   const [currentCoords, setCurrentCoords] = useState<{lat: number, lng: number} | null>(null);
   const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   
+  // Preliminary sync check for hours
+  const checkInitialShift = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const curMin = hours * 60 + minutes;
+    return curMin >= 8 * 60 + 30 && curMin < 18 * 60;
+  };
+
+  const [isShiftActive, setIsShiftActive] = useState<boolean>(checkInitialShift());
+  const [shiftMessage, setShiftMessage] = useState<string>(checkInitialShift() ? '' : 'Şu an mesai saatleri dışındayız. Dağıtım panelini 08:30 - 18:00 saatleri arasında kullanabilirsiniz.');
+  
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallButtonClicked, setIsInstallButtonClicked] = useState(false);
+
+  useEffect(() => {
+    const checkShift = async () => {
+      // Admin should always see the page for testing/management
+      if (role === 'admin') {
+        setIsShiftActive(true);
+        return;
+      }
+
+      const now = new Date();
+      const isWorkingDay = await checkIsWorkingDay(now);
+      
+      if (!isWorkingDay) {
+        setIsShiftActive(false);
+        setShiftMessage('Bugün tatil günüdür. Mesai saatleri dışındayız.');
+        return;
+      }
+
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTimeInMinutes = hours * 60 + minutes;
+      
+      const startMinutes = 8 * 60 + 30; // 08:30
+      const endMinutes = 18 * 60; // 18:00
+      
+      if (currentTimeInMinutes < startMinutes || currentTimeInMinutes >= endMinutes) {
+        setIsShiftActive(false);
+        setShiftMessage('Şu an mesai saatleri dışındayız. Dağıtım panelini 08:30 - 18:00 saatleri arasında kullanabilirsiniz.');
+      } else {
+        setIsShiftActive(true);
+      }
+    };
+    
+    checkShift();
+    // Check every minute
+    const interval = setInterval(checkShift, 60000);
+    return () => clearInterval(interval);
+  }, [role]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -534,18 +584,13 @@ export default function DriverPage() {
             return;
           }
 
-          // 3. If no route exists for today, let's see if we should generate it or look for tomorrow's
-          const currentHour = now.getHours();
-          const currentMinute = now.getMinutes();
+          // 3. If no route exists for today, try to generate it, but only if it's during shift or early morning
+          // Don't look for future routes anymore for drivers
+          const roleIsAdmin = role === 'admin';
           
           let targetDateStr = todayStr;
-          // If it's late afternoon (past 15:00) and no route exists for today, maybe we look for tomorrow
-          if (currentHour >= 15) {
-            const nextWorkDay = await getNextWorkingDay(now);
-            targetDateStr = safeFormat(nextWorkDay, 'yyyy-MM-dd');
-          }
           
-          // Try to generate if missing
+          // Try to generate ONLY today's route
           const routeId = await generateRouteFromTemplate(selectedDriverId, targetDateStr);
           if (routeId) {
              const newRoute = await db.routes.get(routeId);
@@ -555,9 +600,13 @@ export default function DriverPage() {
              }
           }
           
-          // Last resort: find the latest route for this driver to show something
-          const latestRoute = driverRoutes.sort((a, b) => b.date.localeCompare(a.date))[0];
-          setTodayRoute(latestRoute || null);
+          // Last resort: ONLY for admins, show the latest route. For drivers, show null (none for today)
+          if (roleIsAdmin) {
+            const latestRoute = driverRoutes.sort((a, b) => b.date.localeCompare(a.date))[0];
+            setTodayRoute(latestRoute || null);
+          } else {
+            setTodayRoute(null);
+          }
         } catch (err) {
           console.error("Fetch route error:", err);
         } finally {
@@ -566,7 +615,7 @@ export default function DriverPage() {
       }
     };
     fetchRoute();
-  }, [selectedDriverId]);
+  }, [selectedDriverId, role]);
 
   const routeStopsRaw = useAppQuery(
     async () => {
@@ -1033,6 +1082,35 @@ export default function DriverPage() {
     );
   }
 
+  // Shift/Holiday Check (Admin bypasses)
+  if (!isShiftActive && role !== 'admin') {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50 font-sans">
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center max-w-sm w-full">
+          <div className="h-20 w-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-amber-50/50">
+            <Clock className="h-10 w-10 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">Mesai Saatleri Dışındayız</h2>
+          <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
+            {shiftMessage}
+          </p>
+          <div className="w-full bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 text-left">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Hizmet Saatleri</p>
+            <p className="text-sm font-black text-slate-700">08:30 - 18:00</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3 mb-1">Durum</p>
+            <p className="text-sm font-black text-amber-600 italic">Sadece mesai saatlerinde ve çalışma günlerinde erişim sağlanabilir.</p>
+          </div>
+          <button 
+            onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
+            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+          >
+            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Geri Dön'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!todayRoute) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
@@ -1057,47 +1135,6 @@ export default function DriverPage() {
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
             {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Farklı Şoför Seç'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const isWithinWorkingHours = (currentHour > 8 || (currentHour === 8 && currentMinute >= 30)) && (currentHour < 18 || (currentHour === 18 && currentMinute <= 30));
-  const isRouteToday = todayRoute.date === today;
-  const isInProgress = todayRoute.status === 'in_progress';
-  const isCompleted = todayRoute.status === 'completed' || todayRoute.status === 'approved';
-
-  // Allow if: route is today, OR route is in progress, OR route is already completed (viewing mode)
-  const canViewRoute = isRouteToday || isInProgress || isCompleted;
-
-  if (!canViewRoute && !isWithinWorkingHours) {
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 bg-slate-50">
-        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center max-w-sm w-full">
-          <div className="h-20 w-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-orange-50/50">
-            <Clock className="h-10 w-10 text-orange-400" />
-          </div>
-          <h2 className="text-xl font-black text-slate-800 mb-2">Henüz Dağıtım Başlamadı</h2>
-          <p className="text-sm text-slate-500 font-medium leading-relaxed mb-8">
-            Seçilen rota <b>{safeFormat(new Date(todayRoute.date), 'dd.MM.yyyy')}</b> tarihlidir. Dağıtım işlemleri mesai saatlerinde gerçekleştirilmektedir.
-          </p>
-          {deferredPrompt && !isInstallButtonClicked && (
-            <button 
-              onClick={handleInstallClick}
-              className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 mb-3 shadow-lg shadow-indigo-200"
-            >
-              Uygulamayı Cihazınıza Kurun
-            </button>
-          )}
-          <button 
-            onClick={isDriverRole ? handleLogout : () => handleSetDriverId(null)}
-            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-          >
-            {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Geri Dön'}
           </button>
         </div>
       </div>
