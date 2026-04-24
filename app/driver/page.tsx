@@ -685,8 +685,8 @@ export default function DriverPage() {
       const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter((id: string | undefined) => !!id) as string[];
       if (householdIds.length === 0) return [];
       
-      // Bulk fetch households to avoid N+1 query problem by hitting DB once using getMany
-      const results = await db.households.getMany(householdIds);
+      // Fetch all households once to avoid edge cases with getMany and MongoDB $in queries
+      const results = await db.households.toArray();
       return results.filter(h => !!h) as Household[];
     },
     [routeStopsRaw],

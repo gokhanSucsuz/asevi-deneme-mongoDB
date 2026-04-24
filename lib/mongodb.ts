@@ -12,13 +12,12 @@ const options: any = {
     strict: true,
     deprecationErrors: true,
   },
-  connectTimeoutMS: 5000,
+  connectTimeoutMS: 10000,
   socketTimeoutMS: 45000,
-  maxPoolSize: 5, // Reduced from 10 to minimize connection footprint per instance
-  minPoolSize: 0, // Don't hold idle connections in serverless environments
-  maxIdleTimeMS: 15000, // Close idle connections faster
-  waitQueueTimeoutMS: 2500, // Fail fast to avoid request buildup
-  maxConnecting: 2, // Limit concurrent connection attempts
+  maxPoolSize: 50,
+  minPoolSize: 5,
+  maxIdleTimeMS: 30000,
+  waitQueueTimeoutMS: 10000,
   retryWrites: true,
 };
 
