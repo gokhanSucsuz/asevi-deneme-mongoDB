@@ -703,9 +703,19 @@ export default function DriverPage() {
         stop.householdSnapshotName.includes('PASİF')
       )) return false;
 
+      // Filtre: Eğer bu bir kahvaltı durağıysa ve aynı hane için bir standart yemek durağı varsa, şoföre gösterme
+      if (stop.mealType === 'breakfast') {
+        const hasStandard = routeStopsRaw.some(s => 
+          s.householdId === stop.householdId && 
+          s.mealType === 'standard' && 
+          s.routeId === stop.routeId
+        );
+        if (hasStandard) return false;
+      }
+
       return true;
     });
-    
+
     return activeStopsRaw.map((stop: RouteStop) => {
       const offline = offlineUpdates.find(u => u.stopId === stop.id);
       if (offline) {
@@ -871,9 +881,29 @@ export default function DriverPage() {
     const deliveredAt = new Date();
     const issueReport = status === 'failed' ? issueText : undefined;
 
+    // Paired breakfast check - If standard is updated, also update paired breakfast stop
+    const sourceStop = routeStopsRaw?.find(s => s.id === stopId);
+    let pairedBreakfastId: string | undefined;
+    if (sourceStop && sourceStop.mealType === 'standard') {
+        const paired = routeStopsRaw?.find(s => 
+            s.householdId === sourceStop.householdId && 
+            s.mealType === 'breakfast' && 
+            s.routeId === todayRoute?.id
+        );
+        if (paired) {
+            pairedBreakfastId = paired.id;
+        }
+    }
+
     // Hemen UI durumunu güncelliyoruz (Optimistic Update)
     // Not: Koordinatlar arka planda alınacağı için UI'da ilk etapta boş kalacak, bu şoförün akışını bozmaz.
-    setOfflineUpdates(prev => [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }]);
+    setOfflineUpdates(prev => {
+      const updates = [...prev, { stopId, status, issueReport, deliveredAt, timestamp: Date.now() }];
+      if (pairedBreakfastId) {
+        updates.push({ stopId: pairedBreakfastId, status, issueReport, deliveredAt, timestamp: Date.now() });
+      }
+      return updates;
+    });
     
     // Şoförün beklemesini engelleyip hemen diğer karta geçmesini sağlıyoruz.
     setIssueText('');
@@ -888,47 +918,58 @@ export default function DriverPage() {
       try {
         // Koordinatları ARKA PLANDA al (UI'ı bekletmez)
         const coords = await getCurrentLocation();
+        const timestamp = Date.now();
 
-        // Her ihtimale karşı (Offline desteği) local veritabanına at
-        await localDb.offlineUpdates.add({
-          stopId,
-          status,
-          issueReport,
-          deliveredAt,
-          timestamp: Date.now(),
-          lat: coords?.lat,
-          lng: coords?.lng
-        });
-
-        // Online isek, arka planda MongoDB sunucu güncellemesini yap
-        if (navigator.onLine) {
-          const stop = await db.routeStops.get(stopId);
-          if (!stop) return; // Durak yoksa (silinmişse vb.) işlem yapma
-          
-          const newHistory = stop.history || [];
-          newHistory.push({
+        const processStop = async (sId: string, isPaired: boolean = false) => {
+          // Her ihtimale karşı (Offline desteği) local veritabanına at
+          await localDb.offlineUpdates.add({
+            stopId: sId,
             status,
-            timestamp: deliveredAt,
-            note: issueReport || (coords ? `Konum kaydedildi: ${coords.lat}, ${coords.lng}` : undefined),
-            personnelName: driverName
-          });
-
-          // Sunucu güncellemesi
-          await db.routeStops.update(stop.id!, {
-            status,
-            deliveredAt,
             issueReport,
-            history: newHistory,
+            deliveredAt,
+            timestamp,
             lat: coords?.lat,
             lng: coords?.lng
           });
 
-          // Başarılı sunucu işleminden sonra, ilgili offline kaydını yerelden sil
-          const lastUpdate = await localDb.offlineUpdates.where('stopId').equals(stopId).last();
-          if (lastUpdate) {
-            await localDb.offlineUpdates.delete(lastUpdate.id!);
-            setOfflineUpdates(prev => prev.filter(u => u.stopId !== stopId));
+          // Online isek, arka planda MongoDB sunucu güncellemesini yap
+          if (navigator.onLine) {
+            const stop = await db.routeStops.get(sId);
+            if (!stop) return; // Durak yoksa (silinmişse vb.) işlem yapma
+            
+            const newHistory = stop.history || [];
+            newHistory.push({
+              status,
+              timestamp: deliveredAt,
+              note: issueReport || (coords ? `Konum kaydedildi${isPaired ? ' (Yemek ile birlikte)' : ''}: ${coords.lat}, ${coords.lng}` : undefined),
+              personnelName: driverName
+            });
+
+            // Sunucu güncellemesi
+            await db.routeStops.update(stop.id!, {
+              status,
+              deliveredAt,
+              issueReport,
+              history: newHistory,
+              lat: coords?.lat,
+              lng: coords?.lng
+            });
+
+            // Başarılı sunucu işleminden sonra, ilgili offline kaydını yerelden sil
+            const lastUpdate = await localDb.offlineUpdates.where('stopId').equals(sId).last();
+            if (lastUpdate) {
+              await localDb.offlineUpdates.delete(lastUpdate.id!);
+              setOfflineUpdates(prev => prev.filter(u => u.stopId !== sId));
+            }
           }
+        };
+
+        await processStop(stopId);
+        if (pairedBreakfastId) {
+          await processStop(pairedBreakfastId, true);
+        }
+        
+        if (navigator.onLine) {
           notifyDbChange('route_stops');
         }
       } catch (error) {
@@ -1189,9 +1230,18 @@ export default function DriverPage() {
   let autoRemainingFood = 0;
   let autoRemainingBread = 0;
 
-  if (routeStops && households) {
-    // Sadece aktif (şoförün gördüğü) duraklar üzerinden hesaplama yap
-    const activeStopsForTotals = routeStops;
+  if (routeStopsRaw && households) {
+    // Tüm duraklar (gizli kahvaltılar dahil) üzerinden hesaplama yap ki araçtaki toplam sayı doğru olsun
+    const activeStopsForTotals = routeStopsRaw.filter((stop: RouteStop) => {
+      const h = households.find((hh: Household) => hh.id === stop.householdId) as Household | undefined;
+      if (h) {
+        if (h.pausedUntil === '9999-12-31') return false;
+        if (h.pausedUntil && h.pausedUntil >= (todayRoute?.date || '')) return false;
+        if (!h.isActive && !h.pausedUntil) return false;
+      }
+      if (stop.issueReport === 'Pasif/Duraklatılmış Kayıt') return false;
+      return true;
+    });
 
     activeStopsForTotals.forEach((stop: RouteStop) => {
       const household = households.find((h: Household) => h.id === stop.householdId) as Household | undefined;
@@ -1442,12 +1492,13 @@ export default function DriverPage() {
                  {isPausedLocal ? 'Mola Verildi' : 'Sıradaki Teslimat'}
                </div>
                
-               <div className="flex gap-2">
-                 <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
-                   <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                   {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
-                 </span>
-                 <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
+                 <div className="flex gap-2">
+                   <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
+                     <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                     {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
+                     {routeStopsRaw?.some(s => s.householdId === nextStop.householdId && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
+                   </span>
+                   <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
                    {(nextStop.householdSnapshotBreadCount ?? nextHousehold.breadCount ?? nextHousehold.memberCount) * (isLastWorkingDay ? 2 : 1)} Ekmek
                  </span>
@@ -1729,6 +1780,7 @@ export default function DriverPage() {
                       }`}>
                         <div className="w-1.5 h-1.5 rounded-full bg-current mr-1 opacity-50"></div>
                         {household.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
+                        {routeStopsRaw?.some(s => s.householdId === household.id && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
                       </span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm border ${
                         isDeleted ? 'bg-white border-red-200 text-red-700' :
