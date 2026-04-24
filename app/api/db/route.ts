@@ -409,9 +409,9 @@ export async function POST(req: NextRequest) {
     console.error('Database operation failed:', error);
     // Explicitly check for Mongodb connection errors or timeouts
     const errorStr = String(error);
-    if (errorStr.includes('pool') || errorStr.includes('topology') || errorStr.includes('serverSelectionTimeout') || errorStr.includes('timed out')) {
+    if (errorStr.includes('pool') || errorStr.includes('topology') || errorStr.includes('serverSelectionTimeout') || errorStr.includes('timed out') || errorStr.includes('SSL') || errorStr.includes('MongoNetworkError')) {
        return NextResponse.json({ 
-         error: 'Database Connection Error. The server is currently under high load. Please try again in 5-10 seconds.', 
+         error: 'Database Connection Error. The server is currently under high load or network is unstable. Please try again in 5-10 seconds.', 
          details: errorStr 
        }, { status: 503 });
     }

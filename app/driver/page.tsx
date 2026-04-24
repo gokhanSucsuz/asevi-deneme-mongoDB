@@ -1231,7 +1231,7 @@ export default function DriverPage() {
   let autoRemainingBread = 0;
 
   if (routeStopsRaw && households) {
-    // Tüm duraklar (gizli kahvaltılar dahil) üzerinden hesaplama yap ki araçtaki toplam sayı doğru olsun
+    // Tüm duraklar üzerinden hesaplama yap, ancak kahvaltı+yemek olan haneleri yemek üzerinden bir kez say
     const activeStopsForTotals = routeStopsRaw.filter((stop: RouteStop) => {
       const h = households.find((hh: Household) => hh.id === stop.householdId) as Household | undefined;
       if (h) {
@@ -1240,6 +1240,17 @@ export default function DriverPage() {
         if (!h.isActive && !h.pausedUntil) return false;
       }
       if (stop.issueReport === 'Pasif/Duraklatılmış Kayıt') return false;
+
+      // Filter breakfast stops if they have a matching standard meal
+      if (stop.mealType === 'breakfast') {
+        const hasStandard = routeStopsRaw.some((s: RouteStop) => 
+          s.householdId === stop.householdId && 
+          s.mealType === 'standard' && 
+          s.routeId === stop.routeId
+        );
+        if (hasStandard) return false;
+      }
+
       return true;
     });
 
@@ -1495,8 +1506,7 @@ export default function DriverPage() {
                  <div className="flex gap-2">
                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
                      <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
-                     {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
-                     {routeStopsRaw?.some((s: RouteStop) => s.householdId === nextStop.householdId && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
+                     {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek {routeStopsRaw?.some((s: RouteStop) => s.householdId === nextStop.householdId && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) ? '+ Kahvaltı' : ''}
                    </span>
                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
@@ -1779,8 +1789,7 @@ export default function DriverPage() {
                         'bg-white border-slate-200 text-indigo-700'
                       }`}>
                         <div className="w-1.5 h-1.5 rounded-full bg-current mr-1 opacity-50"></div>
-                        {household.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
-                        {routeStopsRaw?.some((s: RouteStop) => s.householdId === household.id && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
+                        {household.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek {routeStopsRaw?.some((s: RouteStop) => s.householdId === household.id && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) ? '+ Kahvaltı' : ''}
                       </span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm border ${
                         isDeleted ? 'bg-white border-red-200 text-red-700' :
