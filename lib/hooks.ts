@@ -103,6 +103,14 @@ export function useAppQuery<T>(action: () => Promise<T>, deps: any[] = [], tag?:
       setData(res);
     } catch (e) {
       console.error(e);
+      // Fallback to cache if error occurs
+      if (cacheKey) {
+         const stale = queryCache.get(cacheKey);
+         if (stale) {
+            setData(stale.data);
+            // Optional: toast.warn("Sunucu hatası: Eski veriler gösteriliyor.");
+         }
+      }
     } finally {
       setLoading(false);
     }

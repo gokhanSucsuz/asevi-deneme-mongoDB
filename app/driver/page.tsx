@@ -22,7 +22,8 @@ export default function DriverPage() {
   const isDemo = role === 'demo';
   const router = useRouter();
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [loadingRoute, setLoadingRoute] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState(true);
+  const [routeFetchError, setRouteFetchError] = useState(false);
   const [todayRoute, setTodayRoute] = useState<Route | null>(null);
   const [startKm, setStartKm] = useState<string>('');
   const [endKm, setEndKm] = useState<string>('');
@@ -605,6 +606,7 @@ export default function DriverPage() {
     const fetchRoute = async () => {
       if (selectedDriverId) {
         setLoadingRoute(true);
+        setRouteFetchError(false);
         try {
           const now = new Date();
           const todayStr = safeFormatTRT(now, 'yyyy-MM-dd');
@@ -657,6 +659,7 @@ export default function DriverPage() {
           }
         } catch (err) {
           console.error("Fetch route error:", err);
+          setRouteFetchError(true);
           toast.error("Rota bilgileri yüklenirken bir hata oluştu.");
         } finally {
           setLoadingRoute(false);
@@ -693,7 +696,7 @@ export default function DriverPage() {
 
   // Merge raw stops with offline updates for current UI state
   const routeStops = useMemo(() => {
-    if (!routeStopsRaw) return [];
+    if (!routeStopsRaw || !households) return [];
     
     // Yalnızca pasif olduğu açıkça belirtilenleri filtrele (Şoför paneli temiz kalmalı)
     const activeStopsRaw = routeStopsRaw.filter((stop: RouteStop) => {
@@ -1158,6 +1161,16 @@ export default function DriverPage() {
 
   const isDriverRole = !!(user && drivers?.some(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase()));
 
+  const handleRetry = () => {
+    notifyDbChange('*');
+    toast.success("Veriler yeniden yükleniyor...");
+  };
+
+  const isCriticalDataMissing = (todayRoute && !loadingRoute && (
+    (routeStopsRaw !== undefined && routeStopsRaw.length > 0 && households === undefined) ||
+    (routeStopsRaw === undefined && !loadingRoute)
+  )) || routeFetchError;
+
   if (loadingRoute) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 bg-slate-50">
@@ -1195,6 +1208,28 @@ export default function DriverPage() {
             className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
           >
             {isDriverRole ? <><LogOut size={18} /> Çıkış Yap</> : 'Geri Dön'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isCriticalDataMissing && !loadingRoute) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
+          <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <RefreshCw className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">Veriler Yüklenemedi</h2>
+          <p className="text-sm text-slate-500 font-medium mb-8">
+            İnternet bağlantınızda veya sunucuda bir sorun oluştu. Lütfen tekrar deneyin.
+          </p>
+          <button 
+            onClick={handleRetry}
+            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-slate-800 flex items-center justify-center gap-2 shadow-lg"
+          >
+            <RefreshCw size={18} /> Yeniden Dene
           </button>
         </div>
       </div>
@@ -1288,7 +1323,7 @@ export default function DriverPage() {
     });
   }
 
-  const sortedStops = routeStops ? [...routeStops].sort((a, b) => {
+  const sortedStops = routeStops.length > 0 ? [...routeStops].sort((a, b) => {
     const hA = households?.find((h: Household) => h?.id === a.householdId);
     const hB = households?.find((h: Household) => h?.id === b.householdId);
     
@@ -1351,11 +1386,18 @@ export default function DriverPage() {
         
         <div className="flex items-center gap-2 shrink-0">
           {locationPermission === 'granted' && (
-            <div className="flex items-center gap-1 bg-green-50 text-green-600 text-[10px] px-2 py-1 rounded-full font-bold border border-green-100">
+            <div className="hidden sm:flex items-center gap-1 bg-green-50 text-green-600 text-[10px] px-2 py-1 rounded-full font-bold border border-green-100">
               <MapPin size={10} />
               Konum OK
             </div>
           )}
+          <button
+            onClick={handleRetry}
+            className="h-9 w-9 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors flex items-center justify-center border border-slate-200/60"
+            title="Yenile"
+          >
+            <RefreshCw size={16} className={loadingRoute ? "animate-spin" : ""} />
+          </button>
           {offlineUpdates.length > 0 && (
             <div className="flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] px-2 py-1 rounded-full font-bold shadow-sm">
               <RefreshCw size={10} className={isSyncing ? "animate-spin" : ""} />
