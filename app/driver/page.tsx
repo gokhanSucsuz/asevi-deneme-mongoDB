@@ -95,6 +95,44 @@ export default function DriverPage() {
   }, [role]);
 
   useEffect(() => {
+    const checkShift = async () => {
+      // Admin should always see the page for testing/management
+      if (role === 'admin') {
+        setIsShiftActive(true);
+        return;
+      }
+
+      const now = new Date();
+      const isWorkingDay = await checkIsWorkingDay(now);
+      
+      if (!isWorkingDay) {
+        setIsShiftActive(false);
+        setShiftMessage('Bugün tatil günüdür. Mesai saatleri dışındayız.');
+        return;
+      }
+
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTimeInMinutes = hours * 60 + minutes;
+      
+      const startMinutes = 8 * 60 + 30; // 08:30
+      const endMinutes = 18 * 60; // 18:00
+      
+      if (currentTimeInMinutes < startMinutes || currentTimeInMinutes >= endMinutes) {
+        setIsShiftActive(false);
+        setShiftMessage('Şu an mesai saatleri dışındayız. Dağıtım panelini 08:30 - 18:00 saatleri arasında kullanabilirsiniz.');
+      } else {
+        setIsShiftActive(true);
+      }
+    };
+    
+    checkShift();
+    // Check every minute
+    const interval = setInterval(checkShift, 60000);
+    return () => clearInterval(interval);
+  }, [role]);
+
+  useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);

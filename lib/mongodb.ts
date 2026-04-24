@@ -12,12 +12,13 @@ const options: any = {
     strict: true,
     deprecationErrors: true,
   },
-  connectTimeoutMS: 10000,
+  connectTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  maxPoolSize: 10, // Optimize pool size for better reuse
-  minPoolSize: 1, // Keep at least one connection warm
-  maxIdleTimeMS: 30000, // Reuse connections for longer before closing
-  waitQueueTimeoutMS: 5000, // Fail fast to avoid request buildup
+  maxPoolSize: 5, // Reduced from 10 to minimize connection footprint per instance
+  minPoolSize: 0, // Don't hold idle connections in serverless environments
+  maxIdleTimeMS: 15000, // Close idle connections faster
+  waitQueueTimeoutMS: 2500, // Fail fast to avoid request buildup
+  maxConnecting: 2, // Limit concurrent connection attempts
   retryWrites: true,
 };
 
@@ -31,21 +32,37 @@ interface GlobalMongo {
 
 const globalWithMongo = global as typeof globalThis & GlobalMongo;
 
-if (!globalWithMongo._mongoClientPromise) {
-  client = new MongoClient(uri, options);
-  globalWithMongo._mongoClientPromise = client.connect();
+if (process.env.NODE_ENV === 'development') {
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    globalWithMongo._mongoClientPromise = client.connect().then(c => {
+      console.log('MongoDB connected successfully (Development)');
+      return c;
+    });
+  }
+  clientPromise = globalWithMongo._mongoClientPromise;
+} else {
+  // In production (Cloud Run), we use the singleton pattern to reuse connections across requests
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options);
+    globalWithMongo._mongoClientPromise = client.connect().then(c => {
+      console.log('MongoDB connected successfully (Production)');
+      return c;
+    });
+  }
+  clientPromise = globalWithMongo._mongoClientPromise;
 }
-clientPromise = globalWithMongo._mongoClientPromise;
 
 export default clientPromise;
 
 export async function getDb(): Promise<Db> {
+  // Prioritize using the cached DB instance if available
   if (globalWithMongo._mongoDb) {
     return globalWithMongo._mongoDb;
   }
   
-  const client = await clientPromise;
-  const db = client.db();
+  const connectedClient = await clientPromise;
+  const db = connectedClient.db();
   globalWithMongo._mongoDb = db;
   return db;
 }

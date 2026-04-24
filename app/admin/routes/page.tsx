@@ -99,7 +99,7 @@ export default function RoutesPage() {
   useEffect(() => {
     if (isDemo) return;
     
-    // Refresh data every 10 seconds to show live driver status and deliveries
+    // Refresh data every 30 seconds to show live driver status and deliveries
     const pollInterval = setInterval(() => {
        // Only poll if window is active to save resources
        if (document.visibilityState === 'visible') {
@@ -107,7 +107,7 @@ export default function RoutesPage() {
           notifyDbChange('routes');
           notifyDbChange('route_stops');
        }
-    }, 10000); // 10 seconds polling for live updates
+    }, 30000); // 30 seconds polling for live updates
 
     return () => clearInterval(pollInterval);
   }, [isDemo]);
