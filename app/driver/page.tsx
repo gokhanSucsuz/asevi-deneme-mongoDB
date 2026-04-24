@@ -705,7 +705,7 @@ export default function DriverPage() {
 
       // Filtre: Eğer bu bir kahvaltı durağıysa ve aynı hane için bir standart yemek durağı varsa, şoföre gösterme
       if (stop.mealType === 'breakfast') {
-        const hasStandard = routeStopsRaw.some(s => 
+        const hasStandard = routeStopsRaw.some((s: RouteStop) => 
           s.householdId === stop.householdId && 
           s.mealType === 'standard' && 
           s.routeId === stop.routeId
@@ -882,10 +882,10 @@ export default function DriverPage() {
     const issueReport = status === 'failed' ? issueText : undefined;
 
     // Paired breakfast check - If standard is updated, also update paired breakfast stop
-    const sourceStop = routeStopsRaw?.find(s => s.id === stopId);
+    const sourceStop = routeStopsRaw?.find((s: RouteStop) => s.id === stopId);
     let pairedBreakfastId: string | undefined;
     if (sourceStop && sourceStop.mealType === 'standard') {
-        const paired = routeStopsRaw?.find(s => 
+        const paired = routeStopsRaw?.find((s: RouteStop) => 
             s.householdId === sourceStop.householdId && 
             s.mealType === 'breakfast' && 
             s.routeId === todayRoute?.id
@@ -1496,7 +1496,7 @@ export default function DriverPage() {
                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold shadow-sm">
                      <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
                      {nextHousehold.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
-                     {routeStopsRaw?.some(s => s.householdId === nextStop.householdId && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
+                     {routeStopsRaw?.some((s: RouteStop) => s.householdId === nextStop.householdId && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
                    </span>
                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold shadow-sm">
                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
@@ -1780,7 +1780,7 @@ export default function DriverPage() {
                       }`}>
                         <div className="w-1.5 h-1.5 rounded-full bg-current mr-1 opacity-50"></div>
                         {household.memberCount * (isLastWorkingDay ? 2 : 1)} Yemek
-                        {routeStopsRaw?.some(s => s.householdId === household.id && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
+                        {routeStopsRaw?.some((s: RouteStop) => s.householdId === household.id && s.mealType === 'breakfast' && s.routeId === todayRoute?.id) && ' + Kahvaltı'}
                       </span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm border ${
                         isDeleted ? 'bg-white border-red-200 text-red-700' :
