@@ -433,7 +433,8 @@ export default function DriverPage() {
       const savedId = localStorage.getItem('last_driver_id');
       
       if (user?.email && drivers && drivers.length > 0) {
-        const matchingDriver = drivers.find(d => d.googleEmail?.toLowerCase() === user.email?.toLowerCase());
+        const userEmail = user.email.trim().toLowerCase();
+        const matchingDriver = drivers.find(d => d.googleEmail?.trim().toLowerCase() === userEmail);
         
         if (matchingDriver) {
           if (selectedDriverId !== matchingDriver.id!) {
@@ -444,11 +445,14 @@ export default function DriverPage() {
         } else if (savedId && !selectedDriverId) {
           // If not matching by email (e.g. admin spoofing), but we have a saved ID
           setSelectedDriverId(savedId);
+        } else if (!savedId && !selectedDriverId && role !== 'admin') {
+          console.warn("Driver identification failed for email:", userEmail);
+          toast.error("Şoför kaydınız bulunamadı veya hesabınız pasif. Lütfen yöneticiye başvurun.", { duration: 5000 });
         }
       }
     };
     detectDriver();
-  }, [user, drivers, selectedDriverId]);
+  }, [user, drivers, selectedDriverId, role]);
 
   // Persist selectedDriverId manually when changed
   const handleSetDriverId = (id: string | null) => {
@@ -522,7 +526,7 @@ export default function DriverPage() {
     if (isDemo) return;
     const runBackgroundTasks = async () => {
       const now = new Date();
-      const todayStr = safeFormat(now, 'yyyy-MM-dd');
+      const todayStr = safeFormatTRT(now, 'yyyy-MM-dd');
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       const isPast1730 = currentHour > 17 || (currentHour === 17 && currentMinute >= 30);
@@ -603,27 +607,30 @@ export default function DriverPage() {
         setLoadingRoute(true);
         try {
           const now = new Date();
-          const todayStr = safeFormat(now, 'yyyy-MM-dd');
+          const todayStr = safeFormatTRT(now, 'yyyy-MM-dd');
 
-          // 1. Check for any "in_progress" route first (resume capability)
+          // 1. Check for today's route first (prioritize today)
           const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
-          const inProgressRoute = driverRoutes.find(r => r.status === 'in_progress');
+          const todayRoutes = driverRoutes.filter(r => r.date === todayStr);
           
-          if (inProgressRoute) {
-            setTodayRoute(inProgressRoute);
+          if (todayRoutes.length > 0) {
+            // Prioritize status: in_progress > pending > others (completed/approved)
+            const prioritized = todayRoutes.sort((a, b) => {
+              const statusOrder: Record<string, number> = { 'in_progress': 0, 'pending': 1, 'completed': 2, 'approved': 3 };
+              return (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99);
+            });
+            setTodayRoute(prioritized[0]);
             return;
           }
 
-          // 2. Check for today's route (even if pending or completed)
-          // We always prefer SHOWING today's route even if it's afternoon
-          const existingTodayRoute = driverRoutes.find(r => r.date === todayStr);
-          if (existingTodayRoute) {
-            setTodayRoute(existingTodayRoute);
+          // 2. Check for any "in_progress" route from other days (resume capability)
+          const otherInProgress = driverRoutes.find(r => r.status === 'in_progress');
+          if (otherInProgress) {
+            setTodayRoute(otherInProgress);
             return;
           }
 
-          // 3. If no route exists for today, try to generate it, but only if it's during shift or early morning
-          // Don't look for future routes anymore for drivers
+          // 3. If no route exists for today, try to generate it
           const roleIsAdmin = role === 'admin';
           
           let targetDateStr = todayStr;
@@ -636,6 +643,8 @@ export default function DriverPage() {
                 setTodayRoute(newRoute);
                 return;
              }
+          } else {
+             console.log("No route could be generated for today.");
           }
           
           // Last resort: ONLY for admins, show the latest route. For drivers, show null (none for today)
@@ -643,10 +652,12 @@ export default function DriverPage() {
             const latestRoute = driverRoutes.sort((a, b) => b.date.localeCompare(a.date))[0];
             setTodayRoute(latestRoute || null);
           } else {
+            // Explicitly set null if no route found for today
             setTodayRoute(null);
           }
         } catch (err) {
           console.error("Fetch route error:", err);
+          toast.error("Rota bilgileri yüklenirken bir hata oluştu.");
         } finally {
           setLoadingRoute(false);
         }
