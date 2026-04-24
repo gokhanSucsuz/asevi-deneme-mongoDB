@@ -359,6 +359,12 @@ export const db = {
       const data = await callApi('households', 'list');
       return data.map(processData) as Household[];
     },
+    getMany: async (ids: string[]) => {
+      if (ids.length === 0) return [];
+      if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.filter(h => ids.includes(h.id!));
+      const data = await callApi('households', 'list', { query: { id: { $in: ids } } });
+      return data.map(processData) as Household[];
+    },
     get: async (id: string) => {
       if (isDemoMode()) return MOCK.MOCK_HOUSEHOLDS.find(h => h.id === id) || null;
       const data = await callApi('households', 'get', { id });
