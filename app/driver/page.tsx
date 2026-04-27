@@ -36,6 +36,34 @@ export default function DriverPage() {
   const [isLastWorkingDay, setIsLastWorkingDay] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPausedLocal, setIsPausedLocal] = useState(false);
+
+  // Restore local UI state if application is closed or pushed to background
+  useEffect(() => {
+    try {
+      const savedStartKm = localStorage.getItem('driver_startKm');
+      if (savedStartKm) setStartKm(savedStartKm);
+      const savedIssue = localStorage.getItem('driver_issueText');
+      if (savedIssue) setIssueText(savedIssue);
+      const savedActiveStop = localStorage.getItem('driver_activeStopId');
+      if (savedActiveStop) setActiveStopId(savedActiveStop);
+      const savedPaused = localStorage.getItem('driver_isPausedLocal');
+      if (savedPaused === 'true') setIsPausedLocal(true);
+    } catch(e) {}
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('driver_startKm', startKm);
+  }, [startKm]);
+  useEffect(() => {
+    localStorage.setItem('driver_issueText', issueText);
+  }, [issueText]);
+  useEffect(() => {
+    if (activeStopId) localStorage.setItem('driver_activeStopId', activeStopId);
+    else localStorage.removeItem('driver_activeStopId');
+  }, [activeStopId]);
+  useEffect(() => {
+    localStorage.setItem('driver_isPausedLocal', isPausedLocal ? 'true' : 'false');
+  }, [isPausedLocal]);
   const [isOnline, setIsOnline] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [offlineUpdates, setOfflineUpdates] = useState<any[]>([]);
@@ -1300,24 +1328,23 @@ export default function DriverPage() {
     });
 
     activeStopsForTotals.forEach((stop: RouteStop) => {
-      const household = households.find((h: Household) => h.id === stop.householdId) as Household | undefined;
-      if (household) {
-        const multiplier = isLastWorkingDay ? 2 : 1;
-        
-        // Snapshot değerlerini kullanmak her zaman daha güvenlidir (pasiflerde zaten 0 gelir)
-        const memberCount = stop.householdSnapshotMemberCount !== undefined ? stop.householdSnapshotMemberCount : household.memberCount;
-        const breadCount = stop.householdSnapshotBreadCount !== undefined ? stop.householdSnapshotBreadCount : (household.breadCount ?? household.memberCount);
+      const household = households?.find((h: Household) => h.id === stop.householdId) as Household | undefined;
+      
+      const multiplier = isLastWorkingDay ? 2 : 1;
+      
+      // Snapshot değerlerini kullanmak her zaman daha güvenlidir (pasiflerde zaten 0 gelir)
+      const memberCount = stop.householdSnapshotMemberCount !== undefined ? stop.householdSnapshotMemberCount : (household?.memberCount || 0);
+      const breadCount = stop.householdSnapshotBreadCount !== undefined ? stop.householdSnapshotBreadCount : (household?.breadCount ?? household?.memberCount ?? 0);
 
-        totalFood += memberCount * multiplier;
-        totalBread += breadCount * multiplier;
+      totalFood += memberCount * multiplier;
+      totalBread += breadCount * multiplier;
 
-        if (stop.status === 'delivered') deliveredCount++;
-        if (stop.status === 'pending') pendingCount++;
-        
-        if (stop.status === 'failed') {
-          autoRemainingFood += memberCount * multiplier;
-          autoRemainingBread += breadCount * multiplier;
-        }
+      if (stop.status === 'delivered') deliveredCount++;
+      if (stop.status === 'pending') pendingCount++;
+      
+      if (stop.status === 'failed') {
+        autoRemainingFood += memberCount * multiplier;
+        autoRemainingBread += breadCount * multiplier;
       }
     });
   }
