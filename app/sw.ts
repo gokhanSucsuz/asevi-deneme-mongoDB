@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { Serwist, NetworkOnly } from "serwist";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that specifies where the precache manifest should be injected.
@@ -20,11 +20,11 @@ const serwist = new Serwist({
   runtimeCaching: [
     {
       matcher: /^\/api\//,
-      handler: "NetworkOnly",
+      handler: new NetworkOnly(),
     },
     {
       matcher: /^\/admin\//,
-      handler: "NetworkOnly",
+      handler: new NetworkOnly(),
     },
     ...defaultCache,
   ],
