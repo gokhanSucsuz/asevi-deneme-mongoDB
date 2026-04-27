@@ -17,7 +17,17 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    {
+      matcher: /^\/api\//,
+      handler: "NetworkOnly",
+    },
+    {
+      matcher: /^\/admin\//,
+      handler: "NetworkOnly",
+    },
+    ...defaultCache,
+  ],
 });
 
 serwist.addEventListeners();
