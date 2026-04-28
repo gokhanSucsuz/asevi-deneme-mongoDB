@@ -20,9 +20,18 @@ export async function calculateBreadForNextDay(dateStr: string) {
     // Deneme içeren test rotalarından artan ekmek sayımını çıkarıyoruz
     const validRoutes = routes.filter(r => {
       const driverName = (r.driverSnapshotName || '').toLowerCase();
-      const driverId = r.driverId || '';
-      const isTest = driverName.includes('deneme') || driverId.includes('deneme') || driverId === 'test_driver' || driverId.includes('test');
-      return !isTest && (r.status === 'completed' || r.status === 'approved' || r.status === 'in_progress');
+      const driverId = (r.driverId || '').toLowerCase();
+      
+      const isTest = 
+        driverName.includes('deneme') || 
+        driverName.includes('test') || 
+        driverId.includes('deneme') || 
+        driverId.includes('test') || 
+        driverId === 'test_driver';
+        
+      if (isTest) return false;
+      
+      return (r.status === 'completed' || r.status === 'approved' || r.status === 'in_progress');
     });
 
     const routeLeftover = validRoutes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
@@ -57,19 +66,20 @@ export async function calculateBreadForNextDay(dateStr: string) {
     // Calculate dynamically for today/future or if no past record exists
     const allHouseholds = await db.households.toArray();
     const activeHouseholds = allHouseholds.filter(h => {
-      const isDeleted = h.pausedUntil === '9999-12-31';
-      if (isDeleted) return false;
+      // Filter out test records
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
+      const isDeleted = h.pausedUntil === '9999-12-31';
+      if (isDeleted) return false;
+
       // Logic from households page: Active if isActive is true OR if it was paused but the pause ended
-      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil < dateStr);
-      if (!isCurrentlyActive) return false;
+      // If pausedUntil is today or in the past, it's active.
+      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil <= dateStr);
       
-      // If dateStr is within the pause interval
+      // But MUST NOT have a future pause.
       const isPaused = h.pausedUntil && h.pausedUntil > dateStr;
-      if (isPaused) return false;
       
-      return true;
+      return isCurrentlyActive && !isPaused;
     });
 
     const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
