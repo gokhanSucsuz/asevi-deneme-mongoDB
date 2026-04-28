@@ -72,14 +72,19 @@ export async function calculateBreadForNextDay(dateStr: string) {
       const isDeleted = h.pausedUntil === '9999-12-31';
       if (isDeleted) return false;
 
-      // Logic from households page: Active if isActive is true OR if it was paused but the pause ended
-      // If pausedUntil is today or in the past, it's active.
-      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil <= dateStr);
+      // Logic from households page: A household is active if:
+      // 1. isActive is true AND it's NOT currently in a future pause period
+      // 2. OR isActive is false but it was a temporary pause that has now ended (today or in the past)
       
-      // But MUST NOT have a future pause.
-      const isPaused = h.pausedUntil && h.pausedUntil > dateStr;
+      const isPausedInFuture = h.pausedUntil && h.pausedUntil > dateStr;
       
-      return isCurrentlyActive && !isPaused;
+      if (h.isActive) {
+        return !isPausedInFuture;
+      } else {
+        // If Not Active, check if it's an expired pause
+        const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= dateStr;
+        return !!isPauseExpired;
+      }
     });
 
     const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);

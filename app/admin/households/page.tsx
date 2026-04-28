@@ -81,14 +81,20 @@ export default function HouseholdsPage() {
       // Filter out test records
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
-      // Current logic: Must be isActive OR have a pause that has ended.
-      // If pausedUntil is today or in the past, it's active.
-      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil <= todayStr);
+      // Logic: A household is active if:
+      // 1. isActive is true AND it's NOT currently in a future pause period
+      // 2. OR isActive is false but it was a temporary pause that has now ended (today or in the past)
       
-      // But MUST NOT have a future pause.
-      const isPaused = h.pausedUntil && h.pausedUntil > todayStr;
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+      const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayStr;
       
-      return isCurrentlyActive && !isPaused;
+      if (h.isActive) {
+        return !isPausedInFuture;
+      } else {
+        // If Not Active, check if it's an expired pause
+        const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= todayStr;
+        return !!isPauseExpired;
+      }
     });
 
     const householdsOnly = activeHouseholds.filter((h: Household) => !h.type || h.type === 'household');
@@ -369,11 +375,23 @@ export default function HouseholdsPage() {
       if (editingId) {
         const existing = await db.households.get(editingId);
         const history = existing?.history || [];
-        history.push({
-          action: 'updated',
-          timestamp: new Date(),
-          note: `${data.type === 'institution' ? 'Kurum' : 'Hane'} bilgileri güncellendi`
-        });
+        
+        // If the user manually activates the household, we must clear the pause date
+        if (data.isActive && data.pausedUntil && data.pausedUntil !== '9999-12-31') {
+          data.pausedUntil = '';
+          history.push({
+            action: 'activated',
+            timestamp: new Date(),
+            note: 'Düzenleme penceresinden manuel olarak tekrar aktifleştirildi (Pause iptal edildi)'
+          });
+        } else {
+          history.push({
+            action: 'updated',
+            timestamp: new Date(),
+            note: `${data.type === 'institution' ? 'Kurum' : 'Hane'} bilgileri güncellendi`
+          });
+        }
+        
         await db.households.put({ ...data, id: editingId, history });
         notifyDbChange('households');
         await addLog('Kayıt Güncellendi', `${data.headName} ${data.type === 'institution' ? 'kurumunun' : 'hanesinin'} bilgileri güncellendi.`);
