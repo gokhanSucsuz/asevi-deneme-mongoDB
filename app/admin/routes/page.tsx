@@ -55,6 +55,8 @@ export default function RoutesPage() {
   const [leftoverStops, setLeftoverStops] = useState<RouteStop[]>([]);
   const [isManualCompletion, setIsManualCompletion] = useState(true);
   const [mapModalData, setMapModalData] = useState<{ lat: number, lng: number, title: string } | null>(null);
+  const [quickAssignDriverId, setQuickAssignDriverId] = useState<Record<string, string>>({});
+  const [quickAssignOrder, setQuickAssignOrder] = useState<Record<string, number>>({});
   
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
   
@@ -558,6 +560,65 @@ export default function RoutesPage() {
         console.error(error);
         toast.error('Rota silinirken bir hata oluştu', { id: loadingToast });
       }
+    }
+  };
+
+  const handleQuickAssign = async (householdId: string) => {
+    const driverId = quickAssignDriverId[householdId];
+    const order = quickAssignOrder[householdId] || 1;
+    
+    if (!driverId) {
+      toast.error('Lütfen bir şoför seçin.');
+      return;
+    }
+
+    const template = routeTemplates?.find(t => t.driverId === driverId);
+    if (!template) {
+      toast.error('Seçili şoförün henüz bir ana rotası yok. Lütfen önce ana rota oluşturun.');
+      return;
+    }
+
+    const h = households?.find(hh => hh.id === householdId);
+
+    const loadingToast = toast.loading('Hane ana rotaya ekleniyor...');
+    try {
+      // Shifting existing stops if needed
+      const existingStops = routeTemplateStops?.filter(ts => String(ts.templateId) === String(template.id)) || [];
+      const sortedStops = [...existingStops].sort((a, b) => a.order - b.order);
+      
+      // Update shifted stops
+      for (const stop of sortedStops) {
+        if (stop.order >= order) {
+          await db.routeTemplateStops.update(stop.id!, { order: stop.order + 1 });
+        }
+      }
+
+      // Add new stop
+      await db.routeTemplateStops.add({
+        templateId: template.id!,
+        householdId: householdId,
+        order: order
+      });
+
+      await addLog('Ana Rotaya Hızlı Atama', `${getDriverName(template.driverId)} şoförünün ana rotasına ${h?.headName} hanesi eklendi.`);
+      toast.success('Hane başarıyla ana rotaya eklendi', { id: loadingToast });
+      
+      // Cleanup state
+      setQuickAssignDriverId(prev => {
+        const next = { ...prev };
+        delete next[householdId];
+        return next;
+      });
+      setQuickAssignOrder(prev => {
+        const next = { ...prev };
+        delete next[householdId];
+        return next;
+      });
+
+      notifyDbChange('route_template_stops');
+    } catch (error) {
+      console.error(error);
+      toast.error('Atama sırasında bir hata oluştu.', { id: loadingToast });
     }
   };
 
@@ -1958,10 +2019,99 @@ export default function RoutesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Unassigned Households Section */}
+          <div className="mt-8">
+            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest">
+              <Users className="text-blue-600" size={20} />
+              Yeni Eklenen / Şablon Dışı Kayıtlar
+            </h3>
+            <div className="bg-white shadow-sm rounded-[2rem] border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hane / Kurum</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Adres</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Şoför Seçimi</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sıra</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {(() => {
+                      const unassigned = households?.filter((h: Household) => {
+                        if (h.pausedUntil === '9999-12-31') return false; 
+                        if (!h.isActive && !h.pausedUntil) return false;
+                        if (h.isSelfService) return false;
+                        
+                        const isAssigned = routeTemplateStops?.some((rts: RouteTemplateStop) => rts.householdId === h.id);
+                        return !isAssigned;
+                      }) || [];
+
+                      if (unassigned.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center">
+                              <div className="flex flex-col items-center">
+                                <CheckCircle size={48} className="text-green-200 mb-3" />
+                                <p className="text-gray-500 font-medium italic">Tüm aktif haneler şablonlara atanmış durumda.</p>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return unassigned.map(h => (
+                        <tr key={h.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-bold text-gray-900">{h.headName}</div>
+                            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{h.memberCount} Kişi {h.type === 'institution' && <span className="text-blue-600">• KURUM</span>}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs text-gray-600 line-clamp-2 max-w-xs">{h.address}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <select
+                              value={quickAssignDriverId[h.id!] || ''}
+                              onChange={(e) => setQuickAssignDriverId(prev => ({ ...prev, [h.id!]: e.target.value }))}
+                              className="text-xs border-gray-300 rounded-lg p-2 bg-gray-50 focus:ring-blue-500 focus:border-blue-500 w-full font-bold"
+                            >
+                              <option value="">Şoför Seçin...</option>
+                              {activeDrivers?.map(d => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-6 py-4">
+                            <input
+                              type="number"
+                              min="1"
+                              value={quickAssignOrder[h.id!] || 1}
+                              onChange={(e) => setQuickAssignOrder(prev => ({ ...prev, [h.id!]: parseInt(e.target.value) || 1 }))}
+                              className="w-16 text-center border-gray-300 rounded-lg p-2 text-xs font-bold focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleQuickAssign(h.id!)}
+                              disabled={!quickAssignDriverId[h.id!]}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 ml-auto"
+                            >
+                              <Plus size={14} />
+                              Şablona Ekle
+                            </button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </>
       )}
-
-      {/* Route Completion Statistics Cards */}
       <div className="mt-12">
         <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
           <History className="text-blue-600" size={24} />
