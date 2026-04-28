@@ -82,8 +82,8 @@ export default function HouseholdsPage() {
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
       // Current logic: Must be isActive OR have a past pause.
-      // But MUST NOT have a future/current pause.
-      const isPaused = h.pausedUntil && h.pausedUntil >= todayStr;
+      // But MUST NOT have a future pause.
+      const isPaused = h.pausedUntil && h.pausedUntil > todayStr;
       const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil < todayStr);
       
       return isCurrentlyActive && !isPaused;

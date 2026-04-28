@@ -21,13 +21,15 @@ export async function calculateBreadForNextDay(dateStr: string) {
     const validRoutes = routes.filter(r => {
       const driverName = (r.driverSnapshotName || '').toLowerCase();
       const driverId = r.driverId || '';
-      return !driverName.includes('deneme') && !driverId.includes('deneme') && driverId !== 'test_driver';
+      const isTest = driverName.includes('deneme') || driverId.includes('deneme') || driverId === 'test_driver' || driverId.includes('test');
+      return !isTest && (r.status === 'completed' || r.status === 'approved' || r.status === 'in_progress');
     });
 
     const routeLeftover = validRoutes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
     const manualAdjustment = existing?.manualLeftoverAmount || 0;
     
     // Total leftover is route leftovers + manual adjustments (User formula requirement)
+    // We strictly filter for confirmed routes to avoid double counting or drafts
     leftoverAmount = routeLeftover + manualAdjustment;
   }
 
@@ -64,7 +66,7 @@ export async function calculateBreadForNextDay(dateStr: string) {
       if (!isCurrentlyActive) return false;
       
       // If dateStr is within the pause interval
-      const isPaused = h.pausedUntil && h.pausedUntil >= dateStr;
+      const isPaused = h.pausedUntil && h.pausedUntil > dateStr;
       if (isPaused) return false;
       
       return true;
