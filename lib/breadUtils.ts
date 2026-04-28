@@ -48,10 +48,17 @@ export async function calculateBreadForNextDay(dateStr: string) {
     // Calculate dynamically for today/future or if no past record exists
     const allHouseholds = await db.households.toArray();
     const activeHouseholds = allHouseholds.filter(h => {
-      if (!h.isActive) return false;
+      const isDeleted = h.pausedUntil === '9999-12-31';
+      if (isDeleted) return false;
       if (h.headName?.toLowerCase().includes('deneme')) return false;
+
+      // Logic from households page: Active if isActive is true OR if it was paused but the pause ended
+      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil < dateStr);
+      if (!isCurrentlyActive) return false;
+      
+      // If dateStr is within the pause interval
       if (h.pausedUntil && h.pausedUntil >= dateStr) return false;
-      if (h.pausedUntil === '9999-12-31') return false;
+      
       return true;
     });
 

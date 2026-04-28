@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAppQuery } from '@/lib/hooks';
+import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Household, RouteStop, Route, SurveyResponse } from '@/lib/db';
 import { Plus, Edit2, Trash2, X, Clock, FileText, Download, Eye, EyeOff, Upload, Home, Users, ShoppingBasket, Building2, ClipboardList, Star, Save, CheckCircle } from 'lucide-react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
@@ -107,7 +107,7 @@ export default function HouseholdsPage() {
     const totalContainers = totalPeople - ownContainerCount;
     
     // Calculate total bread: Kahvaltı için ayrıca ekmek verilmiyor
-    const totalBread = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.breadCount || 0), 0);
+    const totalBread = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.breadCount ?? h.memberCount ?? 0), 0);
     
     const wantsBreakfastTotal = activeHouseholds.filter(h => !h.noBreakfast).length;
     const noBreakfastTotal = activeHouseholds.filter(h => h.noBreakfast).length;
@@ -310,6 +310,7 @@ export default function HouseholdsPage() {
         pausedUntil: '',
         history
       });
+      notifyDbChange('households');
       await addLog('Hane Geri Yüklendi', `${foundDeletedHousehold.headName} hanesi tekrar aktifleştirildi.`);
       toast.success('Hane başarıyla geri yüklendi', { id: loadingToast });
       closeModal();
@@ -372,6 +373,7 @@ export default function HouseholdsPage() {
           note: `${data.type === 'institution' ? 'Kurum' : 'Hane'} bilgileri güncellendi`
         });
         await db.households.put({ ...data, id: editingId, history });
+        notifyDbChange('households');
         await addLog('Kayıt Güncellendi', `${data.headName} ${data.type === 'institution' ? 'kurumunun' : 'hanesinin'} bilgileri güncellendi.`);
         toast.success('Başarıyla güncellendi', { id: loadingToast });
       } else {
@@ -383,6 +385,7 @@ export default function HouseholdsPage() {
         }];
         const newId = await db.households.add(data);
         data.id = newId as string;
+        notifyDbChange('households');
         await addLog('Kayıt Eklendi', `${data.headName} ${data.type === 'institution' ? 'kurumu' : 'hanesi'} sisteme eklendi.`);
         toast.success('Başarıyla eklendi', { id: loadingToast });
       }
@@ -633,6 +636,7 @@ export default function HouseholdsPage() {
             pausedUntil: '9999-12-31', // effectively deleted
             history
           });
+          notifyDbChange('households');
           
           const today = new Date().toISOString().split('T')[0];
           // Remove from ALL future routes (including pending and in_progress)
@@ -681,6 +685,7 @@ export default function HouseholdsPage() {
           pausedUntil: pauseDate,
           history
         });
+        notifyDbChange('households');
         await addLog('Hane Pasife Alındı', `${householdToDelete!.headName} hanesi ${pauseDate} tarihine kadar pasife alındı. Sebep: ${actionReason}`);
         
         // Remove from pending routes within the pause period
@@ -789,6 +794,7 @@ export default function HouseholdsPage() {
           errorCount++;
         }
       }
+      notifyDbChange('households');
 
       if (successCount > 0) {
         await addLog('Toplu Hane Ekleme', `Excel dosyasından ${successCount} hane başarıyla eklendi.`);
