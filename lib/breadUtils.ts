@@ -18,10 +18,17 @@ export async function calculateBreadForNextDay(dateStr: string) {
   } else {
     const routes = await db.routes.where('date').equals(dateStr).toArray();
     // Deneme içeren test rotalarından artan ekmek sayımını çıkarıyoruz
-    const validRoutes = routes.filter(r => !r.driverSnapshotName?.toLowerCase().includes('deneme'));
+    const validRoutes = routes.filter(r => {
+      const driverName = (r.driverSnapshotName || '').toLowerCase();
+      const driverId = r.driverId || '';
+      return !driverName.includes('deneme') && !driverId.includes('deneme') && driverId !== 'test_driver';
+    });
+
     const routeLeftover = validRoutes.reduce((sum, r) => sum + (r.remainingBread || 0), 0);
-    const manualLeftover = existing?.manualLeftoverAmount || 0;
-    leftoverAmount = routeLeftover + manualLeftover;
+    const manualAdjustment = existing?.manualLeftoverAmount || 0;
+    
+    // Total leftover is route leftovers + manual adjustments (User formula requirement)
+    leftoverAmount = routeLeftover + manualAdjustment;
   }
 
   // 3. Calculate total needed
@@ -57,7 +64,8 @@ export async function calculateBreadForNextDay(dateStr: string) {
       if (!isCurrentlyActive) return false;
       
       // If dateStr is within the pause interval
-      if (h.pausedUntil && h.pausedUntil >= dateStr) return false;
+      const isPaused = h.pausedUntil && h.pausedUntil >= dateStr;
+      if (isPaused) return false;
       
       return true;
     });

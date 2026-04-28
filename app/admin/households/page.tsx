@@ -81,12 +81,12 @@ export default function HouseholdsPage() {
       // Filter out test records
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
-      // Current logic: Must be isActive. 
-      // But what if it was paused and the pause ended?
-      // For stats calculation, if pausedUntil is in the past, it should be considered active
+      // Current logic: Must be isActive OR have a past pause.
+      // But MUST NOT have a future/current pause.
       const isPaused = h.pausedUntil && h.pausedUntil >= todayStr;
+      const isCurrentlyActive = h.isActive || (h.pausedUntil && h.pausedUntil < todayStr);
       
-      return h.isActive || (h.pausedUntil && h.pausedUntil < todayStr);
+      return isCurrentlyActive && !isPaused;
     });
 
     const householdsOnly = activeHouseholds.filter((h: Household) => !h.type || h.type === 'household');
