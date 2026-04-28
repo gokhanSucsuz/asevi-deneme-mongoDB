@@ -24,6 +24,7 @@ export default function BreadTrackingPage() {
   const [isTenderModalOpen, setIsTenderModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [manualAmount, setManualAmount] = useState<number>(0);
+  const [manualTotalAdjustment, setManualTotalAdjustment] = useState<number>(0);
   const [manualNote, setManualNote] = useState('');
 
   // Tender form state
@@ -200,7 +201,8 @@ export default function BreadTrackingPage() {
             isWorkingDay,
             note: existing?.note || breadData.note || '',
             manualLeftoverAmount: breadData.manualLeftoverAmount,
-            manualLeftoverNote: breadData.manualLeftoverNote
+            manualLeftoverNote: breadData.manualLeftoverNote,
+            manualTotalAmountAdjustment: breadData.manualTotalAmountAdjustment
           };
         })).then(results => results.filter(item => item.isWorkingDay || item.status === 'ordered'));
         
@@ -260,41 +262,55 @@ export default function BreadTrackingPage() {
 
     try {
       const existing = await db.breadTracking.where('date').equals(selectedDate).first();
-      const { totalNeeded, leftoverAmount, containerCount, ownContainerCount } = await calculateBreadForNextDay(selectedDate);
+      const { totalNeeded: calculatedTotalNeeded, leftoverAmount: calculatedLeftoverAmount, containerCount, ownContainerCount } = await calculateBreadForNextDay(selectedDate);
       
-      const newLeftover = (existing?.leftoverAmount ?? leftoverAmount) + manualAmount;
-      const newFinalOrder = Math.max(0, totalNeeded - newLeftover);
+      // Calculate current base values without manual adjustments if we are adding more
+      const currentManualLeftover = existing?.manualLeftoverAmount || 0;
+      const currentManualTotalAdj = existing?.manualTotalAmountAdjustment || 0;
+      
+      const newManualLeftover = currentManualLeftover + manualAmount;
+      const newManualTotalAdj = currentManualTotalAdj + manualTotalAdjustment;
+      
+      // The totalNeeded in calculateBreadForNextDay already includes manualTotalAmountAdjustment
+      // But we want to re-calculate correctly based on updated values
+      const finalTotalNeeded = (calculatedTotalNeeded - currentManualTotalAdj) + newManualTotalAdj;
+      const finalLeftover = (calculatedLeftoverAmount - currentManualLeftover) + newManualLeftover;
+      const newFinalOrder = Math.max(0, finalTotalNeeded - finalLeftover);
 
       if (existing) {
         await db.breadTracking.update(existing.id!, {
-          leftoverAmount: newLeftover,
+          totalNeeded: finalTotalNeeded,
+          leftoverAmount: finalLeftover,
           finalOrderAmount: newFinalOrder,
           containerCount: existing.containerCount ?? containerCount,
           ownContainerCount: existing.ownContainerCount ?? ownContainerCount,
-          manualLeftoverAmount: (existing.manualLeftoverAmount || 0) + manualAmount,
+          manualLeftoverAmount: newManualLeftover,
+          manualTotalAmountAdjustment: newManualTotalAdj,
           manualLeftoverNote: manualNote,
-          note: existing.note ? `${existing.note} | Manuel: ${manualNote}` : `Manuel: ${manualNote}`
+          note: existing.note ? `${existing.note} | Manuel Düzeltme: ${manualNote}` : `Manuel Düzeltme: ${manualNote}`
         });
       } else {
         await db.breadTracking.add({
           date: selectedDate,
-          totalNeeded,
+          totalNeeded: finalTotalNeeded,
           delivered: 0,
-          leftoverAmount: newLeftover,
+          leftoverAmount: finalLeftover,
           finalOrderAmount: newFinalOrder,
           containerCount,
           ownContainerCount,
           status: 'pending',
-          manualLeftoverAmount: manualAmount,
+          manualLeftoverAmount: newManualLeftover,
+          manualTotalAmountAdjustment: newManualTotalAdj,
           manualLeftoverNote: manualNote,
-          note: `Manuel: ${manualNote}`
+          note: `Manuel Düzeltme: ${manualNote}`
         });
       }
 
-      toast.success('Manuel artan ekmek girişi kaydedildi.');
-      await addSystemLog(user, personnel, 'Ekmek Manuel Giriş', `${selectedDate} tarihi için ${manualAmount} adet manuel artan ekmek girişi yapıldı. Not: ${manualNote}`, 'bread');
+      toast.success('Manuel ekmek düzeltmesi kaydedildi.');
+      await addSystemLog(user, personnel, 'Ekmek Manuel Düzeltme', `${selectedDate} tarihi için Artan: ${manualAmount}, Toplam İhtiyaç: ${manualTotalAdjustment} manuel düzeltme yapıldı. Not: ${manualNote}`, 'bread');
       setIsManualModalOpen(false);
       setManualAmount(0);
+      setManualTotalAdjustment(0);
       setManualNote('');
     } catch (error) {
       console.error(error);
@@ -684,15 +700,24 @@ export default function BreadTrackingPage() {
                       <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
                         {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{b.totalNeeded}</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{b.totalNeeded}</span>
+                          {b.manualTotalAmountAdjustment ? (
+                            <span className={`text-[10px] font-bold ${b.manualTotalAmountAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ({b.manualTotalAmountAdjustment > 0 ? '+' : ''}{b.manualTotalAmountAdjustment})
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
                     <td className="px-3 py-3 text-xs text-gray-500">
                       <div className="flex flex-col">
                         <span className="font-medium">{b.leftoverAmount}</span>
-                        {b.manualLeftoverAmount && (
-                          <span className="text-[10px] text-orange-600 font-bold">
-                            (M: +{b.manualLeftoverAmount})
+                        {b.manualLeftoverAmount ? (
+                          <span className={`text-[10px] font-bold ${b.manualLeftoverAmount > 0 ? 'text-orange-600' : 'text-purple-600'}`}>
+                            ({b.manualLeftoverAmount > 0 ? '+' : ''}{b.manualLeftoverAmount})
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
@@ -876,7 +901,7 @@ export default function BreadTrackingPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-blue-600 text-white">
-              <h3 className="text-xl font-bold">Manuel Artan Ekmek Girişi</h3>
+              <h3 className="text-xl font-bold">Manuel Ekmek Düzeltmesi</h3>
               <button onClick={() => setIsManualModalOpen(false)} className="text-white/80 hover:text-white">
                 <X size={24} />
               </button>
@@ -885,28 +910,59 @@ export default function BreadTrackingPage() {
               <div className="bg-blue-50 p-4 rounded-xl flex items-start gap-3 border border-blue-100">
                 <AlertCircle className="text-blue-600 flex-shrink-0" size={20} />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Bu giriş, mevcut artan ekmek sayısına eklenecek ve bugünkü sipariş miktarını otomatik olarak azaltacaktır.
+                  Bu bölümden toplam ihtiyaca ekleme/çıkarma yapabilir veya artan ekmek sayısını manuel olarak düzeltebilirsiniz. Sipariş miktarı otomatik olarak güncellenecektir.
                 </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 italic transition-transform hover:scale-[1.02]">
+                  <label className="block text-[10px] font-black uppercase tracking-tighter text-orange-800 mb-2">Artan Ekmek Düzeltme (+/-)</label>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setManualAmount(prev => prev - 1)}
+                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100"
+                    >-</button>
+                    <input
+                      type="number"
+                      value={manualAmount}
+                      onChange={(e) => setManualAmount(parseInt(e.target.value) || 0)}
+                      className="flex-1 rounded-lg border-orange-200 shadow-sm focus:ring-orange-500 border p-2 text-xl font-black text-center bg-white"
+                    />
+                    <button 
+                      onClick={() => setManualAmount(prev => prev + 1)}
+                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100"
+                    >+</button>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-xl border border-green-100 italic transition-transform hover:scale-[1.02]">
+                  <label className="block text-[10px] font-black uppercase tracking-tighter text-green-800 mb-2">Toplam İhtiyaç Düzeltme (+/-)</label>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setManualTotalAdjustment(prev => prev - 1)}
+                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100"
+                    >-</button>
+                    <input
+                      type="number"
+                      value={manualTotalAdjustment}
+                      onChange={(e) => setManualTotalAdjustment(parseInt(e.target.value) || 0)}
+                      className="flex-1 rounded-lg border-green-200 shadow-sm focus:ring-green-500 border p-2 text-xl font-black text-center bg-white"
+                    />
+                    <button 
+                      onClick={() => setManualTotalAdjustment(prev => prev + 1)}
+                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100"
+                    >+</button>
+                  </div>
+                </div>
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Ekstra Artan Ekmek Sayısı</label>
-                <input
-                  type="number"
-                  value={manualAmount}
-                  onChange={(e) => setManualAmount(parseInt(e.target.value) || 0)}
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 border p-3 text-2xl font-black text-center"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Açıklama (Zorunlu)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Düzeltme Gerekçesi (Zorunlu)</label>
                 <textarea
                   value={manualNote}
                   onChange={(e) => setManualNote(e.target.value)}
-                  placeholder="Neden manuel giriş yapıldığını açıklayın..."
-                  className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 border p-2 h-24 text-sm"
+                  placeholder="Neden düzeltme yapıldığını açıklayın (Örn: Hatalı sayım, ekstra hane eklemesi vb.)"
+                  className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 border p-2 h-20 text-sm"
                 />
               </div>
             </div>

@@ -41,7 +41,8 @@ export async function calculateBreadForNextDay(dateStr: string) {
       ownContainerCount: existing?.ownContainerCount,
       note: existing?.note,
       manualLeftoverAmount: existing?.manualLeftoverAmount,
-      manualLeftoverNote: existing?.manualLeftoverNote
+      manualLeftoverNote: existing?.manualLeftoverNote,
+      manualTotalAmountAdjustment: existing?.manualTotalAmountAdjustment
     };
   } else {
     // Calculate dynamically for today/future or if no past record exists
@@ -55,7 +56,9 @@ export async function calculateBreadForNextDay(dateStr: string) {
     });
 
     const totalPeople = activeHouseholds.reduce((sum, h) => sum + (h.memberCount || 0), 0);
-    totalNeeded = activeHouseholds.reduce((sum, h) => sum + (h.breadCount ?? h.memberCount ?? 0), 0);
+    const calculatedTotalNeeded = activeHouseholds.reduce((sum, h) => sum + (h.breadCount ?? h.memberCount ?? 0), 0);
+    const manualTotalAdjustment = existing?.manualTotalAmountAdjustment || 0;
+    totalNeeded = calculatedTotalNeeded + manualTotalAdjustment;
 
     // Calculate ownContainerCount
     const ownContainerCount = activeHouseholds.reduce((sum, h) => {
@@ -106,7 +109,8 @@ export async function calculateBreadForNextDay(dateStr: string) {
       ownContainerCount,
       note: existing?.note,
       manualLeftoverAmount: existing?.manualLeftoverAmount,
-      manualLeftoverNote: existing?.manualLeftoverNote
+      manualLeftoverNote: existing?.manualLeftoverNote,
+      manualTotalAmountAdjustment: existing?.manualTotalAmountAdjustment
     };
   }
 }

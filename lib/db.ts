@@ -168,6 +168,7 @@ export interface BreadTracking {
   note?: string;
   manualLeftoverAmount?: number;
   manualLeftoverNote?: string;
+  manualTotalAmountAdjustment?: number;
 }
 
 export interface LeftoverFood {
