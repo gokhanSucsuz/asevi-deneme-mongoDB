@@ -294,12 +294,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ id: result.insertedId.toString() });
       }
       case 'put': {
-        const { id: docId, ...rest } = safeData;
-        await col.replaceOne({ _id: getQueryId(docId) } as any, rest, { upsert: true });
+        const finalId = id || safeData._id || data?.id;
+        if (!finalId) return NextResponse.json({ error: 'ID missing for put operation' }, { status: 400 });
+        const { _id, id: removedId, ...rest } = safeData;
+        await col.replaceOne({ _id: getQueryId(finalId) } as any, rest, { upsert: true });
         return NextResponse.json({ success: true });
       }
       case 'update': {
-        await col.updateOne({ _id: getQueryId(id) } as any, { $set: safeData });
+        if (!id) return NextResponse.json({ error: 'ID missing for update operation' }, { status: 400 });
+        const { _id, id: removedId, ...updateData } = safeData;
+        await col.updateOne({ _id: getQueryId(id) } as any, { $set: updateData });
         return NextResponse.json({ success: true });
       }
       case 'delete': {
