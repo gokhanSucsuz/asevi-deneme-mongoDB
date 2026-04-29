@@ -324,47 +324,82 @@ const prepareData = (data: any) => {
   return data;
 };
 
-async function callApi(collection: string, operation: string, params: any = {}, timeoutMs = 15000) {
+async function callApi(collection: string, operation: string, params: any = {}, timeoutMs = 15000, maxRetries = 3) {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
   
   const token = await user.getIdToken();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  let attempt = 0;
+  let lastError: any = null;
 
-  try {
-    const response = await fetch('/api/db?t=' + Date.now(), {
-      method: 'POST',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        collection,
-        operation,
-        ...params
-      }),
-      signal: controller.signal
-    });
+  while (attempt < maxRetries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      const message = errorBody.details 
-        ? `${errorBody.error}: ${errorBody.details}` 
-        : (errorBody.error || `API Hatası: ${response.status}`);
-      throw new Error(message);
+    try {
+      const response = await fetch('/api/db?t=' + Date.now(), {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          collection,
+          operation,
+          ...params
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        if (response.status === 503 || response.status === 504 || response.status === 502) {
+          throw new Error(`Sunucu meşgul veya ulaşılamıyor (${response.status}).`);
+        }
+
+        const errorBody = await response.json().catch(() => ({}));
+        const message = errorBody.details 
+          ? `${errorBody.error}: ${errorBody.details}` 
+          : (errorBody.error || `API Hatası: ${response.status}`);
+        
+        if (response.status < 500 && !message.includes('MongoNetworkError')) {
+           const finalError = new Error(message);
+           finalError.name = 'NonRetryableError';
+           throw finalError;
+        }
+
+        throw new Error(message);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      if (error.name === 'NonRetryableError') {
+        throw error;
+      }
+      
+      lastError = error;
+      
+      let errorMessage = error.message;
+      if (error.name === 'AbortError') {
+        errorMessage = 'Bağlantı zaman aşımına uğradı. Lütfen internetinizi kontrol edin.';
+        lastError = new Error(errorMessage);
+      }
+      
+      attempt++;
+      if (attempt >= maxRetries) {
+        break;
+      }
+      
+      const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+      console.warn(`Veritabanı isteği başarısız oldu, ${Math.round(waitTime)}ms sonra tekrar deneniyor... (Deneme ${attempt}/${maxRetries}):`, errorMessage);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return await response.json();
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      throw new Error('Bağlantı zaman aşımına uğradı. Lütfen internetinizi kontrol edin.');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  throw lastError;
 }
 
 export const db = {
