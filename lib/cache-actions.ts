@@ -7,12 +7,12 @@ import { revalidateTag } from 'next/cache';
  * This can be called from client components after a mutation.
  */
 export async function revalidateData(tag: string) {
-  revalidateTag(tag);
+  revalidateTag(tag, 'default');
 }
 
 /**
  * Revalidate multiple tags at once.
  */
 export async function revalidateMultipleData(tags: string[]) {
-  tags.forEach(tag => revalidateTag(tag));
+  tags.forEach(tag => revalidateTag(tag, 'default'));
 }
