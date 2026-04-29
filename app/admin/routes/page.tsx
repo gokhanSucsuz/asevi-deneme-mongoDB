@@ -259,7 +259,7 @@ export default function RoutesPage() {
     return true;
   });
 
-  const filteredAvailableHouseholds = availableHouseholds?.filter((h: Household) => {
+  const filteredAvailableHouseholds = (availableHouseholds || []).filter((h: Household) => {
     if (!templateSearchTerm) return true;
     const search = normalizeTurkish(templateSearchTerm);
     return (
@@ -279,7 +279,7 @@ export default function RoutesPage() {
     }
   });
 
-  const filteredDailyHouseholds = availableHouseholds?.filter((h: Household) => {
+  const filteredDailyHouseholds = (availableHouseholds || []).filter((h: Household) => {
     if (!dailySearchTerm) return true;
     const search = normalizeTurkish(dailySearchTerm);
     return (
