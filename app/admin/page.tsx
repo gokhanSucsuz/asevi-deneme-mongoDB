@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 export default function AdminDashboard() {
   const today = safeFormatTRT(new Date(), 'yyyy-MM-dd');
-  
+
   const drivers = useAppQuery(() => firestoreDb.drivers.toArray(), [], 'drivers') || [];
   const households = useAppQuery(() => firestoreDb.households.toArray(), [], 'households') || [];
   const breadTracking = useAppQuery(() => firestoreDb.breadTracking.toArray(), [], 'bread_tracking') || [];
@@ -26,7 +26,7 @@ export default function AdminDashboard() {
     // Fetch stops for all active/pending routes using parallel requests
     const routeIds = routes.map(r => r.id).filter(id => !!id) as string[];
     if (routeIds.length === 0) return [];
-    
+
     const stopsPromises = routeIds.map(id => firestoreDb.routeStops.where('routeId').equals(id).toArray());
     const stopsArrays = await Promise.all(stopsPromises);
     return stopsArrays.reduce((acc, val) => acc.concat(val), []);
@@ -43,26 +43,27 @@ export default function AdminDashboard() {
 
   const todayBread = breadTracking.find(b => b.date === today);
   // Dünün veya bir önceki iş gününün siparişi (deliveryDate DB'de olmayabiliyor, bu yüzden tarihe göre buluyoruz)
+
   const previousBreadRecords = [...breadTracking].filter(b => b.date < today).sort((a, b) => b.date.localeCompare(a.date));
   const deliveryTodayBread = previousBreadRecords.length > 0 ? previousBreadRecords[0] : null;
-  
+
   useEffect(() => {
     if (todayBread && todayBread.leftoverAmount > 0) {
       toast.warning(`Artan ekmek ${todayBread.leftoverAmount} adet. Sipariş miktarı güncellendi.`);
     }
   }, [todayBread]);
-  
+
   const getDriverStatus = () => {
     if (!drivers.length) return [];
-    
+
     // Test (deneme) şoförlerini istatistikten ve arayüzden gizle
     const activeStatsDrivers = drivers.filter(d => !d.name.toLowerCase().includes('deneme'));
 
     return activeStatsDrivers.map(driver => {
-      const route = routes.find(r => r.driverId === driver.id && r.status === 'in_progress') || 
-                    routes.find(r => r.driverId === driver.id && r.date === today) ||
-                    routes.find(r => r.driverId === driver.id && r.status === 'pending');
-      
+      const route = routes.find(r => r.driverId === driver.id && r.status === 'in_progress') ||
+        routes.find(r => r.driverId === driver.id && r.date === today) ||
+        routes.find(r => r.driverId === driver.id && r.status === 'pending');
+
       if (!route) {
         return {
           routeId: '',
@@ -85,11 +86,11 @@ export default function AdminDashboard() {
       }
 
       const stops = routeStops.filter((rs: RouteStop) => rs.routeId === route.id).sort((a: RouteStop, b: RouteStop) => a.order - b.order);
-      
+
       // Filter out actually passive stops from status calculation if we want them "dropped" from totals
       // In generateRouteFromTemplate we set memberCount to 0 for passive ones
       const actualStops = stops.filter((s: RouteStop) => (s.householdSnapshotMemberCount || 0) > 0);
-      
+
       const processedStops = actualStops.filter((s: RouteStop) => s.status === 'delivered' || s.status === 'failed');
       const successfulStops = actualStops.filter((s: RouteStop) => s.status === 'delivered');
       const lastStop = processedStops.length > 0 ? processedStops[processedStops.length - 1] : null;
@@ -133,7 +134,7 @@ export default function AdminDashboard() {
     }
   };
 
-  
+
   const activeHouseholds = households.filter(h => {
     if (!h.isActive) return false;
     if (h.headName?.toLowerCase().includes('deneme')) return false;
@@ -166,7 +167,7 @@ export default function AdminDashboard() {
               <p className="text-sm font-medium text-amber-700">Gelecek ay ({nextMonthStr}) için çalışma günleri henüz belirlenmemiş. Sistem varsayılan haftaiçi takvimini kullanacak fakat onayınız gereklidir.</p>
             </div>
           </div>
-          <Link 
+          <Link
             href="/admin/working-days"
             className="w-full md:w-auto bg-amber-600 text-white px-8 py-3 rounded-2xl font-black hover:bg-amber-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-200 group"
           >
@@ -297,15 +298,14 @@ export default function AdminDashboard() {
                     {status.locationPermissionRequestPending ? 'İstek Gönderildi' : 'Konum İzni İste'}
                   </button>
                 )}
-                <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
-                  status.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200 border' :
-                  status.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200 border' :
-                  status.status === 'no_route' ? 'bg-red-100 text-red-800 border-red-200 border' :
-                  'bg-gray-100 text-gray-800 border-gray-200 border'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${status.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200 border' :
+                    status.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200 border' :
+                      status.status === 'no_route' ? 'bg-red-100 text-red-800 border-red-200 border' :
+                        'bg-gray-100 text-gray-800 border-gray-200 border'
+                  }`}>
                   {status.status === 'completed' ? 'Tamamlandı' :
-                   status.status === 'in_progress' ? 'Dağıtımda' : 
-                   status.status === 'no_route' ? 'Rota Yok' : 'Bekliyor'}
+                    status.status === 'in_progress' ? 'Dağıtımda' :
+                      status.status === 'no_route' ? 'Rota Yok' : 'Bekliyor'}
                 </span>
               </div>
             </div>
@@ -329,7 +329,7 @@ export default function AdminDashboard() {
                       <span>Kalan: {status.totalStops - status.completedStops}</span>
                     </div>
                   </div>
-                  
+
                   {status.status === 'completed' ? (
                     <div className="bg-green-50 rounded-lg p-5 mt-4 flex flex-col items-center justify-center text-green-700 border border-green-100">
                       <div className="flex items-center mb-2">
@@ -337,8 +337,8 @@ export default function AdminDashboard() {
                         <span className="font-black text-lg">Rota Başarıyla Tamamlandı</span>
                       </div>
                       <p className="text-sm font-medium text-center">
-                        Bugün toplam <span className="font-bold underline">{status.successfulCount} hane</span> ve 
-                        <span className="font-bold underline mx-1">{status.successfulPeopleCount} kişiye</span> 
+                        Bugün toplam <span className="font-bold underline">{status.successfulCount} hane</span> ve
+                        <span className="font-bold underline mx-1">{status.successfulPeopleCount} kişiye</span>
                         başarıyla yemek teslimatı yapıldı.
                       </p>
                     </div>
