@@ -42,6 +42,7 @@ export default function AdminDashboard() {
   const showWorkingDayWarning = isAfter25th && nextMonthConfig.length === 0;
 
   const todayBread = breadTracking.find(b => b.date === today);
+  const deliveryTodayBread = breadTracking.find(b => b.deliveryDate === today);
   
   useEffect(() => {
     if (todayBread && todayBread.leftoverAmount > 0) {
@@ -140,6 +141,7 @@ export default function AdminDashboard() {
   const totalHouseholdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household').length;
   const totalInstitutions = activeHouseholds.filter(h => h.type === 'institution').length;
   const totalPeople = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
+  const totalBreadCount = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.breadCount ?? h.memberCount ?? 0), 0);
 
   return (
     <div>
@@ -205,7 +207,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Bugünkü Ekmek Siparişi</p>
-                <p className="text-2xl font-bold text-gray-900">{todayBread.finalOrderAmount} Adet</p>
+                <p className="text-2xl font-bold text-gray-900">{(deliveryTodayBread?.finalOrderAmount || 0)} Adet</p>
               </div>
             </div>
             {todayBread.leftoverAmount > 0 && (
