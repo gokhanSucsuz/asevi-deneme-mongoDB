@@ -42,7 +42,9 @@ export default function AdminDashboard() {
   const showWorkingDayWarning = isAfter25th && nextMonthConfig.length === 0;
 
   const todayBread = breadTracking.find(b => b.date === today);
-  const deliveryTodayBread = breadTracking.find(b => b.deliveryDate === today);
+  // Dünün veya bir önceki iş gününün siparişi (deliveryDate DB'de olmayabiliyor, bu yüzden tarihe göre buluyoruz)
+  const previousBreadRecords = [...breadTracking].filter(b => b.date < today).sort((a, b) => b.date.localeCompare(a.date));
+  const deliveryTodayBread = previousBreadRecords.length > 0 ? previousBreadRecords[0] : null;
   
   useEffect(() => {
     if (todayBread && todayBread.leftoverAmount > 0) {
