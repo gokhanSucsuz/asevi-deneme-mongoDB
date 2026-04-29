@@ -19,7 +19,6 @@ export default function SystemSettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
-  const [isEncrypting, setIsEncrypting] = useState(false);
   const [isDistributionPanelActive, setIsDistributionPanelActive] = useState(true);
 
   useEffect(() => {
@@ -55,7 +54,7 @@ export default function SystemSettingsPage() {
         backupIntervalDays: 10 // preserve existing
       });
       setIsDistributionPanelActive(newState);
-      
+
       await addSystemLog(
         user,
         personnel,
@@ -63,7 +62,7 @@ export default function SystemSettingsPage() {
         `Dağıtım paneli ${newState ? 'AKTİF' : 'PASİF'} hale getirildi.`,
         'system'
       );
-      
+
       toast.success(`Dağıtım paneli ${newState ? 'aktifleştirildi' : 'pasifleştirildi'}.`, { id: loadingToast });
     } catch (error) {
       console.error('Toggle error:', error);
@@ -89,7 +88,7 @@ export default function SystemSettingsPage() {
         try {
           const json = JSON.parse(event.target?.result as string);
           await db.restore(json);
-          
+
           await addSystemLog(
             user,
             personnel,
@@ -167,7 +166,7 @@ export default function SystemSettingsPage() {
         linkElement.click();
       } else {
         const wb = XLSX.utils.book_new();
-        
+
         // Add sheets
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(households), 'Haneler');
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(drivers), 'Şoförler');
@@ -180,8 +179,8 @@ export default function SystemSettingsPage() {
 
       // Update last backup date
       const now = new Date();
-      await db.system_settings.set('global', { 
-        id: 'global', 
+      await db.system_settings.set('global', {
+        id: 'global',
         lastBackupDate: now,
         backupIntervalDays: 10
       });
@@ -221,7 +220,7 @@ export default function SystemSettingsPage() {
       for (const h of households) {
         let needsUpdate = false;
         const updates: any = {};
-        
+
         if (h.tcNo && !isEncrypted(h.tcNo)) {
           updates.tcNo = encrypt(h.tcNo);
           needsUpdate = true;
@@ -269,7 +268,7 @@ export default function SystemSettingsPage() {
       for (const p of personnel) {
         let pNeedsUpdate = false;
         const pUpdates: any = {};
-        
+
         if (p.tcNo && !isEncrypted(p.tcNo)) {
           pUpdates.tcNo = encrypt(p.tcNo);
           pNeedsUpdate = true;
@@ -313,7 +312,7 @@ export default function SystemSettingsPage() {
         <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none translate-x-1/2 -translate-y-1/2">
           <ShieldCheck size={200} className="text-indigo-600" />
         </div>
-        
+
         <div className="flex items-center gap-6 relative z-10">
           <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-5 rounded-[2rem] shadow-xl shadow-indigo-100 ring-4 ring-indigo-50">
             <ShieldCheck className="text-white" size={32} />
@@ -344,18 +343,18 @@ export default function SystemSettingsPage() {
           <div className="absolute top-0 right-0 p-16 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
             <ShieldCheck size={280} className="text-blue-500" />
           </div>
-          
+
           <div className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8">
                 PROD-SEC-SHIELD v4.0.2
               </div>
               <h2 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight">
-                Askeri Düzey <br/>
+                Askeri Düzey <br />
                 <span className="text-blue-500">Veri Şifreleme</span>
               </h2>
               <p className="text-slate-400 text-base font-medium leading-relaxed max-w-lg">
-                Hassas vakıf verileri (TC No, Hane No, Telefon) <strong>AES-256 GCM</strong> standardı ile şifreli olarak saklanır. 
+                Hassas vakıf verileri (TC No, Hane No, Telefon) <strong>AES-256 GCM</strong> standardı ile şifreli olarak saklanır.
                 KVKK uyumluluğu ve veri bütünlüğü sistem çekirdeğinde en üst düzeyde sağlanmaktadır.
               </p>
             </div>
@@ -390,28 +389,27 @@ export default function SystemSettingsPage() {
               <p className="text-sm text-slate-500 font-medium">Şoför paneli ve teslimat girişlerini anlık olarak yönetir.</p>
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row items-center gap-4">
-             <div className="flex items-center gap-6 bg-slate-50 p-3 pr-6 rounded-3xl border border-slate-100 min-w-[320px] justify-between">
-                <div className="flex items-center gap-3 ml-3">
-                  <div className={`w-3 h-3 rounded-full ${isDistributionPanelActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                  <span className={`text-xs font-black uppercase ${isDistributionPanelActive ? 'text-green-600' : 'text-red-600'}`}>
-                    {isDistributionPanelActive ? 'SİSTEM AÇIK' : 'SİSTEM KAPALI'}
-                  </span>
-                </div>
-                {!isDemo && (
-                  <button
-                    onClick={toggleDistributionPanel}
-                    className={`px-8 py-3 rounded-2xl text-white font-black text-sm transition-all shadow-lg active:scale-95 ${
-                      isDistributionPanelActive 
-                        ? 'bg-red-500 hover:bg-red-600 shadow-red-100' 
-                        : 'bg-green-600 hover:bg-green-700 shadow-green-100'
-                    }`}
-                  >
-                    {isDistributionPanelActive ? 'KAPAT' : 'BAŞLAT'}
-                  </button>
-                )}
+            <div className="flex items-center gap-6 bg-slate-50 p-3 pr-6 rounded-3xl border border-slate-100 min-w-[320px] justify-between">
+              <div className="flex items-center gap-3 ml-3">
+                <div className={`w-3 h-3 rounded-full ${isDistributionPanelActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className={`text-xs font-black uppercase ${isDistributionPanelActive ? 'text-green-600' : 'text-red-600'}`}>
+                  {isDistributionPanelActive ? 'SİSTEM AÇIK' : 'SİSTEM KAPALI'}
+                </span>
               </div>
+              {!isDemo && (
+                <button
+                  onClick={toggleDistributionPanel}
+                  className={`px-8 py-3 rounded-2xl text-white font-black text-sm transition-all shadow-lg active:scale-95 ${isDistributionPanelActive
+                      ? 'bg-red-500 hover:bg-red-600 shadow-red-100'
+                      : 'bg-green-600 hover:bg-green-700 shadow-green-100'
+                    }`}
+                >
+                  {isDistributionPanelActive ? 'KAPAT' : 'BAŞLAT'}
+                </button>
+              )}
+            </div>
 
 
           </div>
@@ -422,30 +420,30 @@ export default function SystemSettingsPage() {
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Zap size={160} />
           </div>
-          
+
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             <div className="md:col-span-2">
               <h2 className="text-2xl md:text-3xl font-black mb-4 uppercase tracking-tighter">Veritabanı Performans Motoru</h2>
               <p className="text-blue-100 text-sm font-medium leading-relaxed max-w-xl">
-                Sistemimiz <strong>MongoDB v3.0 (Smart Proxy)</strong> altyapısı ile optimize edilmiştir. 
-                Yapılan N+1 sorgu iyileştirmeleri ve akıllı bağlantı havuzu (Pooling) yönetimi sayesinde, 
+                Sistemimiz <strong>MongoDB v3.0 (Smart Proxy)</strong> altyapısı ile optimize edilmiştir.
+                Yapılan N+1 sorgu iyileştirmeleri ve akıllı bağlantı havuzu (Pooling) yönetimi sayesinde,
                 500 bağlantı limitine takılmadan 300+ eş zamanlı isteği milisaniyeler içinde işleyebilmektedir.
               </p>
             </div>
-            
+
             <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-[2rem]">
-               <div className="space-y-4">
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-200">
-                    <span>Bağlantı Sağlığı</span>
-                    <span className="text-green-400">Mükemmel</span>
-                  </div>
-                  <div className="flex items-end gap-1 h-12">
-                    {[30, 45, 20, 60, 40, 80, 55, 30, 45, 90, 40, 60].map((h, i) => (
-                      <div key={i} className="flex-1 bg-white/30 rounded-t-sm" style={{ height: `${h}%` }} />
-                    ))}
-                  </div>
-                  <p className="text-[10px] font-bold text-center text-blue-100">Otomatik havuz yönetimi devrede (maxPool: 10)</p>
-               </div>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-200">
+                  <span>Bağlantı Sağlığı</span>
+                  <span className="text-green-400">Mükemmel</span>
+                </div>
+                <div className="flex items-end gap-1 h-12">
+                  {[30, 45, 20, 60, 40, 80, 55, 30, 45, 90, 40, 60].map((h, i) => (
+                    <div key={i} className="flex-1 bg-white/30 rounded-t-sm" style={{ height: `${h}%` }} />
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-center text-blue-100">Otomatik havuz yönetimi devrede (maxPool: 10)</p>
+              </div>
             </div>
           </div>
         </div>
@@ -458,7 +456,7 @@ export default function SystemSettingsPage() {
             </div>
             <h2 className="text-xl font-black text-slate-900 uppercase">Yedekleme Merkezi</h2>
           </div>
-          
+
           <div className="space-y-4">
             <button
               onClick={() => handleBackup('excel')}
@@ -543,14 +541,14 @@ export default function SystemSettingsPage() {
               <span className={isBackupCritical ? 'text-red-600' : 'text-green-600'}>{isBackupCritical ? 'YÜKSEK' : 'DÜŞÜK'}</span>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden mb-4">
-              <div 
-                className={`h-full rounded-full ${isBackupCritical ? 'bg-red-500' : 'bg-green-500'}`} 
-                style={{ width: `${Math.min(100, (daysSinceLastBackup / 14) * 100)}%` }} 
+              <div
+                className={`h-full rounded-full ${isBackupCritical ? 'bg-red-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(100, (daysSinceLastBackup / 14) * 100)}%` }}
               />
             </div>
             <p className="text-xs font-bold text-slate-600 leading-relaxed">
-              {isBackupCritical 
-                ? 'Son yedekleme üzerinden 10 günden fazla geçti. Veri kaybı riski mevcut!' 
+              {isBackupCritical
+                ? 'Son yedekleme üzerinden 10 günden fazla geçti. Veri kaybı riski mevcut!'
                 : 'Sistem yedekleme periyodu sağlıklı görünüyor. İyi çalışmalar.'}
             </p>
           </div>
@@ -568,7 +566,7 @@ export default function SystemSettingsPage() {
         <div>
           <h3 className="text-xl font-black text-amber-900 uppercase tracking-tighter mb-2">Önemli Protokol Hatırlatması</h3>
           <p className="text-sm text-amber-800 font-medium leading-relaxed max-w-4xl">
-            Sistem güvenliği gereği, her hafta Cuma günü operasyon bitiminde yedek alınması tavsiye edilir. 
+            Sistem güvenliği gereği, her hafta Cuma günü operasyon bitiminde yedek alınması tavsiye edilir.
             Yedekleme yapılmadığında sistem ototmatik olarak <strong>edirneysdv@gmail.com</strong> adresine durum raporu iletir.
             Veri bütünlüğünü korumak için alınan yedekleri kurum dışı ortamlarda saklamayınız.
           </p>
