@@ -213,10 +213,10 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-gray-900">{(deliveryTodayBread?.finalOrderAmount || 0)} Adet</p>
               </div>
             </div>
-            {todayBread.leftoverAmount > 0 && (
+            {deliveryTodayBread && deliveryTodayBread.leftoverAmount > 0 && (
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-500">Artan</p>
-                <p className="text-lg font-bold text-orange-600">+{todayBread.leftoverAmount}</p>
+                <p className="text-lg font-bold text-orange-600">+{deliveryTodayBread.leftoverAmount}</p>
               </div>
             )}
           </div>
