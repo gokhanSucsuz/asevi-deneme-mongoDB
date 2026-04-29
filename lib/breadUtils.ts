@@ -132,6 +132,12 @@ export async function calculateBreadForNextDay(dateStr: string) {
       containerCount += breakfastVakifContainerCount;
     }
 
+    if (existing?.manualContainerAdjustment) {
+      containerCount += existing.manualContainerAdjustment;
+      // Also ensure it doesn't drop below 0
+      containerCount = Math.max(0, containerCount);
+    }
+
     // Formula: Total Needed - Today's Leftover = Ordered Bread
     return { 
       totalNeeded, 
@@ -142,7 +148,8 @@ export async function calculateBreadForNextDay(dateStr: string) {
       note: existing?.note,
       manualLeftoverAmount: existing?.manualLeftoverAmount,
       manualLeftoverNote: existing?.manualLeftoverNote,
-      manualTotalAmountAdjustment: existing?.manualTotalAmountAdjustment
+      manualTotalAmountAdjustment: existing?.manualTotalAmountAdjustment,
+      manualContainerAdjustment: existing?.manualContainerAdjustment
     };
   }
 }

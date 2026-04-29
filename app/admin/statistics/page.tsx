@@ -57,11 +57,33 @@ export default function StatisticsPage() {
   const deliveredStops = routeStops.filter(rs => rs.status === 'delivered');
   const totalFailedStops = routeStops.filter(rs => rs.status === 'failed');
   
-  const activeHouseholds = households.filter(h => h.isActive);
-  const selfServiceHouseholdsCount = activeHouseholds.filter(h => h.isSelfService).length;
-  const ownContainerHouseholdsCount = activeHouseholds.filter(h => h.usesOwnContainer).length;
-  const activeInstitutionsCount = activeHouseholds.filter(h => h.type === 'institution').length;
-  const activeHouseholdsCount = activeHouseholds.filter(h => !h.type || h.type === 'household').length;
+  const activeHouseholds = households.filter(h => {
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+      const isDeleted = h.pausedUntil === '9999-12-31';
+      if (isDeleted) return false;
+      if (h.headName?.toLowerCase().includes('deneme')) return false;
+
+      const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayStr;
+      if (h.isActive) {
+        return !isPausedInFuture;
+      } else {
+        const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= todayStr;
+        return !!isPauseExpired;
+      }
+  });
+
+  const householdsOnly = activeHouseholds.filter(h => !h.type || h.type === 'household');
+  const institutionsOnly = activeHouseholds.filter(h => h.type === 'institution');
+
+  const selfServiceHouseholdsList = householdsOnly.filter(h => h.isSelfService);
+  const selfServiceHouseholdsCount = selfServiceHouseholdsList.length;
+  const selfServicePeople = selfServiceHouseholdsList.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+
+  const activeHouseholdsCount = householdsOnly.length;
+  const householdPeople = householdsOnly.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+
+  const activeInstitutionsCount = institutionsOnly.length;
+  const institutionPeople = institutionsOnly.reduce((sum, h) => sum + (h.memberCount || 0), 0);
 
   let totalDeliveredFood = 0;
   let totalInstitutionFood = 0;
@@ -175,10 +197,10 @@ export default function StatisticsPage() {
         ['Toplam Ekmek', `${totalDeliveredBread}`],
         ['Artan Yemek (Porsiyon)', `${totalLeftoverFood}`],
         ['Artan Ekmek', `${totalLeftoverBread}`],
-        ['Vakıftan Alanlar (Kişi)', `${selfServiceHouseholdsCount}`],
-        ['Kendi Kabını Kullananlar', `${ownContainerHouseholdsCount}`],
-        ['Aktif Kurum Sayısı', `${activeInstitutionsCount}`],
-        ['Aktif Hane Sayısı', `${activeHouseholdsCount}`]
+        ['Vakıftan Alanlar', `${selfServiceHouseholdsCount} Hane / ${selfServicePeople} Kişi`],
+        ['Kap (Kendi/Vakıf)', `${totalOwnContainers} / ${totalVakifContainers}`],
+        ['Aktif Kurum Sayısı', `${activeInstitutionsCount} (${institutionPeople} Kişi)`],
+        ['Aktif Hane Sayısı (Kurum Harici)', `${activeHouseholdsCount} (${householdPeople} Kişi)`]
       ];
 
       // 2. SUMMARY TABLE (Professional Grid)
@@ -304,38 +326,47 @@ export default function StatisticsPage() {
       </div>
 
       <div ref={chartRef} className="p-2 -m-2 bg-transparent">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Toplam Yemek (Porsiyon)</h3>
-          <p className="text-3xl font-black text-gray-900">{totalDeliveredFood}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Kurum Harici Yemek Alan</h3>
+          <p className="text-2xl font-black text-gray-900">{activeHouseholdsCount} <span className="text-sm font-medium">Hane</span></p>
+          <p className="text-[11px] font-medium text-gray-400 mt-0.5">{householdPeople} Kişi</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Toplam Ekmek</h3>
-          <p className="text-3xl font-black text-gray-900">{totalDeliveredBread}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Vakıftan Teslim Alan</h3>
+          <p className="text-2xl font-black text-gray-900">{selfServiceHouseholdsCount} <span className="text-sm font-medium">Hane</span></p>
+          <p className="text-[11px] font-medium text-gray-400 mt-0.5">{selfServicePeople} Kişi</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Artan Yemek (Porsiyon)</h3>
-          <p className="text-3xl font-black text-orange-600">{totalLeftoverFood}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Aktif Kurum</h3>
+          <p className="text-2xl font-black text-blue-600">{activeInstitutionsCount}</p>
+          <p className="text-[11px] font-medium text-gray-400 mt-0.5">{institutionPeople} Kişi (Öğrenci vb.)</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Artan Ekmek</h3>
-          <p className="text-3xl font-black text-orange-600">{totalLeftoverBread}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Toplam Yemek</h3>
+          <p className="text-2xl font-black text-gray-900">{householdPeople + institutionPeople} <span className="text-sm font-medium">Porsiyon (Hane+Kurum)</span></p>
+          <p className="text-[11px] font-medium text-gray-400 mt-0.5">Tümü</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Vakıftan Alanlar (Kişi)</h3>
-          <p className="text-3xl font-black text-purple-600">{selfServiceHouseholdsCount}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Toplam Ekmek</h3>
+          <p className="text-2xl font-black text-gray-900">{totalDeliveredBread}</p>
+          <p className="text-[11px] font-medium text-gray-400 mt-0.5">Dağıtılan Ekmek</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Kendi Kabını Kullananlar</h3>
-          <p className="text-3xl font-black text-teal-600">{ownContainerHouseholdsCount}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Artan Yemek</h3>
+          <p className="text-2xl font-black text-orange-600">{totalLeftoverFood} <span className="text-sm font-medium">Porsiyon</span></p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Aktif Kurum Sayısı</h3>
-          <p className="text-3xl font-black text-blue-600">{activeInstitutionsCount}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Artan Ekmek</h3>
+          <p className="text-2xl font-black text-orange-600">{totalLeftoverBread}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Aktif Hane Sayısı</h3>
-          <p className="text-3xl font-black text-indigo-600">{activeHouseholdsCount}</p>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Kendi Kabı</h3>
+          <p className="text-2xl font-black text-teal-600">{totalOwnContainers}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-xs font-bold uppercase text-gray-500 mb-1">Vakıf Kabı</h3>
+          <p className="text-2xl font-black text-rose-600">{totalVakifContainers}</p>
         </div>
       </div>
 
