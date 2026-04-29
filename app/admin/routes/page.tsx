@@ -1477,7 +1477,9 @@ export default function RoutesPage() {
         if (isPaused && h?.pausedUntil) {
            row.push(`${safeFormat(new Date(h.pausedUntil), 'dd.MM')} tarihine kadar pasiftir ve yemek bırakılmayacaktır.`);
         } else {
-            if (dateStr < reportDateStr) {
+            const isRouteCompletedOrApproved = route && (route.status === 'completed' || route.status === 'approved');
+            
+            if (dateStr < reportDateStr || (dateStr === reportDateStr && isRouteCompletedOrApproved)) {
               if (!route) {
                 row.push('-');
               } else {
@@ -1486,7 +1488,7 @@ export default function RoutesPage() {
                 else row.push(stop.status === 'delivered' ? 'TESLİM EDİLDİ' : stop.status === 'failed' ? 'TESLİM EDİLMEDİ' : '-');
               }
             } else {
-              row.push(''); // Boş satır (gelecek/bugün)
+              row.push(''); // Boş satır (gelecek/bugün/tamamlanmamış bugün)
             }
         }
       });
