@@ -841,7 +841,7 @@ export default function DriverPage() {
     const loadingToast = toast.loading('Rota başlatılıyor...');
     try {
       if (todayRoute) {
-        const updatedRoute = { ...todayRoute, status: 'in_progress', startKm: Number(startKm), isPaused: false };
+        const updatedRoute = { ...todayRoute, status: 'in_progress' as const, startKm: Number(startKm), isPaused: false };
         if (navigator.onLine) {
           await db.routes.update(todayRoute.id!, {
             status: 'in_progress',
@@ -964,7 +964,7 @@ export default function DriverPage() {
 
         const updatedRoute = { 
           ...todayRoute!, 
-          status: 'completed', 
+          status: 'completed' as const, 
           endKm: Number(endKm),
           remainingFood: totalRemainingFood,
           remainingBread: totalRemainingBread
