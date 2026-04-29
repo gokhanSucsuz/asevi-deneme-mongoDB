@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { RouteStop } from './db';
+import { RouteStop, Route, Household, Driver } from './db';
 
 export interface OfflineStopUpdate {
   id?: number;
@@ -25,12 +25,21 @@ export interface OfflineRouteUpdate {
 export class LocalRouteDatabase extends Dexie {
   offlineUpdates!: Table<OfflineStopUpdate>;
   offlineRouteUpdates!: Table<OfflineRouteUpdate>;
+  
+  cachedRoutes!: Table<Route>;
+  cachedStops!: Table<RouteStop>;
+  cachedHouseholds!: Table<Household>;
+  cachedDrivers!: Table<Driver>;
 
   constructor() {
     super('DriverLocalDB');
-    this.version(2).stores({
+    this.version(3).stores({
       offlineUpdates: '++id, stopId, timestamp',
-      offlineRouteUpdates: '++id, routeId, timestamp'
+      offlineRouteUpdates: '++id, routeId, timestamp',
+      cachedRoutes: 'id, driverId, date',
+      cachedStops: 'id, routeId, status, householdId',
+      cachedHouseholds: 'id',
+      cachedDrivers: 'id'
     });
   }
 }
