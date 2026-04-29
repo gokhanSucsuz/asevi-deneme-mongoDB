@@ -276,7 +276,7 @@ export default function BreadTrackingPage() {
       
       const finalTotalNeeded = (calculatedTotalNeeded - currentManualTotalAdj) + newManualTotalAdj;
       const finalLeftover = (calculatedLeftoverAmount - currentManualLeftover) + newManualLeftover;
-      const finalContainerCount = Math.max(0, (containerCount - currentManualContainerAdj) + newManualContainerAdj);
+      const finalContainerCount = Math.max(0, ((containerCount || 0) - currentManualContainerAdj) + newManualContainerAdj);
       const newFinalOrder = Math.max(0, finalTotalNeeded - finalLeftover);
 
       if (existing) {

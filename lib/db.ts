@@ -324,34 +324,47 @@ const prepareData = (data: any) => {
   return data;
 };
 
-async function callApi(collection: string, operation: string, params: any = {}) {
+async function callApi(collection: string, operation: string, params: any = {}, timeoutMs = 15000) {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
   
   const token = await user.getIdToken();
-  const response = await fetch('/api/db?t=' + Date.now(), {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      collection,
-      operation,
-      ...params
-    })
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    const message = errorBody.details 
-      ? `${errorBody.error}: ${errorBody.details}` 
-      : (errorBody.error || `API Hatası: ${response.status}`);
-    throw new Error(message);
+  try {
+    const response = await fetch('/api/db?t=' + Date.now(), {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        collection,
+        operation,
+        ...params
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      const message = errorBody.details 
+        ? `${errorBody.error}: ${errorBody.details}` 
+        : (errorBody.error || `API Hatası: ${response.status}`);
+      throw new Error(message);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('Bağlantı zaman aşımına uğradı. Lütfen internetinizi kontrol edin.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return await response.json();
 }
 
 export const db = {

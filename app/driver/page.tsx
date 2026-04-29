@@ -40,6 +40,8 @@ export default function DriverPage() {
   // Restore local UI state if application is closed or pushed to background
   useEffect(() => {
     try {
+      const savedDriverId = localStorage.getItem('driver_selectedDriverId');
+      if (savedDriverId) setSelectedDriverId(savedDriverId);
       const savedStartKm = localStorage.getItem('driver_startKm');
       if (savedStartKm) setStartKm(savedStartKm);
       const savedIssue = localStorage.getItem('driver_issueText');
@@ -50,6 +52,11 @@ export default function DriverPage() {
       if (savedPaused === 'true') setIsPausedLocal(true);
     } catch(e) {}
   }, []);
+
+  useEffect(() => {
+    if (selectedDriverId) localStorage.setItem('driver_selectedDriverId', selectedDriverId);
+    else localStorage.removeItem('driver_selectedDriverId');
+  }, [selectedDriverId]);
 
   useEffect(() => {
     localStorage.setItem('driver_startKm', startKm);
