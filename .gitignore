@@ -5,3 +5,9 @@ coverage/
 *.log
 .env*
 !.env.example
+CLAUDE.md
+.agent/AGENT-INDEX.md
+.github/copilot-instructions.md
+.cursorrules
+.gitignore
+.agent/PORTABILITY-GUIDE.md
