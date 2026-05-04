@@ -2848,7 +2848,18 @@ export default function RoutesPage() {
                       Rotadaki Haneler (Sıralı)
                     </h4>
                     <div className="space-y-3">
-                      {selectedHouseholds.map(sh => {
+                      {selectedHouseholds.filter(sh => {
+                        if (!templateSearchTerm) return true;
+                        const h = households?.find(hh => hh.id === sh.householdId);
+                        if (!h) return false;
+                        const search = normalizeTurkish(templateSearchTerm);
+                        return (
+                          normalizeTurkish(h.headName).includes(search) ||
+                          normalizeTurkish(h.address).includes(search) ||
+                          (h.tcNo || '').includes(templateSearchTerm) ||
+                          (h.householdNo || '').toLowerCase().includes(search)
+                        );
+                      }).map(sh => {
                         const h = households?.find(hh => hh.id === sh.householdId);
                         if (!h) return null;
                         return (
@@ -2899,10 +2910,27 @@ export default function RoutesPage() {
                           </div>
                         );
                       })}
-                      {selectedHouseholds.length === 0 && (
+                      {selectedHouseholds.length === 0 ? (
                         <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                           <p className="text-sm text-gray-400 italic">Henüz hane seçilmedi.</p>
                         </div>
+                      ) : (
+                        selectedHouseholds.filter(sh => {
+                          if (!templateSearchTerm) return true;
+                          const h = households?.find(hh => hh.id === sh.householdId);
+                          if (!h) return false;
+                          const search = normalizeTurkish(templateSearchTerm);
+                          return (
+                            normalizeTurkish(h.headName).includes(search) ||
+                            normalizeTurkish(h.address).includes(search) ||
+                            (h.tcNo || '').includes(templateSearchTerm) ||
+                            (h.householdNo || '').toLowerCase().includes(search)
+                          );
+                        }).length === 0 && (
+                          <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                            <p className="text-sm text-gray-400 italic">Aranan kriterlere uygun hane bulunamadı.</p>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
