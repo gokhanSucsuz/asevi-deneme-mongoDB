@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
-import { db, Route, RouteStop, Household } from '@/lib/db';
+import { db, Route, RouteStop, Household, Driver } from '@/lib/db';
 import { generateRouteFromTemplate, getNextWorkingDay, checkAndGenerateNextDayRoutes, checkIsWorkingDay } from '@/lib/route-utils';
 import { safeFormat } from '@/lib/date-utils';
 import { getTurkishPdf, addVakifLogo } from '@/lib/pdfUtils';
@@ -40,6 +40,8 @@ export default function DriverPage() {
   // Restore local UI state if application is closed or pushed to background
   useEffect(() => {
     try {
+      const savedDriverId = localStorage.getItem('driver_selectedDriverId');
+      if (savedDriverId) setSelectedDriverId(savedDriverId);
       const savedStartKm = localStorage.getItem('driver_startKm');
       if (savedStartKm) setStartKm(savedStartKm);
       const savedIssue = localStorage.getItem('driver_issueText');
@@ -50,6 +52,11 @@ export default function DriverPage() {
       if (savedPaused === 'true') setIsPausedLocal(true);
     } catch(e) {}
   }, []);
+
+  useEffect(() => {
+    if (selectedDriverId) localStorage.setItem('driver_selectedDriverId', selectedDriverId);
+    else localStorage.removeItem('driver_selectedDriverId');
+  }, [selectedDriverId]);
 
   useEffect(() => {
     localStorage.setItem('driver_startKm', startKm);
@@ -297,7 +304,22 @@ export default function DriverPage() {
     });
   }, []);
 
-  const drivers = useAppQuery(() => db.drivers.filter(d => !!d.isActive).toArray(), [], 'drivers');
+  const drivers = useAppQuery(async () => {
+    let dbDrivers: Driver[] = [];
+    if (navigator.onLine) {
+      try {
+        dbDrivers = await db.drivers.filter(d => !!d.isActive).toArray();
+        await localDb.cachedDrivers.clear();
+        await localDb.cachedDrivers.bulkAdd(dbDrivers);
+        return dbDrivers;
+      } catch (e) {
+        dbDrivers = await localDb.cachedDrivers.toArray();
+      }
+    } else {
+      dbDrivers = await localDb.cachedDrivers.toArray();
+    }
+    return dbDrivers;
+  }, [], 'drivers');
   const systemSettings = useAppQuery(() => db.system_settings.get('global'), [], 'system_settings');
   const today = safeFormatTRT(new Date(), 'yyyy-MM-dd');
   
@@ -640,7 +662,20 @@ export default function DriverPage() {
           const todayStr = safeFormatTRT(now, 'yyyy-MM-dd');
 
           // 1. Check for today's route first (prioritize today)
-          const driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
+          let driverRoutes: Route[] = [];
+          
+          if (navigator.onLine) {
+            try {
+              driverRoutes = await db.routes.where('driverId').equals(selectedDriverId).toArray();
+              await localDb.cachedRoutes.where('driverId').equals(selectedDriverId).delete();
+              await localDb.cachedRoutes.bulkAdd(driverRoutes);
+            } catch (e) {
+              driverRoutes = await localDb.cachedRoutes.where('driverId').equals(selectedDriverId).toArray();
+            }
+          } else {
+            driverRoutes = await localDb.cachedRoutes.where('driverId').equals(selectedDriverId).toArray();
+          }
+          
           const todayRoutes = driverRoutes.filter(r => r.date === todayStr);
           
           if (todayRoutes.length > 0) {
@@ -666,15 +701,18 @@ export default function DriverPage() {
           let targetDateStr = todayStr;
           
           // Try to generate ONLY today's route
-          const routeId = await generateRouteFromTemplate(selectedDriverId, targetDateStr);
-          if (routeId) {
-             const newRoute = await db.routes.get(routeId);
-             if (newRoute) {
-                setTodayRoute(newRoute);
-                return;
-             }
-          } else {
-             console.log("No route could be generated for today.");
+          if (navigator.onLine) {
+            const routeId = await generateRouteFromTemplate(selectedDriverId, targetDateStr);
+            if (routeId) {
+               const newRoute = await db.routes.get(routeId);
+               if (newRoute) {
+                  await localDb.cachedRoutes.put(newRoute);
+                  setTodayRoute(newRoute);
+                  return;
+               }
+            } else {
+               console.log("No route could be generated for today.");
+            }
           }
           
           // Last resort: ONLY for admins, show the latest route. For drivers, show null (none for today)
@@ -700,7 +738,18 @@ export default function DriverPage() {
   const routeStopsRaw = useAppQuery(
     async () => {
       if (!todayRoute) return [];
-      const stops = await db.routeStops.where('routeId').equals(todayRoute.id!).toArray();
+      let stops: RouteStop[] = [];
+      if (navigator.onLine) {
+        try {
+          stops = await db.routeStops.where('routeId').equals(todayRoute.id!).toArray();
+          await localDb.cachedStops.where('routeId').equals(todayRoute.id!).delete();
+          await localDb.cachedStops.bulkAdd(stops);
+        } catch (e) {
+          stops = await localDb.cachedStops.where('routeId').equals(todayRoute.id!).toArray();
+        }
+      } else {
+        stops = await localDb.cachedStops.where('routeId').equals(todayRoute.id!).toArray();
+      }
       return stops.sort((a: any, b: any) => a.order - b.order);
     },
     [todayRoute],
@@ -713,8 +762,20 @@ export default function DriverPage() {
       const householdIds = routeStopsRaw.map((rs: RouteStop) => rs.householdId).filter((id: string | undefined) => !!id) as string[];
       if (householdIds.length === 0) return [];
       
-      // Fetch all households once to avoid edge cases with getMany and MongoDB $in queries
-      const results = await db.households.toArray();
+      let results: Household[] = [];
+      if (navigator.onLine) {
+        try {
+          // Fetch all households once to avoid edge cases with getMany and MongoDB $in queries
+          results = await db.households.toArray();
+          await localDb.cachedHouseholds.clear();
+          await localDb.cachedHouseholds.bulkAdd(results);
+        } catch(e) {
+          results = await localDb.cachedHouseholds.toArray();
+        }
+      } else {
+        results = await localDb.cachedHouseholds.toArray();
+      }
+      
       return results.filter(h => !!h) as Household[];
     },
     [routeStopsRaw],
@@ -780,6 +841,7 @@ export default function DriverPage() {
     const loadingToast = toast.loading('Rota başlatılıyor...');
     try {
       if (todayRoute) {
+        const updatedRoute = { ...todayRoute, status: 'in_progress' as const, startKm: Number(startKm), isPaused: false };
         if (navigator.onLine) {
           await db.routes.update(todayRoute.id!, {
             status: 'in_progress',
@@ -797,7 +859,8 @@ export default function DriverPage() {
           });
           toast.success('Çevrimdışı: Rota yerel olarak başlatıldı.', { id: loadingToast });
         }
-        setTodayRoute({ ...todayRoute, status: 'in_progress', startKm: Number(startKm), isPaused: false });
+        await localDb.cachedRoutes.put(updatedRoute);
+        setTodayRoute(updatedRoute);
       }
     } catch (error) {
       console.error(error);
@@ -820,9 +883,12 @@ export default function DriverPage() {
         note: newPausedState ? 'Şoför mola verdi' : 'Şoför moladan döndü'
       });
 
+      const updatedRoute = { ...todayRoute, isPaused: newPausedState, history: newHistory };
+
       // Update locally immediately
       setIsPausedLocal(newPausedState);
-      setTodayRoute({ ...todayRoute, isPaused: newPausedState, history: newHistory });
+      setTodayRoute(updatedRoute);
+      await localDb.cachedRoutes.put(updatedRoute);
 
       if (navigator.onLine) {
         await db.routes.update(todayRoute.id!, {
@@ -896,13 +962,15 @@ export default function DriverPage() {
         // Auto-generate route for the next working day if all are completed
         await checkAndGenerateNextDayRoutes(new Date());
 
-        setTodayRoute({ 
+        const updatedRoute = { 
           ...todayRoute!, 
-          status: 'completed', 
+          status: 'completed' as const, 
           endKm: Number(endKm),
           remainingFood: totalRemainingFood,
           remainingBread: totalRemainingBread
-        });
+        };
+        await localDb.cachedRoutes.put(updatedRoute);
+        setTodayRoute(updatedRoute);
         setEndKm('');
         setExtraFood('0');
         setExtraBread('0');

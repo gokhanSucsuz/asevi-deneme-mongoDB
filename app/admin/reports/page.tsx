@@ -66,7 +66,17 @@ export default function ReportsPage() {
     effectiveEndDate = endDate;
   }
 
-  const activeHouseholds = households?.filter(h => h.isActive && !h.headName?.toLowerCase().includes('deneme')) || [];
+  const activeHouseholds = households?.filter(h => {
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+      const isDeleted = h.pausedUntil === '9999-12-31';
+      if (isDeleted) return false;
+      if (h.headName?.toLowerCase().includes('deneme')) return false;
+
+      const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayStr;
+      if (h.isActive) return !isPausedInFuture;
+      const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= todayStr;
+      return !!isPauseExpired;
+  }) || [];
   const householdsOnlyList = activeHouseholds.filter(h => !h.type || h.type === 'household');
   const institutionsOnlyList = activeHouseholds.filter(h => h.type === 'institution');
   
@@ -451,7 +461,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           <div className="w-full md:w-48">
             <label className="block text-sm font-medium text-gray-700 mb-1">Zaman Dilimi</label>
@@ -579,66 +589,97 @@ export default function ReportsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+              <div className="p-3 rounded-full bg-blue-50 text-blue-600">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Kurum Harici Yemek Alan</p>
+                <p className="text-2xl font-black text-gray-900">{householdsOnlyList.length} <span className="text-sm font-medium">Hane</span></p>
+                <p className="text-xs font-medium text-gray-500 mt-1">{totalPeople - selfServicePeople - (institutionsOnlyList.reduce((sum, h) => sum + (h.memberCount || 0), 0))} Kişi Adrese Teslim</p>
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+              <div className="p-3 rounded-full bg-purple-50 text-purple-600">
+                <ShoppingBasket size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Vakıftan Teslim Alan</p>
+                <p className="text-2xl font-black text-gray-900">{activeHouseholds.filter(h => h.isSelfService).length} <span className="text-sm font-medium">Hane</span></p>
+                <p className="text-xs font-medium text-gray-500 mt-1">{selfServicePeople} Kişi Vakıftan Gelip Alıyor</p>
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-indigo-50 text-indigo-600">
                 <Users size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Toplam Kişi (Hedef)</p>
-                <p className="text-2xl font-bold text-gray-900">{totalPeople}</p>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Toplam Kişi (Hedef)</p>
+                <p className="text-2xl font-black text-gray-900">{totalPeople}</p>
+                <p className="text-xs font-medium text-gray-500 mt-1">Tüm Dağıtım Hedefi</p>
               </div>
             </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-emerald-50 text-emerald-600">
                 <ShoppingBasket size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Teslim Edilen Yemek</p>
-                <p className="text-2xl font-bold text-gray-900">{totalDeliveredMeals}</p>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Teslim Edilen Yemek</p>
+                <p className="text-2xl font-black text-gray-900">{totalDeliveredMeals}</p>
+                <p className="text-xs font-medium text-gray-500 mt-1">Seçili Dönemde</p>
               </div>
             </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-red-50 text-red-600">
                 <XCircle size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Teslim Edilemeyen Hane Sayısı</p>
-                <p className="text-2xl font-bold text-gray-900">{failedHouseholdsCount}</p>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Teslim Edilemeyen</p>
+                <p className="text-2xl font-black text-gray-900">{failedHouseholdsCount} <span className="text-sm font-medium">Hane</span></p>
                 <p className="text-xs text-red-500 mt-1 font-medium">
                   {failedPeopleCount} Kişi Teslim Edilemedi
                 </p>
               </div>
             </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-amber-50 text-amber-600">
                 <TrendingUp size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Artan Yemek</p>
-                <p className="text-2xl font-bold text-gray-900">{totalLeftoverFood}</p>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Artan Yemek</p>
+                <p className="text-2xl font-black text-gray-900">{totalLeftoverFood} <span className="text-sm font-medium">Porsiyon</span></p>
+                <p className="text-xs font-medium text-gray-500 mt-1">Seçili Dönemde</p>
               </div>
             </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-rose-50 text-rose-600">
                 <Truck size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Dağıtılan Ekmek</p>
-                <p className="text-2xl font-bold text-gray-900">{totalBreadDelivered}</p>
-                <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Dağıtılan Ekmek</p>
+                <p className="text-2xl font-black text-gray-900">{totalBreadDelivered}</p>
+                <div className="mt-1 text-xs text-gray-500 space-y-0.5 font-medium">
                   <p>Hane: {activeHouseholds.filter(h => !h.type || h.type === 'household').reduce((sum, h) => sum + (h.breadCount || 0), 0)}</p>
                   <p>Kurum: {institutionsOnlyList.reduce((sum, h) => sum + (h.breadCount || 0), 0)}</p>
                 </div>
               </div>
             </div>
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
               <div className="p-3 rounded-full bg-orange-50 text-orange-600">
                 <BarChart3 size={24} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Artan Ekmek</p>
-                <p className="text-2xl font-bold text-gray-900">{totalBreadLeftover}</p>
+                <p className="text-xs font-bold uppercase text-gray-500 mb-1">Artan Ekmek</p>
+                <p className="text-2xl font-black text-gray-900">{totalBreadLeftover}</p>
+                <p className="text-xs font-medium text-gray-500 mt-1">Seçili Dönemde</p>
               </div>
             </div>
           </div>

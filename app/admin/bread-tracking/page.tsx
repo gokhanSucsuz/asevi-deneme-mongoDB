@@ -25,6 +25,7 @@ export default function BreadTrackingPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [manualAmount, setManualAmount] = useState<number>(0);
   const [manualTotalAdjustment, setManualTotalAdjustment] = useState<number>(0);
+  const [manualContainerAdjustment, setManualContainerAdjustment] = useState<number>(0);
   const [manualNote, setManualNote] = useState('');
 
   // Tender form state
@@ -267,14 +268,15 @@ export default function BreadTrackingPage() {
       // Calculate current base values without manual adjustments if we are adding more
       const currentManualLeftover = existing?.manualLeftoverAmount || 0;
       const currentManualTotalAdj = existing?.manualTotalAmountAdjustment || 0;
+      const currentManualContainerAdj = existing?.manualContainerAdjustment || 0;
       
       const newManualLeftover = currentManualLeftover + manualAmount;
       const newManualTotalAdj = currentManualTotalAdj + manualTotalAdjustment;
+      const newManualContainerAdj = currentManualContainerAdj + manualContainerAdjustment;
       
-      // The totalNeeded in calculateBreadForNextDay already includes manualTotalAmountAdjustment
-      // But we want to re-calculate correctly based on updated values
       const finalTotalNeeded = (calculatedTotalNeeded - currentManualTotalAdj) + newManualTotalAdj;
       const finalLeftover = (calculatedLeftoverAmount - currentManualLeftover) + newManualLeftover;
+      const finalContainerCount = Math.max(0, ((containerCount || 0) - currentManualContainerAdj) + newManualContainerAdj);
       const newFinalOrder = Math.max(0, finalTotalNeeded - finalLeftover);
 
       if (existing) {
@@ -282,10 +284,11 @@ export default function BreadTrackingPage() {
           totalNeeded: finalTotalNeeded,
           leftoverAmount: finalLeftover,
           finalOrderAmount: newFinalOrder,
-          containerCount: existing.containerCount ?? containerCount,
+          containerCount: finalContainerCount,
           ownContainerCount: existing.ownContainerCount ?? ownContainerCount,
           manualLeftoverAmount: newManualLeftover,
           manualTotalAmountAdjustment: newManualTotalAdj,
+          manualContainerAdjustment: newManualContainerAdj,
           manualLeftoverNote: manualNote,
           note: existing.note ? `${existing.note} | Manuel Düzeltme: ${manualNote}` : `Manuel Düzeltme: ${manualNote}`
         });
@@ -296,21 +299,23 @@ export default function BreadTrackingPage() {
           delivered: 0,
           leftoverAmount: finalLeftover,
           finalOrderAmount: newFinalOrder,
-          containerCount,
+          containerCount: finalContainerCount,
           ownContainerCount,
           status: 'pending',
           manualLeftoverAmount: newManualLeftover,
           manualTotalAmountAdjustment: newManualTotalAdj,
+          manualContainerAdjustment: newManualContainerAdj,
           manualLeftoverNote: manualNote,
           note: `Manuel Düzeltme: ${manualNote}`
         });
       }
 
-      toast.success('Manuel ekmek düzeltmesi kaydedildi.');
-      await addSystemLog(user, personnel, 'Ekmek Manuel Düzeltme', `${selectedDate} tarihi için Artan: ${manualAmount}, Toplam İhtiyaç: ${manualTotalAdjustment} manuel düzeltme yapıldı. Not: ${manualNote}`, 'bread');
+      toast.success('Manuel düzeltme kaydedildi.');
+      await addSystemLog(user, personnel, 'Ekmek Manuel Düzeltme', `${selectedDate} tarihi için Artan: ${manualAmount}, Toplam İhtiyaç: ${manualTotalAdjustment}, Kap: ${manualContainerAdjustment} manuel düzeltme yapıldı. Not: ${manualNote}`, 'bread');
       setIsManualModalOpen(false);
       setManualAmount(0);
       setManualTotalAdjustment(0);
+      setManualContainerAdjustment(0);
       setManualNote('');
     } catch (error) {
       console.error(error);
@@ -457,13 +462,14 @@ export default function BreadTrackingPage() {
         b.totalNeeded.toString(),
         b.leftoverAmount.toString(),
         b.finalOrderAmount.toString(),
+        `${b.containerCount ?? '-'} / ${b.ownContainerCount ?? '-'}`,
         b.status === 'ordered' ? 'SİPARİŞ VERİLDİ' : 'BEKLİYOR',
         b.note || '-'
       ]);
 
       autoTable(doc, {
         startY: startY + 10,
-        head: [['TARİH', 'TOPLAM İHTİYAÇ', 'ARTAN EKMEK', 'SİPARİŞ MİKTARI', 'DURUM', 'DÜŞÜNCELER']],
+        head: [['TARİH', 'TOPLAM İHTİYAÇ', 'ARTAN EKMEK', 'SİPARİŞ', 'KAP(VAKIF/KENDİ)', 'DURUM', 'DÜŞÜNCELER']],
         body: tableData,
         styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, lineWidth: 0.1, lineColor: [80, 80, 80] },
         headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineWidth: 0.1 },
@@ -677,12 +683,13 @@ export default function BreadTrackingPage() {
               <thead className="bg-gray-50 text-[10px] uppercase font-bold tracking-tight text-gray-500">
                 <tr>
                   <th className="px-3 py-3 text-left">Tarih</th>
-                  <th className="px-3 py-3 text-left">Teslimat Tarihi</th>
+                  <th className="px-3 py-3 text-left hidden sm:table-cell">Teslimat Tarihi</th>
                   <th className="px-3 py-3 text-left">Top. İhtiyaç</th>
                   <th className="px-3 py-3 text-left">Artan Ekmek</th>
                   <th className="px-3 py-3 text-left">Sipariş</th>
+                  <th className="px-3 py-3 text-left hidden md:table-cell">Kap (Vakıf/Kendi)</th>
                   <th className="px-3 py-3 text-left">Durum</th>
-                  <th className="px-3 py-3 text-left">Not</th>
+                  <th className="px-3 py-3 text-left hidden lg:table-cell">Not</th>
                   <th className="px-3 py-3 text-right">İşlem</th>
                 </tr>
               </thead>
@@ -697,7 +704,7 @@ export default function BreadTrackingPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 hidden sm:table-cell">
                         {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
@@ -721,6 +728,12 @@ export default function BreadTrackingPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">
+                      <div className="flex flex-col gap-1">
+                         <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Vakıf: {b.containerCount ?? '-'}</span>
+                         <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Kendi: {b.ownContainerCount ?? '-'}</span>
+                      </div>
+                    </td>
                     <td className="px-3 py-3 text-xs text-gray-500">
                       <span className={`px-2 py-0.5 inline-flex text-[9px] font-bold rounded-full uppercase tracking-wider ${
                         b.status === 'ordered'
@@ -730,7 +743,7 @@ export default function BreadTrackingPage() {
                         {b.status === 'ordered' ? 'BİTTİ' : 'BEKLİYOR'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate" title={b.note}>{b.note || '-'}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate hidden lg:table-cell" title={b.note}>{b.note || '-'}</td>
                     <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium">
                       <div className="flex justify-end gap-1.5">
                         {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
@@ -747,6 +760,10 @@ export default function BreadTrackingPage() {
                           <button
                             onClick={() => {
                               setSelectedDate(b.date);
+                              setManualAmount(0);
+                              setManualTotalAdjustment(0);
+                              setManualContainerAdjustment(0);
+                              setManualNote('');
                               setIsManualModalOpen(true);
                             }}
                             className="text-blue-600 hover:text-blue-900 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200"
@@ -761,7 +778,7 @@ export default function BreadTrackingPage() {
                 ))}
                 {reportData.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">Bu tarih aralığı için kayıt bulunamadı.</td>
+                    <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">Bu tarih aralığı için kayıt bulunamadı.</td>
                   </tr>
                 )}
               </tbody>
@@ -914,23 +931,23 @@ export default function BreadTrackingPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 italic transition-transform hover:scale-[1.02]">
                   <label className="block text-[10px] font-black uppercase tracking-tighter text-orange-800 mb-2">Artan Ekmek Düzeltme (+/-)</label>
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setManualAmount(prev => prev - 1)}
-                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100"
+                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100 flex-shrink-0"
                     >-</button>
                     <input
                       type="number"
                       value={manualAmount}
                       onChange={(e) => setManualAmount(parseInt(e.target.value) || 0)}
-                      className="flex-1 rounded-lg border-orange-200 shadow-sm focus:ring-orange-500 border p-2 text-xl font-black text-center bg-white"
+                      className="flex-1 rounded-lg border-orange-200 shadow-sm focus:ring-orange-500 border p-2 text-xl font-black text-center bg-white min-w-0"
                     />
                     <button 
                       onClick={() => setManualAmount(prev => prev + 1)}
-                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100"
+                      className="bg-white text-orange-600 border border-orange-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-orange-100 flex-shrink-0"
                     >+</button>
                   </div>
                 </div>
@@ -940,17 +957,37 @@ export default function BreadTrackingPage() {
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setManualTotalAdjustment(prev => prev - 1)}
-                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100"
+                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100 flex-shrink-0"
                     >-</button>
                     <input
                       type="number"
                       value={manualTotalAdjustment}
                       onChange={(e) => setManualTotalAdjustment(parseInt(e.target.value) || 0)}
-                      className="flex-1 rounded-lg border-green-200 shadow-sm focus:ring-green-500 border p-2 text-xl font-black text-center bg-white"
+                      className="flex-1 rounded-lg border-green-200 shadow-sm focus:ring-green-500 border p-2 text-xl font-black text-center bg-white min-w-0"
                     />
                     <button 
                       onClick={() => setManualTotalAdjustment(prev => prev + 1)}
-                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100"
+                      className="bg-white text-green-600 border border-green-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-green-100 flex-shrink-0"
+                    >+</button>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 italic transition-transform hover:scale-[1.02] sm:col-span-2">
+                  <label className="block text-[10px] font-black uppercase tracking-tighter text-purple-800 mb-2">Kap Sayısı Düzeltme (+/-)</label>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setManualContainerAdjustment(prev => prev - 1)}
+                      className="bg-white text-purple-600 border border-purple-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-purple-100 flex-shrink-0"
+                    >-</button>
+                    <input
+                      type="number"
+                      value={manualContainerAdjustment}
+                      onChange={(e) => setManualContainerAdjustment(parseInt(e.target.value) || 0)}
+                      className="flex-1 rounded-lg border-purple-200 shadow-sm focus:ring-purple-500 border p-2 text-xl font-black text-center bg-white min-w-0"
+                    />
+                    <button 
+                      onClick={() => setManualContainerAdjustment(prev => prev + 1)}
+                      className="bg-white text-purple-600 border border-purple-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-purple-100 flex-shrink-0"
                     >+</button>
                   </div>
                 </div>

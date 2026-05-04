@@ -102,6 +102,7 @@ export default function HouseholdsPage() {
     
     const inRouteHouseholds = householdsOnly.filter((h: Household) => !h.isSelfService);
     const selfServiceHouseholds = householdsOnly.filter((h: Household) => h.isSelfService);
+    const selfServicePeople = selfServiceHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
     
     const totalPeople = activeHouseholds.reduce((sum: number, h: Household) => sum + (h.memberCount || 0), 0);
     
@@ -139,6 +140,7 @@ export default function HouseholdsPage() {
       totalBread,
       inRouteHouseholds: inRouteHouseholds.length,
       selfServiceHouseholds: selfServiceHouseholds.length,
+      selfServicePeople,
       totalContainers,
       ownContainerCount,
       wantsBreakfastTotal,
@@ -961,86 +963,12 @@ export default function HouseholdsPage() {
     }
   };
 
-  const handleRepairDatabase = async () => {
-    if (!allHouseholds) return;
-    const loadingToast = toast.loading('Veritabanı kontrol ediliyor ve onarılıyor...');
-    try {
-      let repairCount = 0;
-      const issues: string[] = [];
-      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
-
-      for (const h of allHouseholds) {
-        let needsUpdate = false;
-        const updates: Partial<Household> = {};
-
-        // 1. Check memberCount consistency (only if NOT institution)
-        let expectedMemberCount = h.memberCount;
-        const otherCount = h.otherMemberCount || 0;
-        if (h.type !== 'institution') {
-          const validMembers = h.members?.filter(m => m && m.trim() !== '') || [];
-          expectedMemberCount = 1 + validMembers.length + otherCount;
-          
-          if (h.memberCount !== expectedMemberCount) {
-             updates.memberCount = expectedMemberCount;
-             needsUpdate = true;
-             issues.push(`${h.headName}: Kişi sayısı düzeltildi (${h.memberCount} -> ${expectedMemberCount})`);
-          }
-        }
-
-        // 2. Check breadCount (default to memberCount if 0 and not institution)
-        const finalMemberCount = updates.memberCount !== undefined ? updates.memberCount : h.memberCount;
-        if ((h.breadCount === undefined || h.breadCount === null || (h.breadCount === 0 && h.type !== 'institution')) && finalMemberCount > 0) {
-          updates.breadCount = finalMemberCount;
-          needsUpdate = true;
-          issues.push(`${h.headName}: Ekmek sayısı güncellendi (0 veya boş -> ${finalMemberCount})`);
-        }
-
-        // 3. Check isActive vs pausedUntil
-        const isPausedFuture = h.pausedUntil && h.pausedUntil > todayStr;
-        const isDeleted = h.pausedUntil === '9999-12-31';
-        
-        if (!h.isActive && !isPausedFuture && !isDeleted) {
-          updates.isActive = true;
-          updates.pausedUntil = '';
-          needsUpdate = true;
-          issues.push(`${h.headName}: Pasif durumdan aktife çekildi (Süresi dolmuş veya hatalı kayıt)`);
-        }
-
-        if (needsUpdate) {
-          await db.households.update(h.id!, updates);
-          repairCount++;
-        }
-      }
-
-      if (repairCount > 0) {
-        await addLog('Veritabanı Onarma', `${repairCount} kayıt düzeltildi. Detaylar konsolda.`);
-        toast.success(`${repairCount} uyumsuz kayıt düzeltildi.`, { id: loadingToast });
-        console.log('Fixed Issues:', issues);
-      } else {
-        toast.success('Veritabanı temiz. Uyumsuz kayıt bulunamadı.', { id: loadingToast });
-      }
-      notifyDbChange('households');
-    } catch (error) {
-      console.error(error);
-      toast.error('Onarma işlemi sırasında bir hata oluştu', { id: loadingToast });
-    }
-  };
-
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Haneler</h2>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          {!isDemo && (
-            <button
-              onClick={handleRepairDatabase}
-              className="flex-1 md:flex-none flex items-center px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors text-sm font-medium"
-              title="Uyumsuz kayıtları bulur ve düzeltir"
-            >
-              <AlertCircle size={18} className="mr-2" />
-              Onar
-            </button>
-          )}
+
           <input
             type="file"
             accept=".xlsx, .xls"
@@ -1083,89 +1011,105 @@ export default function HouseholdsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-blue-50 text-blue-600">
             <Home size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Aktif Hane</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalHouseholds}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
-              {stats.householdPeople} Kişi / {stats.inRouteHouseholds} Rota
+            <p className="text-xs font-bold text-gray-500 uppercase">Kurum Harici Yemek Alan</p>
+            <p className="text-xl font-black text-gray-900">{stats.totalHouseholds} Hane</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">
+              Toplam {stats.householdPeople} Kişi
             </p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-purple-100 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-purple-50 text-purple-600">
+            <Building2 size={24} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase">Vakıftan Teslim Alan</p>
+            <p className="text-xl font-black text-gray-900">{stats.selfServiceHouseholds} Hane</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">
+              Toplam {stats.selfServicePeople} Kişi
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-indigo-50 text-indigo-600">
             <Building2 size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Aktif Kurum</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalInstitutions}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-xs font-bold text-gray-500 uppercase">Aktif Kurum</p>
+            <p className="text-xl font-black text-gray-900">{stats.totalInstitutions}</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">
               {stats.institutionPeople} Kişi (Öğrenci vb.)
             </p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-green-50 text-green-600">
             <Users size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Toplam Yemek (Kişi)</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalPeople}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase">Toplam Yemek</p>
+            <p className="text-xl font-black text-gray-900">{stats.totalPeople} Kişi</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">Tüm hepsi</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-orange-50 text-orange-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Günlük Ekmek</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalBread}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase">Günlük Ekmek</p>
+            <p className="text-xl font-black text-gray-900">{stats.totalBread} Adet</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">Tüm hepsi</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-yellow-50 text-yellow-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Kahvaltı Verilen</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.wantsBreakfastTotal}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-xs font-bold text-gray-500 uppercase">Kahvaltı Verilen</p>
+            <p className="text-xl font-black text-gray-900">{stats.wantsBreakfastTotal} Hane</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">
               {stats.wantsBreakfastPeople} Kişi
             </p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-gray-50 text-gray-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Kahvaltı İstemeyen</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.noBreakfastTotal}</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-xs font-bold text-gray-500 uppercase">Kahvaltı İstemeyen</p>
+            <p className="text-xl font-black text-gray-900">{stats.noBreakfastTotal} Hane</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">
               {stats.noBreakfastPeople} Kişi
             </p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-teal-50 text-teal-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Kendi Kabını Kullanan</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.ownContainerCount}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase">Kendi Kabını Kullanan</p>
+            <p className="text-xl font-black text-gray-900">{stats.ownContainerCount} Kişi</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">Sefertası</p>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
           <div className="p-3 rounded-full bg-red-50 text-red-600">
             <ShoppingBasket size={24} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Vakıf Kabı Kullanan</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalContainers}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase">Vakıf Kabı Kullanan</p>
+            <p className="text-xl font-black text-gray-900">{stats.totalContainers} Kişi</p>
+            <p className="text-[11px] font-medium text-gray-400 mt-0.5">Köpük tabak</p>
           </div>
         </div>
       </div>

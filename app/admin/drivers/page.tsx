@@ -130,7 +130,7 @@ export default function DriversPage() {
 
   const getDriverRoutes = (id: string | undefined, name?: string) => {
     if (!id) return [];
-    return routes?.filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && (r.status === 'completed' || r.status === 'approved')).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+    return (routes || []).filter(r => (String(r.driverId) === String(id) || (name && r.driverSnapshotName === name)) && (r.status === 'completed' || r.status === 'approved')).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   // Helper calculations for reports - moved to memo for UI access
@@ -152,7 +152,7 @@ export default function DriversPage() {
       default: startDate = subMonths(endDate, 1);
     }
 
-    const driverRoutes = routes?.filter((r: Route) => {
+    const driverRoutes = (routes || []).filter((r: Route) => {
       const idMatch = String(r.driverId) === String(driverToReport.id!);
       const nameMatch = r.driverSnapshotName && r.driverSnapshotName === driverToReport.name;
       const isThisDriver = idMatch || nameMatch;
@@ -160,7 +160,7 @@ export default function DriversPage() {
       return isThisDriver && 
              (r.status === 'completed' || r.status === 'approved') &&
              isWithinInterval(new Date(r.date), { start: startOfDay(startDate), end: endOfDay(endDate) });
-    }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+    }).sort((a: Route, b: Route) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const driverStops = (routeStops || []).filter((s: RouteStop) => driverRoutes.some((r: Route) => String(r.id) === String(s.routeId)));
 

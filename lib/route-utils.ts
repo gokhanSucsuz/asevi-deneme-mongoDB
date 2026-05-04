@@ -1,6 +1,5 @@
 import { db, Route, RouteStop } from './db';
 import { format, addDays, isWeekend, startOfWeek, endOfWeek } from 'date-fns';
-import { calculateBreadForNextDay } from './breadUtils';
 import { safeFormatTRT } from './date-utils';
 
 /**
@@ -360,6 +359,7 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
       if (nextIsWorking) {
         const existingBreadTracking = await db.breadTracking.where('date').equals(nextDayStr).first();
         if (!existingBreadTracking) {
+          const { calculateBreadForNextDay } = await import('./breadUtils');
           const breadData = await calculateBreadForNextDay(nextDayStr);
           await db.breadTracking.add({
             date: nextDayStr,

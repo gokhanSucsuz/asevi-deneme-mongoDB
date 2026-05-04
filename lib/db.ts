@@ -169,6 +169,7 @@ export interface BreadTracking {
   manualLeftoverAmount?: number;
   manualLeftoverNote?: string;
   manualTotalAmountAdjustment?: number;
+  manualContainerAdjustment?: number;
 }
 
 export interface LeftoverFood {
@@ -311,46 +312,84 @@ const processData = (data: any): any => {
   return result;
 };
 
-let normalizationStarted = false;
-export const normalizeDatabaseTypes = async () => {
-  // Bu işlem her açılışta veritabanına aşırı yük bindirdiği için devre dışı bırakıldı.
-  // Gerekirse admin panelinden kontrollü bir şekilde tetiklenmelidir.
-  return;
-};
 
-// Helper to prepare data before saving (encryption is now handled server-side)
-const prepareData = (data: any) => {
-  return data;
-};
 
-async function callApi(collection: string, operation: string, params: any = {}) {
+async function callApi(collection: string, operation: string, params: any = {}, timeoutMs = 15000, maxRetries = 3) {
   const user = auth.currentUser;
   if (!user) throw new Error('User not authenticated');
   
   const token = await user.getIdToken();
-  const response = await fetch('/api/db?t=' + Date.now(), {
-    method: 'POST',
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      collection,
-      operation,
-      ...params
-    })
-  });
+  
+  let attempt = 0;
+  let lastError: any = null;
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    const message = errorBody.details 
-      ? `${errorBody.error}: ${errorBody.details}` 
-      : (errorBody.error || `API Hatası: ${response.status}`);
-    throw new Error(message);
+  while (attempt < maxRetries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch('/api/db?t=' + Date.now(), {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          collection,
+          operation,
+          ...params
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        if (response.status === 503 || response.status === 504 || response.status === 502) {
+          throw new Error(`Sunucu meşgul veya ulaşılamıyor (${response.status}).`);
+        }
+
+        const errorBody = await response.json().catch(() => ({}));
+        const message = errorBody.details 
+          ? `${errorBody.error}: ${errorBody.details}` 
+          : (errorBody.error || `API Hatası: ${response.status}`);
+        
+        if (response.status < 500 && !message.includes('MongoNetworkError')) {
+           const finalError = new Error(message);
+           finalError.name = 'NonRetryableError';
+           throw finalError;
+        }
+
+        throw new Error(message);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      if (error.name === 'NonRetryableError') {
+        throw error;
+      }
+      
+      lastError = error;
+      
+      let errorMessage = error.message;
+      if (error.name === 'AbortError') {
+        errorMessage = 'Bağlantı zaman aşımına uğradı. Lütfen internetinizi kontrol edin.';
+        lastError = new Error(errorMessage);
+      }
+      
+      attempt++;
+      if (attempt >= maxRetries) {
+        break;
+      }
+      
+      const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+      console.warn(`Veritabanı isteği başarısız oldu, ${Math.round(waitTime)}ms sonra tekrar deneniyor... (Deneme ${attempt}/${maxRetries}):`, errorMessage);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
-  return await response.json();
+  throw lastError;
 }
 
 export const db = {
@@ -373,20 +412,20 @@ export const db = {
     },
     add: async (data: Household) => {
       checkDemoMode();
-      const res = await callApi('households', 'add', { data: prepareData(data) });
+      const res = await callApi('households', 'add', { data: data });
       notifyDbChange('households');
       revalidateData('households');
       return res.id;
     },
     put: async (data: Household) => {
       checkDemoMode();
-      await callApi('households', 'put', { data: prepareData(data) });
+      await callApi('households', 'put', { data: data });
       notifyDbChange('households');
       revalidateData('households');
     },
     update: async (id: string, data: Partial<Household>) => {
       checkDemoMode();
-      await callApi('households', 'update', { id, data: prepareData(data) });
+      await callApi('households', 'update', { id, data: data });
       notifyDbChange('households');
       revalidateData('households');
     },
@@ -449,20 +488,20 @@ export const db = {
     },
     add: async (data: Driver) => {
       checkDemoMode();
-      const res = await callApi('drivers', 'add', { data: prepareData(data) });
+      const res = await callApi('drivers', 'add', { data: data });
       notifyDbChange('drivers');
       revalidateData('drivers');
       return res.id;
     },
     put: async (data: Driver) => {
       checkDemoMode();
-      await callApi('drivers', 'put', { data: prepareData(data) });
+      await callApi('drivers', 'put', { data: data });
       notifyDbChange('drivers');
       revalidateData('drivers');
     },
     update: async (id: string, data: Partial<Driver>) => {
       checkDemoMode();
-      await callApi('drivers', 'update', { id, data: prepareData(data) });
+      await callApi('drivers', 'update', { id, data: data });
       notifyDbChange('drivers');
       revalidateData('drivers');
     },
@@ -746,13 +785,13 @@ export const db = {
     }),
     add: async (data: Personnel) => {
       checkDemoMode();
-      const res = await callApi('personnel', 'add', { data: prepareData(data) });
+      const res = await callApi('personnel', 'add', { data: data });
       notifyDbChange('personnel');
       return res.id;
     },
     update: async (id: string, data: Partial<Personnel>) => {
       checkDemoMode();
-      await callApi('personnel', 'update', { id, data: prepareData(data) });
+      await callApi('personnel', 'update', { id, data: data });
       notifyDbChange('personnel');
     },
     delete: async (id: string) => {
