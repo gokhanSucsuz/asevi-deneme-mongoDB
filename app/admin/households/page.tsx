@@ -415,7 +415,7 @@ export default function HouseholdsPage() {
       // 1. Her durumda (eski/yeni fark etmeksizin) vakfın ve ilgili şoförün yarınki (veya haftanın kalan günleri) iş günü rota kaydına hane stopu eklenecek.
       const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
       const futureRoutes = await db.routes.toArray();
-      const pendingOrInProgressRoutes = futureRoutes.filter(r => r.date >= todayStr && r.status !== 'completed' && r.status !== 'approved');
+      const pendingOrInProgressRoutes = futureRoutes.filter(r => r.date > todayStr && r.status !== 'completed' && r.status !== 'approved');
 
       // Helper for next working day
       const { getNextWorkingDay } = await import('@/lib/route-utils');
@@ -663,7 +663,7 @@ export default function HouseholdsPage() {
           const today = new Date().toISOString().split('T')[0];
           // Remove from ALL future routes (including pending and in_progress)
           const futureRoutes = await db.routes.toArray();
-          const activeRoutes = futureRoutes.filter(r => r.date >= today && r.status !== 'completed' && r.status !== 'approved');
+          const activeRoutes = futureRoutes.filter(r => r.date > today && r.status !== 'completed' && r.status !== 'approved');
           
           for (const r of activeRoutes) {
             await db.routeStops
@@ -713,7 +713,7 @@ export default function HouseholdsPage() {
         // Remove from pending routes within the pause period
         const today = new Date().toISOString().split('T')[0];
         const affectedRoutes = await db.routes
-          .filter(r => r.status === 'pending' && r.date >= today && r.date <= pauseDate)
+          .filter(r => r.status === 'pending' && r.date > today && r.date <= pauseDate)
           .toArray();
         
         for (const r of affectedRoutes) {

@@ -188,7 +188,7 @@ export default function BreadTrackingPage() {
           const dayRoutes = routes?.filter(r => r.date === dateStr) || [];
           const allApproved = dayRoutes.length > 0 && dayRoutes.every(r => r.status === 'approved');
           
-          const deliveryDate = existing?.deliveryDate || (await getNextWorkingDay(new Date(dateStr))).toISOString().split('T')[0];
+          const deliveryDate = existing?.deliveryDate || safeFormat(await getNextWorkingDay(new Date(dateStr)), 'yyyy-MM-dd');
 
           return {
             id: existing?.id || dateStr,
@@ -235,9 +235,15 @@ export default function BreadTrackingPage() {
           }
         }
 
-        if (item.date < today && item.date >= '2026-04-14') {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const isPastOrLateToday = (item.date < today && item.date >= '2026-04-14') || (item.date === today && currentHour >= 18);
+
+        if (isPastOrLateToday && item.isWorkingDay) {
           const existing = await db.breadTracking.where('date').equals(item.date).first();
-          if (!existing && item.isWorkingDay) {
+          let becameOrdered = false;
+
+          if (!existing) {
             await db.breadTracking.add({
               date: item.date,
               deliveryDate: item.deliveryDate,
@@ -246,8 +252,26 @@ export default function BreadTrackingPage() {
               leftoverAmount: item.leftoverAmount,
               finalOrderAmount: item.finalOrderAmount,
               status: 'ordered',
-              note: 'Sistem tarafından otomatik donduruldu'
+              note: 'Sistem tarafından otomatik onaylandı'
             });
+            becameOrdered = true;
+          } else if (existing.status !== 'ordered') {
+            await db.breadTracking.update(existing.id!, {
+              status: 'ordered',
+              note: existing.note ? existing.note + ' | Sistem tarafından otomatik onaylandı' : 'Sistem tarafından otomatik onaylandı'
+            });
+            becameOrdered = true;
+          }
+
+          if (becameOrdered && item.finalOrderAmount > 0) {
+            const allTenders = await db.tenders.toArray();
+            const sortedTenders = allTenders.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+            const activeTender = sortedTenders.find(t => t.remainingMaxBreadCount > 0);
+            if (activeTender) {
+              await db.tenders.update(activeTender.id!, {
+                remainingMaxBreadCount: activeTender.remainingMaxBreadCount - item.finalOrderAmount
+              });
+            }
           }
         }
       }
@@ -746,7 +770,7 @@ export default function BreadTrackingPage() {
                     <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate hidden lg:table-cell" title={b.note}>{b.note || '-'}</td>
                     <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium">
                       <div className="flex justify-end gap-1.5">
-                        {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
+                        {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
                           <button
                             onClick={() => handleOrderBread(b)}
                             className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
@@ -756,7 +780,7 @@ export default function BreadTrackingPage() {
                             <span>Sipariş Ver</span>
                           </button>
                         )}
-                        {isBefore(new Date(), subHours(new Date(`${b.deliveryDate}T08:00:00`), 12)) && (
+                        {isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
                           <button
                             onClick={() => {
                               setSelectedDate(b.date);
