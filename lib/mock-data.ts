@@ -1,4 +1,4 @@
-import type { Household, Driver, Route, RouteStop, Personnel, SystemLog, BreadTracking } from './db';
+import { Household, Driver, Route, RouteStop, Personnel, SystemLog, BreadTracking } from './db';
 
 const now = new Date();
 const todayStr = now.toISOString().split('T')[0];

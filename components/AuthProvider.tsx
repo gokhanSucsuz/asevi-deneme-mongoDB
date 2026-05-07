@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { db } from '@/lib/db';
+import { db, normalizeDatabaseTypes } from '@/lib/db';
 import { deobfuscate } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -64,7 +64,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-
+        normalizeDatabaseTypes();
+        
         // Priority 1: Check Demo
         if (fbUser.email === 'demo@sydv.org.tr') {
           const demoP = { name: 'Demo Kullanıcısı', email: 'demo@sydv.org.tr', role: 'admin' };

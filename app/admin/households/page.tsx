@@ -963,12 +963,86 @@ export default function HouseholdsPage() {
     }
   };
 
+  const handleRepairDatabase = async () => {
+    if (!allHouseholds) return;
+    const loadingToast = toast.loading('Veritabanı kontrol ediliyor ve onarılıyor...');
+    try {
+      let repairCount = 0;
+      const issues: string[] = [];
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+
+      for (const h of allHouseholds) {
+        let needsUpdate = false;
+        const updates: Partial<Household> = {};
+
+        // 1. Check memberCount consistency (only if NOT institution)
+        let expectedMemberCount = h.memberCount;
+        const otherCount = h.otherMemberCount || 0;
+        if (h.type !== 'institution') {
+          const validMembers = h.members?.filter(m => m && m.trim() !== '') || [];
+          expectedMemberCount = 1 + validMembers.length + otherCount;
+          
+          if (h.memberCount !== expectedMemberCount) {
+             updates.memberCount = expectedMemberCount;
+             needsUpdate = true;
+             issues.push(`${h.headName}: Kişi sayısı düzeltildi (${h.memberCount} -> ${expectedMemberCount})`);
+          }
+        }
+
+        // 2. Check breadCount (default to memberCount if 0 and not institution)
+        const finalMemberCount = updates.memberCount !== undefined ? updates.memberCount : h.memberCount;
+        if ((h.breadCount === undefined || h.breadCount === null || (h.breadCount === 0 && h.type !== 'institution')) && finalMemberCount > 0) {
+          updates.breadCount = finalMemberCount;
+          needsUpdate = true;
+          issues.push(`${h.headName}: Ekmek sayısı güncellendi (0 veya boş -> ${finalMemberCount})`);
+        }
+
+        // 3. Check isActive vs pausedUntil
+        const isPausedFuture = h.pausedUntil && h.pausedUntil > todayStr;
+        const isDeleted = h.pausedUntil === '9999-12-31';
+        
+        if (!h.isActive && !isPausedFuture && !isDeleted) {
+          updates.isActive = true;
+          updates.pausedUntil = '';
+          needsUpdate = true;
+          issues.push(`${h.headName}: Pasif durumdan aktife çekildi (Süresi dolmuş veya hatalı kayıt)`);
+        }
+
+        if (needsUpdate) {
+          await db.households.update(h.id!, updates);
+          repairCount++;
+        }
+      }
+
+      if (repairCount > 0) {
+        await addLog('Veritabanı Onarma', `${repairCount} kayıt düzeltildi. Detaylar konsolda.`);
+        toast.success(`${repairCount} uyumsuz kayıt düzeltildi.`, { id: loadingToast });
+        console.log('Fixed Issues:', issues);
+      } else {
+        toast.success('Veritabanı temiz. Uyumsuz kayıt bulunamadı.', { id: loadingToast });
+      }
+      notifyDbChange('households');
+    } catch (error) {
+      console.error(error);
+      toast.error('Onarma işlemi sırasında bir hata oluştu', { id: loadingToast });
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Haneler</h2>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-
+          {!isDemo && (
+            <button
+              onClick={handleRepairDatabase}
+              className="flex-1 md:flex-none flex items-center px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors text-sm font-medium"
+              title="Uyumsuz kayıtları bulur ve düzeltir"
+            >
+              <AlertCircle size={18} className="mr-2" />
+              Onar
+            </button>
+          )}
           <input
             type="file"
             accept=".xlsx, .xls"

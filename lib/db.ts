@@ -312,7 +312,17 @@ const processData = (data: any): any => {
   return result;
 };
 
+let normalizationStarted = false;
+export const normalizeDatabaseTypes = async () => {
+  // Bu işlem her açılışta veritabanına aşırı yük bindirdiği için devre dışı bırakıldı.
+  // Gerekirse admin panelinden kontrollü bir şekilde tetiklenmelidir.
+  return;
+};
 
+// Helper to prepare data before saving (encryption is now handled server-side)
+const prepareData = (data: any) => {
+  return data;
+};
 
 async function callApi(collection: string, operation: string, params: any = {}, timeoutMs = 15000, maxRetries = 3) {
   const user = auth.currentUser;
@@ -412,20 +422,20 @@ export const db = {
     },
     add: async (data: Household) => {
       checkDemoMode();
-      const res = await callApi('households', 'add', { data: data });
+      const res = await callApi('households', 'add', { data: prepareData(data) });
       notifyDbChange('households');
       revalidateData('households');
       return res.id;
     },
     put: async (data: Household) => {
       checkDemoMode();
-      await callApi('households', 'put', { data: data });
+      await callApi('households', 'put', { data: prepareData(data) });
       notifyDbChange('households');
       revalidateData('households');
     },
     update: async (id: string, data: Partial<Household>) => {
       checkDemoMode();
-      await callApi('households', 'update', { id, data: data });
+      await callApi('households', 'update', { id, data: prepareData(data) });
       notifyDbChange('households');
       revalidateData('households');
     },
@@ -488,20 +498,20 @@ export const db = {
     },
     add: async (data: Driver) => {
       checkDemoMode();
-      const res = await callApi('drivers', 'add', { data: data });
+      const res = await callApi('drivers', 'add', { data: prepareData(data) });
       notifyDbChange('drivers');
       revalidateData('drivers');
       return res.id;
     },
     put: async (data: Driver) => {
       checkDemoMode();
-      await callApi('drivers', 'put', { data: data });
+      await callApi('drivers', 'put', { data: prepareData(data) });
       notifyDbChange('drivers');
       revalidateData('drivers');
     },
     update: async (id: string, data: Partial<Driver>) => {
       checkDemoMode();
-      await callApi('drivers', 'update', { id, data: data });
+      await callApi('drivers', 'update', { id, data: prepareData(data) });
       notifyDbChange('drivers');
       revalidateData('drivers');
     },
@@ -785,13 +795,13 @@ export const db = {
     }),
     add: async (data: Personnel) => {
       checkDemoMode();
-      const res = await callApi('personnel', 'add', { data: data });
+      const res = await callApi('personnel', 'add', { data: prepareData(data) });
       notifyDbChange('personnel');
       return res.id;
     },
     update: async (id: string, data: Partial<Personnel>) => {
       checkDemoMode();
-      await callApi('personnel', 'update', { id, data: data });
+      await callApi('personnel', 'update', { id, data: prepareData(data) });
       notifyDbChange('personnel');
     },
     delete: async (id: string) => {

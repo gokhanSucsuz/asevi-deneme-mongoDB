@@ -3,24 +3,24 @@
 import { revalidateTag } from 'next/cache';
 
 export async function invalidateHouseholds() {
-  revalidateTag('households', 'default');
+  revalidateTag('households');
 }
 
 export async function invalidateDrivers() {
-  revalidateTag('drivers', 'default');
+  revalidateTag('drivers');
 }
 
 export async function invalidateRoutes() {
-  revalidateTag('routes', 'default');
+  revalidateTag('routes');
 }
 
 export async function invalidateSystemLogs() {
-  revalidateTag('system_logs', 'default');
+  revalidateTag('system_logs');
 }
 
 export async function invalidateAll() {
-  revalidateTag('households', 'default');
-  revalidateTag('drivers', 'default');
-  revalidateTag('routes', 'default');
-  revalidateTag('system_logs', 'default');
+  revalidateTag('households');
+  revalidateTag('drivers');
+  revalidateTag('routes');
+  revalidateTag('system_logs');
 }

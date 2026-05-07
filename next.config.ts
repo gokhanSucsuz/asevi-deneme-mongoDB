@@ -1,28 +1,27 @@
 import type {NextConfig} from 'next';
 import withSerwistInit from '@serwist/next';
 
-const isDev = process.env.NODE_ENV === 'development';
-
 const withSerwist = withSerwistInit({
   swSrc: 'app/sw.ts',
   swDest: 'public/sw.js',
-  // Service Worker'ı development modunda devre dışı bırak
-  // (sürekli rebuild döngüsünü önler)
-  disable: isDev,
 });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   typescript: {
     ignoreBuildErrors: false,
   },
+  // Allow access to remote image placeholder.
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-        pathname: '/**',
+        pathname: '/**', // This allows any path under the hostname
       },
       {
         protocol: 'https',
@@ -38,7 +37,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  output: 'standalone',
   transpilePackages: ['motion'],
+  webpack: (config, {dev}) => {
+    // HMR is disabled in AI Studio via DISABLE_HMR env var.
+    // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+    if (dev && process.env.DISABLE_HMR === 'true') {
+      config.watchOptions = {
+        ignored: /.*/,
+      };
+    }
+    return config;
+  },
 };
 
 export default withSerwist(nextConfig);

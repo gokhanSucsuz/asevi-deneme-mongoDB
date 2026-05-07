@@ -1,4 +1,4 @@
-import type { Household, Route, RouteStop, LeftoverFood, BreadTracking, Personnel, Driver, SystemLog, Survey, SurveyResponse, RouteTemplate, RouteTemplateStop } from './db';
+import { Household, Route, RouteStop, LeftoverFood, BreadTracking, Personnel, Driver, SystemLog, Survey, SurveyResponse, RouteTemplate, RouteTemplateStop } from './db';
 
 export const demoHouseholds: Household[] = [
   {
