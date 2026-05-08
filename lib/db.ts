@@ -43,6 +43,7 @@ export interface Household {
   usesContainer?: boolean;
   isRetired?: boolean;
   pausedUntil?: string;
+  effectiveDate?: string; // yyyy-MM-dd — rotalar/istatistiklere yansıyacağı ilk iş günü
   createdAt: Date;
   defaultDriverId?: string;
   history?: HouseholdHistory[];
@@ -271,7 +272,7 @@ const processData = (data: any): any => {
     'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
   ];
 
-  const stringDateFields = ['date', 'endDate', 'pausedUntil', 'month'];
+  const stringDateFields = ['date', 'endDate', 'pausedUntil', 'effectiveDate', 'month'];
 
   for (const key in result) {
     let value = result[key];

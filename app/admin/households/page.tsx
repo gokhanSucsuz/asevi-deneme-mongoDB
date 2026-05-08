@@ -81,18 +81,21 @@ export default function HouseholdsPage() {
       // Filter out test records
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
+      // effectiveDate kontrolü: henüz etkin olmayan haneleri dışla
+      if (h.effectiveDate && h.effectiveDate > todayStr) return false;
+
       // Logic: A household is active if:
       // 1. isActive is true AND it's NOT currently in a future pause period
       // 2. OR isActive is false but it was a temporary pause that has now ended (today or in the past)
       
-      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
-      const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayStr;
+      const todayNow = safeFormat(new Date(), 'yyyy-MM-dd');
+      const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayNow;
       
       if (h.isActive) {
         return !isPausedInFuture;
       } else {
         // If Not Active, check if it's an expired pause
-        const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= todayStr;
+        const isPauseExpired = h.pausedUntil && h.pausedUntil !== '' && h.pausedUntil <= todayNow;
         return !!isPauseExpired;
       }
     });
@@ -412,85 +415,20 @@ export default function HouseholdsPage() {
         toast.success('Başarıyla eklendi', { id: loadingToast });
       }
 
-      // 1. Her durumda (eski/yeni fark etmeksizin) vakfın ve ilgili şoförün yarınki (veya haftanın kalan günleri) iş günü rota kaydına hane stopu eklenecek.
-      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
-      const futureRoutes = await db.routes.toArray();
-      const pendingOrInProgressRoutes = futureRoutes.filter(r => r.date > todayStr && r.status !== 'completed' && r.status !== 'approved');
-
-      // Helper for next working day
-      const { getNextWorkingDay } = await import('@/lib/route-utils');
-      
-      const isNewRecord = !editingId;
-      
-      // We process future working days (if a route exists for them already).
-      // Mostly affects the 'vakif_pickup' routes right away and next general routes if they were generated
-      for (const route of pendingOrInProgressRoutes) {
-         // Is this route suitable for the household?
-         let isSuitable = false;
-         if (data.isSelfService) {
-             isSuitable = route.driverId === 'vakif_pickup';
-         } else {
-             // For standard route users, we don't automatically guess which driver. But if the route was already generated 
-             // and we are updating the person's count who was ALREADY on this route, we need to update it
-             // Or if it's a new record and they have a 'defaultDriverId', we add them
-         }
-
-         const stops = await db.routeStops.where('routeId').equals(route.id!).toArray();
-         const existingStop = stops.find((s: RouteStop) => s.householdId === (editingId || data.id));
-
-         // Conditions for being in a future route
-         const isActivelyReceiving = data.isActive && data.pausedUntil !== '9999-12-31' && (!data.pausedUntil || data.pausedUntil < route.date);
-         
-         if (isActivelyReceiving) {
-            if (data.isSelfService && route.driverId === 'vakif_pickup') {
-                if (existingStop) {
-                    await db.routeStops.update(existingStop.id!, {
-                        householdSnapshotName: data.headName,
-                         householdSnapshotMemberCount: data.memberCount,
-                         householdSnapshotBreadCount: data.breadCount ?? data.memberCount
-                    });
-                } else {
-                    await db.routeStops.add({
-                         routeId: route.id!,
-                         householdId: editingId || data.id!,
-                         householdSnapshotName: data.headName,
-                         householdSnapshotMemberCount: data.memberCount,
-                         householdSnapshotBreadCount: data.breadCount ?? data.memberCount,
-                         order: stops.length + 1,
-                         status: 'pending'
-                    });
-                }
-            } else if (!data.isSelfService && existingStop) {
-                // Not self service, but WAS ALREADY on the route (so we just update amounts)
-                await db.routeStops.update(existingStop.id!, {
-                     householdSnapshotName: data.headName,
-                     householdSnapshotMemberCount: data.memberCount,
-                     householdSnapshotBreadCount: data.breadCount ?? data.memberCount
-                 });
-            } else if (!data.isSelfService && isNewRecord && typeof data.defaultDriverId === 'string' && route.driverId === data.defaultDriverId && route.date > todayStr) {
-                // It's a new record with a designated driver, and the route is tomorrow or later
-                 await db.routeStops.add({
-                     routeId: route.id!,
-                     householdId: data.id!,
-                     householdSnapshotName: data.headName,
-                     householdSnapshotMemberCount: data.memberCount,
-                     householdSnapshotBreadCount: data.breadCount ?? data.memberCount,
-                     order: stops.length + 1,
-                     status: 'pending'
-                });
-            }
-         } else {
-             if (existingStop) {
-                  await db.routeStops.delete(existingStop.id!);
-             }
-         }
-      }
-
-      // 2. Alert message for new household added
-      if (isNewRecord && !data.isSelfService) {
-        toast.info(`${data.headName} için kayıt oluşturuldu. Yarınki günlük rotaya otomatik atanması için 'Şoför Değişikliği/Atama' yapılmalıdır.`, { duration: 6000 });
-      } else if (isNewRecord && data.isSelfService) {
-        toast.info(`${data.headName} için kayıt oluşturuldu ve yarınki 'Vakıftan Alacaklar' rotasına eklendi.`, { duration: 6000 });
+      // Yeni kayıt ise effectiveDate = bir sonraki iş günü
+      if (!editingId) {
+        const { getNextWorkingDay } = await import('@/lib/route-utils');
+        const nextDay = await getNextWorkingDay(new Date());
+        const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+        await db.households.update(data.id!, { effectiveDate: nextDayStr });
+        await addLog(
+          'Kayıt Eklendi',
+          `${data.headName} hanesi sisteme eklendi. Rotalar ve istatistiklere ${nextDayStr} tarihinden itibaren yansıyacak.`
+        );
+        toast.info(
+          `${data.headName} için kayıt oluşturuldu. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`,
+          { duration: 6000 }
+        );
       }
 
       closeModal();
@@ -653,26 +591,21 @@ export default function HouseholdsPage() {
             timestamp: new Date(),
             note: `Hane tamamen silindi. Sebep: ${actionReason}`
           });
+          // effectiveDate = bir sonraki iş günü (silme etkin tarihi)
+          const { getNextWorkingDay } = await import('@/lib/route-utils');
+          const nextDay = await getNextWorkingDay(new Date());
+          const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+
           await db.households.update(existing.id!, {
             isActive: false,
-            pausedUntil: '9999-12-31', // effectively deleted
+            pausedUntil: '9999-12-31',
+            effectiveDate: nextDayStr,
             history
           });
           notifyDbChange('households');
-          
-          const today = new Date().toISOString().split('T')[0];
-          // Remove from ALL future routes (including pending and in_progress)
-          const futureRoutes = await db.routes.toArray();
-          const activeRoutes = futureRoutes.filter(r => r.date > today && r.status !== 'completed' && r.status !== 'approved');
-          
-          for (const r of activeRoutes) {
-            await db.routeStops
-              .where({ routeId: r.id, householdId: existing.id! })
-              .delete();
-          }
 
-          await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Tüm aktif ve gelecek rotalardan çıkarıldı. Sebep: ${actionReason}`);
-          toast.success('Hane başarıyla silindi ve aktif/gelecek rotalardan kaldırıldı', { id: loadingToast });
+          await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Rotalar ve istatistiklere ${nextDayStr} tarihinden itibaren yansımayacak. Sebep: ${actionReason}`);
+          toast.success(`Hane silindi. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`, { id: loadingToast });
         }
         setDeleteModalOpen(false);
       } catch (error) {
@@ -702,27 +635,24 @@ export default function HouseholdsPage() {
           note: `${pauseDate} tarihine kadar pasife alındı. Sebep: ${actionReason}`
         });
 
+        // effectiveDate = bir sonraki iş günü (pasife alma etkin tarihi)
+        const { getNextWorkingDay } = await import('@/lib/route-utils');
+        const nextDay = await getNextWorkingDay(new Date());
+        const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+
         await db.households.update(householdToDelete!.id!, {
           isActive: false,
           pausedUntil: pauseDate,
+          effectiveDate: nextDayStr,
           history
         });
         notifyDbChange('households');
-        await addLog('Hane Pasife Alındı', `${householdToDelete!.headName} hanesi ${pauseDate} tarihine kadar pasife alındı. Sebep: ${actionReason}`);
-        
-        // Remove from pending routes within the pause period
-        const today = new Date().toISOString().split('T')[0];
-        const affectedRoutes = await db.routes
-          .filter(r => r.status === 'pending' && r.date > today && r.date <= pauseDate)
-          .toArray();
-        
-        for (const r of affectedRoutes) {
-          await db.routeStops
-            .where({ routeId: r.id, householdId: householdToDelete!.id! })
-            .delete();
-        }
+        await addLog(
+          'Hane Pasife Alındı',
+          `${householdToDelete!.headName} hanesi ${pauseDate} tarihine kadar pasife alındı. Rotalar/istatistikler ${nextDayStr} tarihinden itibaren etkilenecek. Sebep: ${actionReason}`
+        );
 
-        toast.success('Hane başarıyla pasife alındı', { id: loadingToast });
+        toast.success(`Hane pasife alındı. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`, { id: loadingToast });
         setDeleteModalOpen(false);
       } catch (error) {
         console.error(error);
@@ -792,6 +722,10 @@ export default function HouseholdsPage() {
             continue;
           }
 
+          const { getNextWorkingDay: getNextDay } = await import('@/lib/route-utils');
+          const excelNextDay = await getNextDay(new Date());
+          const excelNextDayStr = safeFormat(excelNextDay, 'yyyy-MM-dd');
+
           const newHousehold: Household = {
             tcNo,
             householdNo,
@@ -802,11 +736,12 @@ export default function HouseholdsPage() {
             memberCount,
             breadCount: isNaN(breadCount) ? memberCount : breadCount,
             isActive: true,
+            effectiveDate: excelNextDayStr,
             createdAt: new Date(),
             history: [{
               action: 'created',
               timestamp: new Date(),
-              note: 'Excel ile toplu eklendi'
+              note: `Excel ile toplu eklendi. Rotalar ${excelNextDayStr} tarihinden itibaren etkilenecek.`
             }]
           };
 

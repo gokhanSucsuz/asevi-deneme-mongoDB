@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
                 'lastBackupDate', 'deliveredAt', 'personnelCompletionTime'
               ];
 
-              const stringDateFields = ['date', 'pausedUntil', 'endDate', 'month'];
+              const stringDateFields = ['date', 'pausedUntil', 'effectiveDate', 'endDate', 'month'];
 
               for (const key in processedItem) {
                 if (typeof processedItem[key] === 'string') {

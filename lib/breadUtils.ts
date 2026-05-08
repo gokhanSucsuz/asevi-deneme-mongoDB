@@ -72,6 +72,9 @@ export async function calculateBreadForNextDay(dateStr: string) {
       const isDeleted = h.pausedUntil === '9999-12-31';
       if (isDeleted) return false;
 
+      // effectiveDate kontrolü: henüz etkin olmayan haneleri dışla
+      if (h.effectiveDate && h.effectiveDate > dateStr) return false;
+
       // Logic from households page: A household is active if:
       // 1. isActive is true AND it's NOT currently in a future pause period
       // 2. OR isActive is false but it was a temporary pause that has now ended (today or in the past)

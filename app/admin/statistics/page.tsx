@@ -63,6 +63,9 @@ export default function StatisticsPage() {
       if (isDeleted) return false;
       if (h.headName?.toLowerCase().includes('deneme')) return false;
 
+      // effectiveDate kontrolü: henüz etkin olmayan haneleri istatistiklerden dışla
+      if (h.effectiveDate && h.effectiveDate > todayStr) return false;
+
       const isPausedInFuture = h.pausedUntil && h.pausedUntil > todayStr;
       if (h.isActive) {
         return !isPausedInFuture;

@@ -206,6 +206,12 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
     // Skip if already assigned to another driver today (unless forced)
     if (!forceReclaim && assignedHouseholdIds.includes(h.id!)) continue;
 
+    // effectiveDate kontrolü: henüz etkin olmayan haneleri atla
+    if (h.effectiveDate && h.effectiveDate > dateStr) {
+      console.log(`[GEN_ROUTE] Household ${h.id} (${h.headName}) effectiveDate=${h.effectiveDate} > ${dateStr}, skipping.`);
+      continue;
+    }
+
     // Skip if deleted or paused (unless we want to show them as requested)
     // The user wants paused/deleted households shown at the bottom.
     // So we include them but maybe with a special status?
@@ -267,7 +273,9 @@ export async function generateRouteFromTemplate(driverId: string, dateStr: strin
 }
 
 /**
- * Automatically generates routes for all active drivers for the next working day
+ * Automatically generates routes for all active drivers for the next working day.
+ * NOTE: Vakıf rotası artık /api/cron/generate-vakif-route endpoint'i tarafından
+ * her iş günü saat 09:00'da otomatik oluşturulur. Bu fonksiyon sadece şoför rotalarını oluşturur.
  */
 export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
   const dateStr = safeFormatTRT(currentDate, 'yyyy-MM-dd');
@@ -288,67 +296,11 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
       for (const driver of drivers) {
         await generateRouteFromTemplate(driver.id!, nextDayStr);
       }
-      
-      // Generate Vakif Pickup Route
-      const allHouseholds = await db.households.toArray();
-      const pickupHouseholds = allHouseholds.filter(h => h.isSelfService);
-
-      if (pickupHouseholds.length > 0) {
-        const routeId = await db.routes.add({
-          driverId: 'vakif_pickup',
-          driverSnapshotName: 'Vakıf\'tan Yemek Alanlar',
-          date: nextDayStr,
-          status: 'pending',
-          createdAt: new Date(),
-          history: [{ action: 'created', timestamp: new Date(), note: 'Otomatik oluşturuldu' }]
-        });
-
-        const stops: RouteStop[] = [];
-        let order = 1;
-        const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(nextDayStr));
-
-        for (const h of pickupHouseholds) {
-          const isDeleted = h.pausedUntil === '9999-12-31';
-          const isPaused = h.pausedUntil && h.pausedUntil >= nextDayStr;
-          const isInactive = !h.isActive && !h.pausedUntil;
-          const isActuallyPassive = isDeleted || isPaused || isInactive;
-
-          // Standard
-          stops.push({
-            routeId: routeId as string,
-            householdId: h.id!,
-            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
-            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
-            householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
-            order: order++,
-            status: isActuallyPassive ? 'failed' : 'pending',
-            issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
-            mealType: 'standard'
-          });
-
-          // Breakfast
-          if (isLastWorkingDay && !h.noBreakfast) {
-            stops.push({
-              routeId: routeId as string,
-              householdId: h.id!,
-              householdSnapshotName: isActuallyPassive ? `${h.headName} (Kahvaltı-PASİF)` : `${h.headName} (Kahvaltı)`,
-              householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
-              householdSnapshotBreadCount: 0,
-              order: order++,
-              status: isActuallyPassive ? 'failed' : 'pending',
-              issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
-              mealType: 'breakfast'
-            });
-          }
-        }
-
-        await db.routeStops.bulkAdd(stops);
-      }
 
       // Log the action
       await db.system_logs.add({
         action: 'Otomatik Rota Oluşturma',
-        details: `${nextDayStr} tarihi için rotalar (Vakıf dahil) otomatik oluşturuldu.`,
+        details: `${nextDayStr} tarihi için şoför rotaları otomatik oluşturuldu.`,
         personnelName: 'Sistem',
         personnelEmail: 'system@localhost',
         timestamp: new Date(),
@@ -376,3 +328,4 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
     }
   }
 }
+
