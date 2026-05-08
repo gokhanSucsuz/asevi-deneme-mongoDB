@@ -57,6 +57,7 @@ export default function RoutesPage() {
   const [mapModalData, setMapModalData] = useState<{ lat: number, lng: number, title: string } | null>(null);
   const [quickAssignDriverId, setQuickAssignDriverId] = useState<Record<string, string>>({});
   const [quickAssignOrder, setQuickAssignOrder] = useState<Record<string, number>>({});
+  const [routeDetailsSearchTerm, setRouteDetailsSearchTerm] = useState('');
   
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
   
@@ -297,6 +298,19 @@ export default function RoutesPage() {
     } else {
       return fieldB.localeCompare(fieldA, 'tr');
     }
+  });
+
+  const filteredTemplateSelectedHouseholds = selectedHouseholds.filter(sh => {
+    if (!templateSearchTerm) return true;
+    const h = households?.find(hh => hh.id === sh.householdId);
+    if (!h) return false;
+    const search = normalizeTurkish(templateSearchTerm);
+    return (
+      normalizeTurkish(h.headName).includes(search) ||
+      normalizeTurkish(h.address).includes(search) ||
+      (h.tcNo || '').includes(templateSearchTerm) ||
+      (h.householdNo || '').toLowerCase().includes(search)
+    );
   });
 
   const getDefaultRouteDateFallback = () => {
@@ -1018,6 +1032,7 @@ export default function RoutesPage() {
     setRouteDetailsStops(sortedStops);
     setEditRouteStopsData(JSON.parse(JSON.stringify(sortedStops))); // Deep copy for editing
     setIsEditingRouteDetails(false);
+    setRouteDetailsSearchTerm('');
     setViewRouteDetails(route);
   };
 
@@ -2559,7 +2574,21 @@ export default function RoutesPage() {
                 </div>
               )}
               
-              <h4 className="font-medium text-gray-900 mb-4">Teslimat Noktaları</h4>
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                <h4 className="font-medium text-gray-900">Teslimat Noktaları</h4>
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="Durak ara..."
+                    value={routeDetailsSearchTerm}
+                    onChange={(e) => setRouteDetailsSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                  />
+                  <div className="absolute left-3 top-2 text-gray-400">
+                    <Eye size={14} className="opacity-50" />
+                  </div>
+                </div>
+              </div>
               <div className="overflow-x-auto mb-6">
                 <table className="min-w-full divide-y divide-gray-200 border">
                   {/* ... Delivery points table ... */}
@@ -2575,15 +2604,29 @@ export default function RoutesPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                   {(isEditingRouteDetails ? editRouteStopsData : routeDetailsStops).filter(stop => {
                     const isCompletedRoute = viewRouteDetails.status === 'completed' || viewRouteDetails.status === 'approved';
-                    if (isCompletedRoute) return true; // Geçmiş rotalarda hiçbir durağı gizleme! Tarihi kayıtlar kalıcıdır.
-
-                    const h = households?.find(hh => hh.id === stop.householdId);
-                    const isDeleted = h?.pausedUntil === '9999-12-31';
-                    const isPaused = h?.pausedUntil && h.pausedUntil >= viewRouteDetails.date;
-                    const isInactive = h && !h.isActive && !h.pausedUntil;
-                    const isPassive = isDeleted || isPaused || isInactive || stop.issueReport === 'Pasif/Duraklatılmış Kayıt' || (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)'));
                     
-                    return !isPassive;
+                    // First apply the basic passive/active filter (if not completed)
+                    if (!isCompletedRoute) {
+                      const h = households?.find(hh => hh.id === stop.householdId);
+                      const isDeleted = h?.pausedUntil === '9999-12-31';
+                      const isPaused = h?.pausedUntil && h.pausedUntil >= viewRouteDetails.date;
+                      const isInactive = h && !h.isActive && !h.pausedUntil;
+                      const isPassive = isDeleted || isPaused || isInactive || stop.issueReport === 'Pasif/Duraklatılmış Kayıt' || (stop.householdSnapshotName && stop.householdSnapshotName.includes('(PASİF)'));
+                      
+                      if (isPassive) return false;
+                    }
+
+                    // Then apply the search filter
+                    if (!routeDetailsSearchTerm) return true;
+                    const search = normalizeTurkish(routeDetailsSearchTerm);
+                    const h = households?.find(hh => hh.id === stop.householdId);
+                    
+                    return (
+                      normalizeTurkish(stop.householdSnapshotName || '').includes(search) ||
+                      (h && normalizeTurkish(h.address).includes(search)) ||
+                      (h && (h.tcNo || '').includes(routeDetailsSearchTerm)) ||
+                      (h && (h.householdNo || '').toLowerCase().includes(search))
+                    );
                   }).map((stop, idx) => {
                     return (
                       <tr key={idx}>
@@ -2807,7 +2850,7 @@ export default function RoutesPage() {
 
                 <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                   <div className="w-full sm:flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Eklenebilir Hane Ara</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">Hane Ara (Tüm Listeler)</label>
                     <div className="relative">
                       <input
                         type="text"
@@ -2850,7 +2893,7 @@ export default function RoutesPage() {
                       Rotadaki Haneler (Sıralı)
                     </h4>
                     <div className="space-y-3">
-                      {selectedHouseholds.map(sh => {
+                      {filteredTemplateSelectedHouseholds.map(sh => {
                         const h = households?.find(hh => hh.id === sh.householdId);
                         if (!h) return null;
                         return (
@@ -2901,6 +2944,11 @@ export default function RoutesPage() {
                           </div>
                         );
                       })}
+                      {selectedHouseholds.length > 0 && filteredTemplateSelectedHouseholds.length === 0 && (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          <p className="text-sm text-gray-400 italic">Aranan kriterlere uygun hane bulunamadı.</p>
+                        </div>
+                      )}
                       {selectedHouseholds.length === 0 && (
                         <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                           <p className="text-sm text-gray-400 italic">Henüz hane seçilmedi.</p>
