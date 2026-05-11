@@ -7,7 +7,7 @@ import { format, isWithinInterval, startOfDay, endOfDay, addDays, isBefore, isAf
 import { safeFormat } from '@/lib/date-utils';
 import { calculateBreadForNextDay } from '@/lib/breadUtils';
 import { checkIsWorkingDay, getNextWorkingDay } from '@/lib/route-utils';
-import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Save, X, AlertCircle, FileText, Download, TrendingDown, Calendar, Gavel, CheckCircle, Info, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTurkishPdf, addVakifLogo, addReportFooter } from '@/lib/pdfUtils';
 import autoTable from 'jspdf-autotable';
@@ -27,6 +27,10 @@ export default function BreadTrackingPage() {
   const [manualTotalAdjustment, setManualTotalAdjustment] = useState<number>(0);
   const [manualContainerAdjustment, setManualContainerAdjustment] = useState<number>(0);
   const [manualNote, setManualNote] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Tender form state
   const [tenderForm, setTenderForm] = useState({
@@ -217,6 +221,7 @@ export default function BreadTrackingPage() {
 
     if (breadTracking && households && routes) {
       generateReport();
+      setCurrentPage(1); // Reset to first page when data is re-generated
     }
   }, [startDate, endDate, breadTracking, households, routes]);
 
@@ -702,113 +707,182 @@ export default function BreadTrackingPage() {
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Yükleniyor...</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 text-[10px] uppercase font-bold tracking-tight text-gray-500">
-                <tr>
-                  <th className="px-3 py-3 text-left">Tarih</th>
-                  <th className="px-3 py-3 text-left hidden sm:table-cell">Teslimat Tarihi</th>
-                  <th className="px-3 py-3 text-left">Top. İhtiyaç</th>
-                  <th className="px-3 py-3 text-left">Artan Ekmek</th>
-                  <th className="px-3 py-3 text-left">Sipariş</th>
-                  <th className="px-3 py-3 text-left hidden md:table-cell">Kap (Vakıf/Kendi)</th>
-                  <th className="px-3 py-3 text-left">Durum</th>
-                  <th className="px-3 py-3 text-left hidden lg:table-cell">Not</th>
-                  <th className="px-3 py-3 text-right">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reportData.map((b) => (
-                    <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
-                      <td className="px-3 py-3 whitespace-nowrap text-xs font-bold text-gray-900">
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 text-[10px] uppercase font-bold tracking-tight text-gray-500">
+                  <tr>
+                    <th className="px-3 py-3 text-left">Tarih</th>
+                    <th className="px-3 py-3 text-left hidden sm:table-cell">Teslimat Tarihi</th>
+                    <th className="px-3 py-3 text-left">Top. İhtiyaç</th>
+                    <th className="px-3 py-3 text-left">Artan Ekmek</th>
+                    <th className="px-3 py-3 text-left">Sipariş</th>
+                    <th className="px-3 py-3 text-left hidden md:table-cell">Kap (Vakıf/Kendi)</th>
+                    <th className="px-3 py-3 text-left">Durum</th>
+                    <th className="px-3 py-3 text-left hidden lg:table-cell">Not</th>
+                    <th className="px-3 py-3 text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[...reportData].reverse().slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((b) => (
+                      <tr key={b.id} className={b.date === safeFormat(new Date(), 'yyyy-MM-dd') ? 'bg-blue-50/30' : ''}>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs font-bold text-gray-900">
+                          <div className="flex flex-col">
+                            <span>{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</span>
+                            {!b.isWorkingDay && (
+                              <span className="text-[9px] text-red-500 font-bold uppercase">Tatil</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 hidden sm:table-cell">
+                          {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{b.totalNeeded}</span>
+                            {b.manualTotalAmountAdjustment ? (
+                              <span className={`text-[10px] font-bold ${b.manualTotalAmountAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ({b.manualTotalAmountAdjustment > 0 ? '+' : ''}{b.manualTotalAmountAdjustment})
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                      <td className="px-3 py-3 text-xs text-gray-500">
                         <div className="flex flex-col">
-                          <span>{safeFormat(new Date(b.date), 'dd.MM.yyyy')}</span>
-                          {!b.isWorkingDay && (
-                            <span className="text-[9px] text-red-500 font-bold uppercase">Tatil</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500 hidden sm:table-cell">
-                        {safeFormat(new Date(b.deliveryDate), 'dd.MM.yyyy')}
-                      </td>
-                      <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
-                        <div className="flex flex-col">
-                          <span className="font-medium">{b.totalNeeded}</span>
-                          {b.manualTotalAmountAdjustment ? (
-                            <span className={`text-[10px] font-bold ${b.manualTotalAmountAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ({b.manualTotalAmountAdjustment > 0 ? '+' : ''}{b.manualTotalAmountAdjustment})
+                          <span className="font-medium">{b.leftoverAmount}</span>
+                          {b.manualLeftoverAmount ? (
+                            <span className={`text-[10px] font-bold ${b.manualLeftoverAmount > 0 ? 'text-orange-600' : 'text-purple-600'}`}>
+                              ({b.manualLeftoverAmount > 0 ? '+' : ''}{b.manualLeftoverAmount})
                             </span>
                           ) : null}
                         </div>
                       </td>
-                    <td className="px-3 py-3 text-xs text-gray-500">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{b.leftoverAmount}</span>
-                        {b.manualLeftoverAmount ? (
-                          <span className={`text-[10px] font-bold ${b.manualLeftoverAmount > 0 ? 'text-orange-600' : 'text-purple-600'}`}>
-                            ({b.manualLeftoverAmount > 0 ? '+' : ''}{b.manualLeftoverAmount})
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
-                    <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">
-                      <div className="flex flex-col gap-1">
-                         <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Vakıf: {b.containerCount ?? '-'}</span>
-                         <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Kendi: {b.ownContainerCount ?? '-'}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-500">
-                      <span className={`px-2 py-0.5 inline-flex text-[9px] font-bold rounded-full uppercase tracking-wider ${
-                        b.status === 'ordered'
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {b.status === 'ordered' ? 'BİTTİ' : 'BEKLİYOR'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate hidden lg:table-cell" title={b.note}>{b.note || '-'}</td>
-                    <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium">
-                      <div className="flex justify-end gap-1.5">
-                        {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
-                          <button
-                            onClick={() => handleOrderBread(b)}
-                            className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
-                            title="Siparişi Onayla"
-                          >
-                            <CheckCircle size={14} />
-                            <span>Sipariş Ver</span>
-                          </button>
-                        )}
-                        {isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
-                          <button
-                            onClick={() => {
-                              setSelectedDate(b.date);
-                              setManualAmount(0);
-                              setManualTotalAdjustment(0);
-                              setManualContainerAdjustment(0);
-                              setManualNote('');
-                              setIsManualModalOpen(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-900 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200"
-                          >
-                            <Plus size={14} />
-                            <span>Manuel Giriş</span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {reportData.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">Bu tarih aralığı için kayıt bulunamadı.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
+                      <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">
+                        <div className="flex flex-col gap-1">
+                           <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Vakıf: {b.containerCount ?? '-'}</span>
+                           <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Kendi: {b.ownContainerCount ?? '-'}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-500">
+                        <span className={`px-2 py-0.5 inline-flex text-[9px] font-bold rounded-full uppercase tracking-wider ${
+                          b.status === 'ordered'
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {b.status === 'ordered' ? 'BİTTİ' : 'BEKLİYOR'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-xs text-gray-500 max-w-[120px] truncate hidden lg:table-cell" title={b.note}>{b.note || '-'}</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-right text-xs font-medium">
+                        <div className="flex justify-end gap-1.5">
+                          {b.isWorkingDay && b.status !== 'ordered' && isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
+                            <button
+                              onClick={() => handleOrderBread(b)}
+                              className="text-green-600 hover:text-green-900 flex items-center gap-1 bg-green-50 px-2 py-1 rounded border border-green-200"
+                              title="Siparişi Onayla"
+                            >
+                              <CheckCircle size={14} />
+                              <span>Sipariş Ver</span>
+                            </button>
+                          )}
+                          {isBefore(new Date(), new Date(`${b.date}T18:00:00`)) && (
+                            <button
+                              onClick={() => {
+                                setSelectedDate(b.date);
+                                setManualAmount(0);
+                                setManualTotalAdjustment(0);
+                                setManualContainerAdjustment(0);
+                                setManualNote('');
+                                setIsManualModalOpen(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200"
+                            >
+                              <Plus size={14} />
+                              <span>Manuel Giriş</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {reportData.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-4 text-center text-sm text-gray-500">Bu tarih aralığı için kayıt bulunamadı.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {reportData.length > itemsPerPage && (
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Geri
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(reportData.length / itemsPerPage)))}
+                    disabled={currentPage === Math.ceil(reportData.length / itemsPerPage)}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    İleri
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs text-gray-700">
+                      Toplam <span className="font-bold">{reportData.length}</span> kayıttan{' '}
+                      <span className="font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> ile{' '}
+                      <span className="font-bold">{Math.min(currentPage * itemsPerPage, reportData.length)}</span> arası gösteriliyor
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <span className="sr-only">Önceki</span>
+                        <ChevronLeft size={16} />
+                      </button>
+                      
+                      {[...Array(Math.ceil(reportData.length / itemsPerPage))].map((_, i) => (
+                        <button
+                          key={i + 1}
+                          onClick={() => setCurrentPage(i + 1)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            currentPage === i + 1
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(reportData.length / itemsPerPage)))}
+                        disabled={currentPage === Math.ceil(reportData.length / itemsPerPage)}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <span className="sr-only">Sonraki</span>
+                        <ChevronRight size={16} />
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
+
       </div>
 
       {/* Tender List */}
