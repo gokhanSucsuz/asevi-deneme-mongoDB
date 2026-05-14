@@ -283,24 +283,95 @@ export async function checkAndGenerateNextDayRoutes(currentDate: Date) {
   
   if (allRoutesForDate.length === 0) return;
 
-  const allCompletedOrApproved = allRoutesForDate.every(r => r.status === 'completed' || r.status === 'approved');
+  const todayStr = safeFormatTRT(new Date(), 'yyyy-MM-dd');
+  // Kural: "tüm günlük rotaların onaylanması sonrasında"
+  const allApproved = allRoutesForDate.every(r => r.status === 'approved');
 
-  if (allCompletedOrApproved) {
+  if (allApproved) {
     const nextDay = await getNextWorkingDay(currentDate);
     const nextDayStr = safeFormatTRT(nextDay, 'yyyy-MM-dd');
     
-    // Check if routes for next day already exist
+    // Kural: "geçmiş bir güne ait günlük rota olamaz."
+    if (nextDayStr < todayStr) {
+      console.log(`[GEN_ROUTE] Geçmiş bir tarih (${nextDayStr}) için rota oluşturulamaz.`);
+      return;
+    }
+    
     const existingRoutes = await db.routes.where('date').equals(nextDayStr).toArray();
     if (existingRoutes.length === 0) {
+      // 1. Şoför rotalarını oluştur
       const drivers = await db.drivers.toArray();
-      for (const driver of drivers) {
+      const activeDrivers = drivers.filter(d => d.isActive);
+      for (const driver of activeDrivers) {
         await generateRouteFromTemplate(driver.id!, nextDayStr);
+      }
+
+      // 2. Vakıf rotasını oluştur (Kural: "vakıftan yemek alanlar rotaları otomatik sistem tarafından oluşturulacak")
+      const householdsList = await db.households.toArray();
+      const pickupHouseholds = householdsList.filter(h => h.isSelfService);
+      
+      if (pickupHouseholds.length > 0) {
+        const routeId = await db.routes.add({
+          driverId: 'vakif_pickup',
+          driverSnapshotName: 'Vakıf\'tan Yemek Alanlar',
+          date: nextDayStr,
+          status: 'pending',
+          createdAt: new Date(),
+          history: [{ action: 'created', timestamp: new Date(), note: 'Sistem tarafından otomatik oluşturuldu' }]
+        });
+
+        const isLastWorkingDay = await isLastWorkingDayOfWeek(new Date(nextDayStr));
+        const stops: RouteStop[] = [];
+        let orderIdx = 1;
+
+        pickupHouseholds.forEach(h => {
+          const isDeleted = h.pausedUntil === '9999-12-31';
+          const isPaused = h.pausedUntil && h.pausedUntil >= nextDayStr;
+          const isInactive = !h.isActive && !h.pausedUntil;
+          const isActuallyPassive = isDeleted || isPaused || isInactive;
+          
+          if (h.effectiveDate && h.effectiveDate > nextDayStr) return;
+
+          // Standard
+          stops.push({
+            routeId: routeId as string,
+            householdId: h.id!,
+            householdSnapshotName: isActuallyPassive ? `${h.headName} (PASİF)` : h.headName,
+            householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+            householdSnapshotBreadCount: isActuallyPassive ? 0 : (h.breadCount ?? h.memberCount),
+            order: orderIdx++,
+            status: isActuallyPassive ? 'failed' : 'pending',
+            issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
+            mealType: 'standard'
+          });
+
+          // Breakfast
+          if (isLastWorkingDay && !h.noBreakfast) {
+            stops.push({
+              routeId: routeId as string,
+              householdId: h.id!,
+              householdSnapshotName: isActuallyPassive ? `${h.headName} (Kahvaltı-PASİF)` : `${h.headName} (Kahvaltı)`,
+              householdSnapshotMemberCount: isActuallyPassive ? 0 : h.memberCount,
+              householdSnapshotBreadCount: 0,
+              order: orderIdx++,
+              status: isActuallyPassive ? 'failed' : 'pending',
+              issueReport: isActuallyPassive ? 'Pasif/Duraklatılmış Kayıt' : undefined,
+              mealType: 'breakfast'
+            });
+          }
+        });
+
+        if (stops.length > 0) {
+          await db.routeStops.bulkAdd(stops);
+        } else {
+          await db.routes.delete(routeId as string);
+        }
       }
 
       // Log the action
       await db.system_logs.add({
         action: 'Otomatik Rota Oluşturma',
-        details: `${nextDayStr} tarihi için şoför rotaları otomatik oluşturuldu.`,
+        details: `${nextDayStr} tarihi için şoför ve vakıf rotaları otomatik oluşturuldu.`,
         personnelName: 'Sistem',
         personnelEmail: 'system@localhost',
         timestamp: new Date(),

@@ -924,18 +924,7 @@ export default function RoutesPage() {
         // Automatically download PDF
         await generateRouteTutanakPDF(route, stops);
         
-        // --- NEW: Generate next working day route for this driver upon approval --- //
-        try {
-          const nextDay = await getNextWorkingDay(new Date(route.date));
-          const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
-          if (route.driverId !== 'vakif_pickup') {
-            await generateRouteFromTemplate(route.driverId, nextDayStr);
-            await addLog('Otomatik Rota Oluşturma', `${getDriverName(route.driverId)} şoförünün bir sonraki iş günü (${nextDayStr}) rotası otomatik oluşturuldu.`);
-          }
-        } catch(e) {
-          console.error("Gelecek gün rotası oluşturulurken hata:", e);
-        }
-        // ----------------------------------------------------------------------- //
+        // Rotalar tüm günlük rotaların onaylanması sonrasında checkAndGenerateNextDayRoutes içinde oluşturulur.
 
         // Trigger bread calculation for current and next day
         try {
