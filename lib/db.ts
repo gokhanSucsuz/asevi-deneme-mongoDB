@@ -62,7 +62,8 @@ export interface Driver {
   startDate?: string;         // İşe başlama tarihi (yyyy-MM-dd)
   leaveStartDate?: string;    // İzin başlama tarihi (yyyy-MM-dd)
   leaveEndDate?: string;      // İzin bitiş tarihi (yyyy-MM-dd)
-  substituteDriverId?: string; // İzin süresince vekil şoför ID
+  substituteDriverId?: string;  // İzin süresince vekil şoför ID
+  substitutePersonnelId?: string; // İzin süresince vekil yetkili personel ID
 }
 
 export interface RouteHistory {

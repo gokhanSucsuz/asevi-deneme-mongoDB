@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
-import { db, Driver, Route, RouteStop } from '@/lib/db';
+import { db, Driver, Route, RouteStop, Personnel } from '@/lib/db';
 import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart as BarChartIcon, BriefcaseBusiness, CalendarOff, UserCheck, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, subMonths, subWeeks, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
@@ -32,11 +32,12 @@ export default function DriversPage() {
   const [leaveDriverId, setLeaveDriverId] = useState<string | null>(null);
   const [leaveStartDate, setLeaveStartDate] = useState('');
   const [leaveEndDate, setLeaveEndDate] = useState('');
-  const [substituteDriverId, setSubstituteDriverId] = useState('');
+  const [substituteDriverId, setSubstituteDriverId] = useState(''); // prefix: 'driver:id' or 'personnel:id'
   
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
   const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
+  const allPersonnel = useAppQuery(() => db.personnel.toArray(), [], 'personnel');
   const personnelName = personnel?.name || 'Bilinmeyen Personel';
 
   const addLog = async (action: string, details?: string) => {
@@ -77,7 +78,10 @@ export default function DriversPage() {
     setLeaveDriverId(driver.id!);
     setLeaveStartDate(driver.leaveStartDate || '');
     setLeaveEndDate(driver.leaveEndDate || '');
-    setSubstituteDriverId(driver.substituteDriverId || '');
+    // substituteDriverId ve substitutePersonnelId tek bir state'te birleşik tutuluyor
+    if (driver.substituteDriverId) setSubstituteDriverId(`driver:${driver.substituteDriverId}`);
+    else if (driver.substitutePersonnelId) setSubstituteDriverId(`personnel:${driver.substitutePersonnelId}`);
+    else setSubstituteDriverId('');
     setLeaveModalOpen(true);
   };
 
@@ -91,18 +95,31 @@ export default function DriversPage() {
     }
     const loadingToast = toast.loading('İzin kaydediliyor...');
     try {
-      // Vekil varsa geçici aktif yap
-      if (substituteDriverId) {
-        await db.drivers.put({ ...(drivers!.find(d => d.id === substituteDriverId)!), isActive: true });
+      let subDriverId: string | undefined;
+      let subPersonnelId: string | undefined;
+
+      if (substituteDriverId.startsWith('driver:')) {
+        subDriverId = substituteDriverId.replace('driver:', '');
+        // Vekil şoförü geçici aktif yap
+        const sub = drivers?.find(d => d.id === subDriverId);
+        if (sub) await db.drivers.put({ ...sub, isActive: true });
+      } else if (substituteDriverId.startsWith('personnel:')) {
+        subPersonnelId = substituteDriverId.replace('personnel:', '');
+        // Personel için ayrıca isActive değişikliği yapılmıyor (sistem girişi ayrı)
       }
+
       await db.drivers.put({
         ...driver,
         leaveStartDate,
         leaveEndDate,
-        substituteDriverId: substituteDriverId || undefined,
+        substituteDriverId: subDriverId,
+        substitutePersonnelId: subPersonnelId,
         isActive: false,
       });
-      await addLog('İzin Kaydı', `${driver.name} için ${leaveStartDate} - ${leaveEndDate} izin kaydedildi.`);
+      const subName = subDriverId
+        ? drivers?.find(d => d.id === subDriverId)?.name
+        : allPersonnel?.find((p: Personnel) => p.id === subPersonnelId)?.name;
+      await addLog('İzin Kaydı', `${driver.name} için ${leaveStartDate} - ${leaveEndDate} izin kaydedildi.${subName ? ` Vekil: ${subName}` : ''}`);
       toast.success('İzin başarıyla kaydedildi.', { id: loadingToast });
       setLeaveModalOpen(false);
     } catch (e) {
@@ -114,7 +131,7 @@ export default function DriversPage() {
   const handleEndLeave = async (driver: Driver) => {
     const loadingToast = toast.loading('İzin sonlandırılıyor...');
     try {
-      // Vekili tekrar pasif yap
+      // Vekil şoförü tekrar pasif yap (personel değil)
       if (driver.substituteDriverId) {
         const sub = drivers?.find(d => d.id === driver.substituteDriverId);
         if (sub) await db.drivers.put({ ...sub, isActive: false });
@@ -124,6 +141,7 @@ export default function DriversPage() {
         leaveStartDate: undefined,
         leaveEndDate: undefined,
         substituteDriverId: undefined,
+        substitutePersonnelId: undefined,
         isActive: true,
       });
       await addLog('İzin Sona Erdi', `${driver.name} izinden döndü.`);
@@ -488,12 +506,17 @@ export default function DriversPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[160px] text-sm font-medium text-gray-900">
                     <div>{driver.name}</div>
-                    {onLeave && sub && (
-                      <div className="flex items-center gap-1 mt-1 text-[11px] text-orange-700 bg-orange-100 rounded px-1.5 py-0.5 w-fit">
-                        <UserCheck size={11} />
-                        Vekil: {sub.name}
-                      </div>
-                    )}
+                    {onLeave && (driver.substituteDriverId || driver.substitutePersonnelId) && (() => {
+                      const subName = driver.substituteDriverId
+                        ? drivers?.find(d => d.id === driver.substituteDriverId)?.name
+                        : allPersonnel?.find((p: Personnel) => p.id === driver.substitutePersonnelId)?.name;
+                      return subName ? (
+                        <div className="flex items-center gap-1 mt-1 text-[11px] text-orange-700 bg-orange-100 rounded px-1.5 py-0.5 w-fit">
+                          <UserCheck size={11} />
+                          Vekil: {subName}{driver.substitutePersonnelId ? ' (Personel)' : ''}
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
                     {showSensitive[driver.id!] ? driver.phone : maskSensitive(driver.phone, 4)}
@@ -582,7 +605,16 @@ export default function DriversPage() {
                       <td className="px-6 py-3 text-sm text-gray-500">{driver.leaveStartDate}</td>
                       <td className="px-6 py-3 text-sm text-gray-500">{driver.leaveEndDate}</td>
                       <td className="px-6 py-3 text-sm text-gray-500">
-                        {sub ? <span className="flex items-center gap-1"><UserCheck size={14} className="text-green-600" />{sub.name}</span> : <span className="text-gray-400">—</span>}
+                        {(() => {
+                          const subName = driver.substituteDriverId
+                            ? drivers?.find(d => d.id === driver.substituteDriverId)?.name
+                            : driver.substitutePersonnelId
+                              ? allPersonnel?.find((p: Personnel) => p.id === driver.substitutePersonnelId)?.name
+                              : null;
+                          return subName
+                            ? <span className="flex items-center gap-1"><UserCheck size={14} className="text-green-600" />{subName}{driver.substitutePersonnelId ? ' (Personel)' : ''}</span>
+                            : <span className="text-gray-400">—</span>;
+                        })()}
                       </td>
                       <td className="px-6 py-3">
                         <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${onLeave ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'}`}>
@@ -997,17 +1029,28 @@ export default function DriversPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vekil Personel (Pasif Şoförlerden Seçin)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vekil Seçimi</label>
                   <select value={substituteDriverId} onChange={e => setSubstituteDriverId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-400 focus:ring-orange-400">
                     <option value="">— Vekil Seçilmedi —</option>
-                    {passiveDrivers.map(d => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate || 'Araç Yok'})</option>
-                    ))}
+                    {passiveDrivers.length > 0 && (
+                      <optgroup label="Pasif Şoförler">
+                        {passiveDrivers.map(d => (
+                          <option key={d.id} value={`driver:${d.id}`}>{d.name} ({d.vehiclePlate || 'Araç Yok'})</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {allPersonnel && allPersonnel.length > 0 && (
+                      <optgroup label="Yetkili Personel">
+                        {(allPersonnel as Personnel[]).map(p => (
+                          <option key={p.id} value={`personnel:${p.id}`}>{p.name} — {p.role}</option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
-                  {passiveDrivers.length === 0 && (
+                  {passiveDrivers.length === 0 && (!allPersonnel || allPersonnel.length === 0) && (
                     <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                      <AlertCircle size={12} /> Pasif şoför bulunmuyor. Önce pasif şoför ekleyin.
+                      <AlertCircle size={12} /> Pasif şoför veya yetkili personel bulunmuyor.
                     </p>
                   )}
                 </div>
