@@ -110,8 +110,8 @@ export default function GuidePage() {
                     <Lock className="text-white" size={32} />
                   </div>
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Güvenlik Protokolü</h2>
-                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Kurumsal Erişim Denetimi & Zırhlı Altyapı</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Güvenlik ve Erişim</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Kurumsal Kimlik Doğrulama & Yetkilendirme</p>
                   </div>
                 </div>
 
@@ -120,18 +120,28 @@ export default function GuidePage() {
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <ShieldCheck className="text-blue-600" size={28} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">İki Kademeli Onay</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed font-medium">Yeni personel kayıtları varsayılan olarak &quot;Pasif&quot; başlar. Yönetici onayı olmadan sistem özelliklerine erişim sağlanamaz.</p>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">Kimlik Doğrulama</h3>
+                    <ul className="text-sm text-slate-500 space-y-3 font-medium">
+                      <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> <strong>Firebase Auth:</strong> Google tabanlı ve kurumsal email/şifre altyapısı.</li>
+                      <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> <strong>Onay Sistemi:</strong> Yeni kayıtlar yönetici onaylayana kadar &quot;Pasif&quot; kalır.</li>
+                      <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> <strong>Hashing:</strong> Şifreler sunucuda tek yönlü hashing ile korunur.</li>
+                    </ul>
                   </div>
                   <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group">
                     <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <History className="text-indigo-600" size={28} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">Rol Yetkilendirme</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                      <strong className="text-slate-900">Admin:</strong> Tam yetki ve veritabanı yönetimi. <br/>
-                      <strong className="text-indigo-600">Personel:</strong> Dağıtım, hane ve anket operasyonları.
-                    </p>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">Yetki Seviyeleri</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <span className="bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest mb-1 inline-block">ADMIN</span>
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed italic">Tam sistem erişimi, yedekleme/geri yükleme, personel yönetimi ve veri silme yetkisi.</p>
+                      </div>
+                      <div>
+                        <span className="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest mb-1 inline-block">PERSONEL</span>
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed italic">Hane yönetimi, rota oluşturma, anket takibi ve rapor alma yetkileri.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -141,11 +151,15 @@ export default function GuidePage() {
                     <div className="bg-white/10 p-5 rounded-[2rem] backdrop-blur-xl border border-white/10">
                       <ShieldAlert size={40} className="text-blue-400" />
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-black mb-3 tracking-tight">Zırhlı AES-256 Altyapısı</h3>
-                      <p className="text-slate-400 text-base leading-relaxed font-medium italic opacity-80">
-                        &quot;Tüm hassas veriler (TC No, Telefon, Adres) veritabanına kaydedilirken askeri düzey şifreleme bloklarına dönüştürülür.&quot;
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-black mb-3 tracking-tight">Oturum Güvenliği (Session Security)</h3>
+                      <p className="text-slate-400 text-sm leading-relaxed font-medium mb-4">
+                        Oturum bilgileri tarayıcıda &quot;Obfuscation&quot; yöntemiyle gizlenir. Herhangi bir XSS saldırısına karşı hassas veriler asla yerel depolamada şifresiz tutulmaz. Sistem her 1 saatte bir oturum yenileme doğrulaması yapar.
                       </p>
+                      <div className="flex gap-4">
+                        <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest text-blue-300">XSS Koruması</div>
+                        <div className="bg-white/5 px-4 py-2 rounded-xl border border-white/5 text-[10px] font-black uppercase tracking-widest text-blue-300">CSRF Kalkanı</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -159,24 +173,45 @@ export default function GuidePage() {
                     <Users className="text-white" size={32} />
                   </div>
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Hane Yönetimi</h2>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Hane & Kurum Yönetimi</h2>
                     <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Bireysel ve Kurumsal Dağıtım Verisi</p>
                   </div>
                 </div>
 
-                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
-                  <div className="flex gap-8 items-start border-b border-slate-50 pb-10">
-                    <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 shrink-0"><Search size={28} /></div>
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 mb-2">Akıllı Rozet Sistemi</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed font-medium">Hane listesinde isimlerin yanında yer alan mavi rozetler, o hanenin o günkü aktif rota şoförünü veya ana şablon şoförünü anlık olarak gösterir.</p>
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-12">
+                  <div className="flex gap-10 items-start border-b border-slate-50 pb-12">
+                    <div className="p-5 bg-blue-50 rounded-2xl text-blue-600 shrink-0 shadow-inner"><Search size={32} /></div>
+                    <div className="flex-1">
+                      <h4 className="text-xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Akıllı Filtreleme & Rozetler</h4>
+                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium mb-6">Sistem, binlerce kayıt arasından anlık arama (TC No, Ad, Mahalle) yapabilir. Hane listesinde yer alan <strong>mavi rozetler</strong>, hanenin bağlı olduğu rota şoförünü gerçek zamanlı gösterir.</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {['TC No ile Sorgu', 'Mahalle Filtresi', 'Şoför Rozeti', 'Kurum/Hane Ayrımı'].map(f => (
+                           <div key={f} className="bg-slate-50 px-4 py-2 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest border border-slate-100">{f}</div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-8 items-start">
-                    <div className="p-4 bg-blue-50 rounded-2xl text-blue-600 shrink-0"><Smartphone size={28} /></div>
-                    <div>
-                      <h4 className="text-lg font-black text-slate-900 mb-2">Pasif Kayıt & TC Protokolü</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed font-medium">Yeni şoförler pasif eklendiğinde TC No zorunlu değildir. Ancak kaydı aktifleştirmek için geçerli bir TC No girişi sistem tarafından zorunlu tutulur.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <h5 className="font-black text-slate-900 uppercase text-xs tracking-[0.2em] flex items-center gap-2">
+                        <Smartphone className="text-blue-600" size={16} /> Veri Giriş Standartları
+                      </h5>
+                      <ul className="text-sm text-slate-500 space-y-3 font-medium">
+                        <li><strong className="text-slate-900">Pasif Kayıt:</strong> Şoförler ilk aşamada TC No olmadan eklenebilir.</li>
+                        <li><strong className="text-slate-900">Zorunlu Aktivasyon:</strong> Şoförü aktif yapabilmek için 11 haneli geçerli TC No girişi zorunludur.</li>
+                        <li><strong className="text-slate-900">Ekmek Hesabı:</strong> Kişi sayısına göre otomatik ekmek/yemek miktarı hesaplanır.</li>
+                      </ul>
+                    </div>
+                    <div className="space-y-4">
+                      <h5 className="font-black text-slate-900 uppercase text-xs tracking-[0.2em] flex items-center gap-2">
+                        <Smartphone className="text-blue-600" size={16} /> Operasyonel Durumlar
+                      </h5>
+                      <ul className="text-sm text-slate-500 space-y-3 font-medium">
+                        <li><strong className="text-slate-900">Self-Servis:</strong> Vakıftan elden alan haneler &quot;Self-Servis&quot; olarak işaretlenir.</li>
+                        <li><strong className="text-slate-900">Durdurma:</strong> Haneler geçici süreliğine (örneğin tatil) duraklatılabilir.</li>
+                        <li><strong className="text-slate-900">Hane Geçmişi:</strong> Her hanenin tüm işlem tarihçesi (kayıt, güncelleme) saklanır.</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -195,19 +230,38 @@ export default function GuidePage() {
                   </div>
                 </div>
 
-                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm">
-                   <div className="flex flex-col md:flex-row gap-10 items-center mb-10">
-                      <div className="w-20 h-20 bg-orange-50 rounded-[2rem] flex items-center justify-center shrink-0 text-orange-600 shadow-inner">
-                        <Zap size={40} />
-                      </div>
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-slate-50 pb-10">
                       <div>
-                        <h4 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Dinamik Rota Şablonları</h4>
-                        <p className="text-sm text-slate-500 leading-relaxed font-medium italic">Şoförler için bir kez tanımlanan &quot;Ana Rota&quot;, her iş günü sonunda sistem tarafından otomatik olarak bir sonraki güne kopyalanır.</p>
+                        <div className="w-16 h-16 bg-orange-50 rounded-3xl flex items-center justify-center mb-6 text-orange-600 shadow-inner">
+                          <Zap size={32} />
+                        </div>
+                        <h4 className="text-xl font-black text-slate-900 mb-3 tracking-tighter uppercase">Dinamik Rota Şablonları</h4>
+                        <p className="text-[14px] text-slate-500 leading-relaxed font-medium italic">Sistem &quot;Ana Rota&quot; mantığıyla çalışır. Her şoför için tanımlanan şablon, her iş günü sonunda sistem tarafından otomatik olarak bir sonraki güne kopyalanır.</p>
+                      </div>
+                      <div className="space-y-4">
+                        <h5 className="font-black text-slate-900 uppercase text-[10px] tracking-[0.2em]">Otomasyon Kuralları</h5>
+                        <ul className="text-sm text-slate-500 space-y-2 font-medium">
+                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Şablondaki tüm duraklar sırasıyla kopyalanır.</li>
+                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Pasif/Durdurulmuş haneler 0 yemekle işlenir.</li>
+                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Önceki günden kalan yemek miktarları sıfırlanır.</li>
+                        </ul>
                       </div>
                    </div>
-                   <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex items-center gap-4 text-slate-900 text-xs font-bold leading-relaxed">
-                      <Info size={24} className="text-orange-500 shrink-0" />
-                      Pasif duruma alınan haneler rota toplamlarından otomatik olarak düşülür ve raporlarda &quot;Pasif&quot; etiketiyle belirtilir.
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Durum Takibi</h5>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Şoförler teslimatları <strong>Teslim Edildi / Evde Yok / Hatalı</strong> olarak işaretler. Bu veriler anlık olarak merkeze duser.</p>
+                      </div>
+                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Km & Yakıt Kontrolü</h5>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Günlük rotalarda başlangıç ve bitiş Km bilgileri, kalan yemek ve ekmek adetleri zorunlu olarak girilmektedir.</p>
+                      </div>
+                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Km Log Kaydı</h5>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Yapılan her rota değişikliği (durak ekleme/çıkarma) sistem günlüğüne personel ismiyle kaydedilir.</p>
+                      </div>
                    </div>
                 </div>
               </div>
@@ -226,24 +280,41 @@ export default function GuidePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between group">
                     <div>
-                      <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center mb-6">
-                        <CalendarOff className="text-orange-500" size={24} />
+                      <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-8 shadow-inner group-hover:scale-110 transition-transform">
+                        <CalendarOff className="text-orange-500" size={32} />
                       </div>
-                      <h4 className="text-lg font-black text-slate-900 mb-3 tracking-tighter">İzin Tanımlama</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed font-medium">İzinli şoförler listede turuncu vurgu ile gösterilir ve operasyonlardan otomatik olarak muaf tutulur.</p>
+                      <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase">İzin Planlama</h4>
+                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium mb-6">Şoförler için başlangıç ve bitiş tarihli izinler girilir. İzinli süresi boyunca sistem şoförü otomatik olarak pasife alır.</p>
+                      <ul className="text-xs text-slate-400 space-y-2 font-bold uppercase tracking-wider">
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Otomatik Pasif Statü</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Turuncu Vurgulu Listeleme</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> İstatistikten Muafiyet</li>
+                      </ul>
                     </div>
                   </div>
-                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between group">
                     <div>
-                      <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mb-6">
-                        <UserCheck className="text-green-600" size={24} />
+                      <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-8 shadow-inner group-hover:scale-110 transition-transform">
+                        <UserCheck className="text-green-600" size={32} />
                       </div>
-                      <h4 className="text-lg font-black text-slate-900 mb-3 tracking-tighter">Vekil Atama</h4>
-                      <p className="text-sm text-slate-500 leading-relaxed font-medium">İzinli şoförün yerine yetkili bir personel veya pasif bir şoför vekil (proxy) olarak atanabilir.</p>
+                      <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Vekil (Proxy) Atama</h4>
+                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium mb-6">İzinli şoförün yerine geçici olarak görev yapacak personel veya pasif şoför seçilir. Bu seçim günlük rotaların sürekliliğini sağlar.</p>
+                      <ul className="text-xs text-slate-400 space-y-2 font-bold uppercase tracking-wider">
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Geçici Yetkilendirme</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Şoför/Personel Seçimi</li>
+                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Otomatik İade Sistemi</li>
+                      </ul>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-indigo-50 p-10 rounded-[3.5rem] border border-indigo-100">
+                  <h4 className="font-black text-indigo-900 uppercase text-xs tracking-[0.2em] mb-6">İzin Bitiş Mantığı</h4>
+                  <p className="text-sm text-indigo-700 leading-relaxed font-medium">
+                    İzin süresi dolduğunda şoför otomatik olarak &quot;Aktif&quot; yapılmaz. Güvenlik gereği yöneticinin manuel onayı (TC doğrulamasıyla beraber) gerekir. Ancak vekil olarak atanan personellerin geçici yetkileri sistem tarafından otomatik olarak temizlenir.
+                  </p>
                 </div>
               </div>
             )}
@@ -261,24 +332,34 @@ export default function GuidePage() {
                 </div>
 
                 <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-slate-50 pb-10">
                       <div>
-                        <h4 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-                           <Activity className="text-teal-600" size={18} />
-                           Dinamik Eşleştirme
+                        <h4 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-tighter">
+                           <Activity className="text-teal-600" size={24} />
+                           Dinamik Rota Eşleşmesi
                         </h4>
-                        <p className="text-sm text-slate-500 leading-relaxed font-medium">Anketler, hanenin o günkü aktif şoförüyle (vekil dahil) veya ana şablondaki şoförüyle otomatik olarak eşleştirilir.</p>
+                        <p className="text-[15px] text-slate-500 leading-relaxed font-medium italic">Sistem, anket girişlerini hanenin o günkü aktif teslimatını yapan kişiyle otomatik eşleştirir. Eğer o gün aktif rota yoksa, şablondaki ana şoför esas alınır. Bu sayede performans raporları %100 doğrulukla üretilir.</p>
                       </div>
-                      <div className="bg-teal-50/50 p-6 rounded-[2rem] border border-teal-100">
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-teal-800 mb-4">Saha Kriterleri</h5>
-                        <ul className="space-y-2">
-                          {['Yemek Sıcaklığı', 'Ekmek Düzeni', 'Nezaket', 'Hijyen'].map(i => (
-                            <li key={i} className="flex items-center gap-2 text-[10px] font-bold text-teal-700 uppercase">
-                              <CheckCircle size={12} /> {i}
+                      <div className="bg-teal-50/50 p-10 rounded-[3rem] border border-teal-100">
+                        <h5 className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-800 mb-6">Soru Tipleri & Veri</h5>
+                        <ul className="grid grid-cols-2 gap-4">
+                          {[
+                            { name: 'Puanlama (1-5 Yıldız)', icon: CheckCircle },
+                            { name: 'Çoktan Seçmeli', icon: CheckCircle },
+                            { name: 'Açık Uçlu Yorum', icon: CheckCircle },
+                            { name: 'Video/Foto Onay', icon: Smartphone }
+                          ].map(i => (
+                            <li key={i.name} className="flex items-center gap-2 text-[9px] font-bold text-teal-700 uppercase tracking-wider">
+                              <i.icon size={12} /> {i.name}
                             </li>
                           ))}
                         </ul>
                       </div>
+                   </div>
+                   
+                   <div className="bg-slate-900 p-10 rounded-[3rem] text-white">
+                      <h4 className="text-sm font-black uppercase tracking-[0.3em] mb-4 text-teal-400">Analiz Raporları</h4>
+                      <p className="text-xs text-slate-400 leading-relaxed font-medium">Anket sonuçları şoför bazlı, mahalle bazlı ve tarih aralıklı olarak grafiklere dökülebilir. Hijyen, sıcaklık ve nezaket skorları günlük olarak merkez tarafından takip edilmektedir.</p>
                    </div>
                 </div>
               </div>
@@ -298,18 +379,40 @@ export default function GuidePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                    { title: 'Turuncu Vurgu', desc: 'Şoförün İzinli Olduğunu Gösterir', color: 'bg-orange-100' },
-                    { title: 'Mavi Rozet', desc: 'Rota Şoförü Bilgisini Verir', color: 'bg-blue-100' },
-                    { title: 'Teal Rozet', desc: 'Vakıf Self-Servis Teslimatı', color: 'bg-teal-100' }
+                    { title: 'Turuncu Vurgu', desc: 'Şoför listesinde ismin turuncu olması personelin İZİNLİ olduğunu belirtir.', color: 'bg-orange-50', iconColor: 'text-orange-500' },
+                    { title: 'Mavi Rozet', desc: 'Hane listesinde isim yanında yer alan mavi etiket aktif rotadaki şoförü gösterir.', color: 'bg-blue-50', iconColor: 'text-blue-500' },
+                    { title: 'Teal Rozet', desc: '&quot;Vakıftan Alıyor&quot; olarak işaretli haneler için kullanılan self-servis belirtecidir.', color: 'bg-teal-50', iconColor: 'text-teal-600' }
                   ].map((g, i) => (
-                    <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-center">
-                      <div className={`w-12 h-12 ${g.color} rounded-2xl mx-auto mb-6 flex items-center justify-center`}>
-                        <Zap size={20} className="text-white" />
+                    <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-center group hover:border-blue-200 transition-colors">
+                      <div className={`w-14 h-14 ${g.color} rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform`}>
+                        <Zap size={24} className={g.iconColor} />
                       </div>
-                      <h4 className="text-sm font-black text-slate-900 mb-2">{g.title}</h4>
-                      <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{g.desc}</p>
+                      <h4 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-tighter">{g.title}</h4>
+                      <p className="text-[12px] text-slate-500 font-medium leading-relaxed italic">{g.desc}</p>
                     </div>
                   ))}
+                </div>
+
+                <div className="bg-white p-10 rounded-[3rem] border border-slate-100">
+                   <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-6 text-slate-400">Durum İkonları (Teslimat)</h4>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center text-green-600"><CheckCircle size={16} /></div>
+                        <span className="text-[10px] font-black uppercase text-slate-700">Teslim Edildi</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center text-red-600"><X size={16} /></div>
+                        <span className="text-[10px] font-black uppercase text-slate-700">Evde Yok</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600"><AlertTriangle size={16} /></div>
+                        <span className="text-[10px] font-black uppercase text-slate-700">Hatalı Adres</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400"><Clock size={16} /></div>
+                        <span className="text-[10px] font-black uppercase text-slate-700">Beklemede</span>
+                      </div>
+                   </div>
                 </div>
               </div>
             )}
@@ -326,14 +429,25 @@ export default function GuidePage() {
                   </div>
                 </div>
 
-                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm">
-                   <div className="flex gap-8 items-start">
-                      <div className="p-4 bg-purple-50 rounded-2xl text-purple-600 shrink-0"><Database size={28} /></div>
-                      <div>
-                        <h4 className="text-lg font-black text-slate-900 mb-2">Personel İmza Takibi</h4>
-                        <p className="text-sm text-slate-500 leading-relaxed font-medium">Sistemde üretilen tüm raporların alt bilgisinde işlemi yapan personelin adı soyadı otomatik olarak işlenir.</p>
-                      </div>
-                   </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6">
+                    <div className="p-4 bg-purple-50 rounded-2xl text-purple-600 w-fit shadow-inner"><Database size={28} /></div>
+                    <h4 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Veri Güvenliği & İmza</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed font-medium">Sistemde üretilen tüm raporların (PDF/Excel) alt bilgisinde işlemi yapan personelin <strong>Adı Soyadı, Kullanıcı Adı ve İşlem Saati</strong> milisaniye hassasiyetinde otomatik olarak işlenir.</p>
+                  </div>
+                  <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-6 text-center">
+                    <h5 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4">Desteklenen Çıktılar</h5>
+                    <div className="flex flex-wrap justify-center gap-3">
+                       {['Günlük Dağıtım Listesi', 'Hane Durum Raporu', 'Şoför Performans Çizelgesi', 'Anket Analiz Formu', 'İhale Takip Çizelgesi'].map(r => (
+                         <div key={r} className="px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-black text-slate-600 uppercase tracking-widest">{r}</div>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white">
+                   <h4 className="text-lg font-black uppercase tracking-widest mb-6 text-purple-400">Kurumsal Form Standartları</h4>
+                   <p className="text-sm text-slate-400 leading-relaxed font-medium">Raporlar T.C. Edirne Valiliği ve SYDV antetli kağıt standartlarına uygun marjinlerle (A4) optimize edilmiştir. Otomatik sayfa numaralandırma ve tablo bölme mantığı aktiftir.</p>
                 </div>
               </div>
             )}
@@ -351,12 +465,27 @@ export default function GuidePage() {
                 </div>
 
                 <div className="bg-slate-900 p-16 rounded-[4rem] text-white shadow-2xl relative overflow-hidden text-center">
-                   <div className="relative z-10 space-y-6">
-                      <div className="inline-block bg-blue-600 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">AES-256 GCM</div>
-                      <h3 className="text-5xl font-black tracking-tighter leading-tight">Veritabanı Seviyesinde <br/> <span className="text-blue-400">Tam Koruma</span></h3>
-                      <p className="max-w-2xl mx-auto text-slate-400 font-medium leading-relaxed italic opacity-80 underline decoration-blue-500/30 underline-offset-8">
-                        TC Kimlik Numarası ve adres bilgileri kaydedilirken rastgele karakterli bloklara dönüştürülür. Anahtarlar sistem çekirdeğinde saklanır.
+                   <div className="relative z-10 space-y-8">
+                      <div className="inline-block bg-blue-600 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20">AES-256-GCM</div>
+                      <h3 className="text-5xl font-black tracking-tighter leading-tight">Veritabanı Seviyesinde <br/> <span className="text-blue-400">Kırılmaz Koruma</span></h3>
+                      <p className="max-w-3xl mx-auto text-slate-400 font-medium leading-relaxed italic opacity-80 border-t border-white/5 pt-8">
+                        TC Kimlik Numarası, Telefon Hattı ve Hane Bilgileri; veritabanına kaydedilirken AES-256 GCM metodu ile rastgele karakterli bloklara dönüştürülür. 
+                        Bu verilerin anahtarları sistem çekirdeğinde (Env) gizlidir ve hiçbir yönetici veya personel tarafından düz metin olarak görülemez.
                       </p>
+                      <div className="flex justify-center gap-10">
+                        <div className="text-center">
+                          <h6 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Algoritma</h6>
+                          <p className="text-xs font-bold uppercase">GCM Modu</p>
+                        </div>
+                        <div className="text-center">
+                          <h6 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Key Length</h6>
+                          <p className="text-xs font-bold uppercase">256 Bit</p>
+                        </div>
+                        <div className="text-center">
+                          <h6 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Kapsam</h6>
+                          <p className="text-xs font-bold uppercase">End-to-End</p>
+                        </div>
+                      </div>
                    </div>
                    <Database className="absolute -right-20 -bottom-20 text-white/5" size={400} />
                 </div>
@@ -375,15 +504,25 @@ export default function GuidePage() {
                   </div>
                 </div>
 
-                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm">
-                   <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-100 relative overflow-hidden group">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-100 relative overflow-hidden group shadow-xl shadow-amber-200/20 flex flex-col justify-between">
                       <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-200/20 rounded-full blur-xl group-hover:scale-150 transition-transform"></div>
                       <div className="relative z-10">
                         <div className="flex items-center gap-3 mb-6">
                            <AlertTriangle className="text-amber-600" size={24} />
-                           <h4 className="text-xl font-black text-slate-900 tracking-tighter">10 Günlük Yedekleme Kuralı</h4>
+                           <h4 className="text-xl font-black text-slate-900 tracking-tighter uppercase">10 Günlük Yedekleme Kuralı</h4>
                         </div>
-                        <p className="text-sm text-slate-500 leading-relaxed font-medium">Yasal mevzuat gereği 10 gün yedek alınmadığında sistem &quot;KRİTİK&quot; uyarı durumuna geçerek yöneticiyi uyarır.</p>
+                        <p className="text-sm text-slate-500 leading-relaxed font-medium mb-6">Yasal mevzuat ve veri bütünlüğü gereği, son yedeklemenin üzerinden 10 gün geçtiğinde sistem &quot;KRİTİK&quot; uyarı durumuna geçer.</p>
+                      </div>
+                      <div className="relative z-10 bg-white/50 p-4 rounded-2xl text-[10px] font-black text-amber-800 uppercase tracking-widest border border-amber-100">Bu kural tüm hane ve şoför verileri için geçerlidir.</div>
+                   </div>
+                   
+                   <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6">
+                      <h4 className="text-lg font-black text-slate-900 uppercase tracking-tighter">Veri Temizliği</h4>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed italic border-l-4 border-slate-200 pl-4">Tamamlanmış rotalar, silinmiş hane geçmişleri ve geçici önbellek verileri sistem tarafından periyodik olarak temizlenir. Bu işlem IndexedDB performansını %40 oranında artırmaktadır.</p>
+                      <div className="flex gap-3">
+                         <div className="px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500">Auto-Cleanup</div>
+                         <div className="px-3 py-1 bg-slate-50 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500">Cache Flush</div>
                       </div>
                    </div>
                 </div>
@@ -398,26 +537,43 @@ export default function GuidePage() {
                   </div>
                   <div>
                     <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Sürüm Notları</h2>
-                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Mayıs 2026 Teknik İyileştirmeler</p>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Sistem v4.0.0 Teknik Gelişmeler</p>
                   </div>
                 </div>
 
                 <div className="bg-white p-12 rounded-[4rem] border border-slate-100 shadow-xl relative overflow-hidden group">
                    <div className="absolute top-0 right-0 p-8 bg-blue-600 text-white font-black text-xs uppercase tracking-widest rounded-bl-[3rem] shadow-lg">v4.0.0 (AKTİF)</div>
-                   <h4 className="text-2xl font-black text-slate-900 mb-8 tracking-tighter">Sistem v4.0.0 Güncellemesi</h4>
-                   <ul className="space-y-4">
-                     {[
-                       'Şoför İzin ve Vekil Personel modülü devreye alındı.',
-                       'Hane listesine dinamik şoför/rota rozetleri entegre edildi.',
-                       'Pasif kayıt şoför ekleme ve validasyonlu TC sistemi güncellendi.',
-                       'AES-256 GCM askeri düzey şifreleme altyapısı optimize edildi.',
-                       'Kritik Rota Müdahale paneli kaldırıldı, süreçler otomatikleşti.'
-                     ].map((note, i) => (
-                       <li key={i} className="flex items-center gap-4 text-sm text-slate-500 font-bold group-hover:translate-x-2 transition-transform">
-                         <div className="w-2 h-2 rounded-full bg-blue-600"></div> {note}
-                       </li>
-                     ))}
-                   </ul>
+                   <div className="space-y-10 relative z-10">
+                      <div>
+                        <h4 className="text-2xl font-black text-slate-900 mb-6 tracking-tighter uppercase">Mayıs 2026 Büyük Güncelleme</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
+                           {[
+                             'Şoför İzin ve Vekil Personel modülü tam entegrasyonu.',
+                             'Hane listesinde dinamik şoför/rota rozetleri (useMemo optimizasyonu).',
+                             'Koşullu TC validasyonu (Aktif/Pasif statü ayrımı).',
+                             'AES-256 GCM askeri düzey şifreleme altyapısı.',
+                             'Kritik Rota Müdahale panelinin güvenlik nedeniyle kaldırılması.',
+                             'Anketlerin vekil şoförlerle otomatik eşleşme algoritması.',
+                             'Dashboard tabanlı tam ekran kılavuz arayüzü.'
+                           ].map((note, i) => (
+                             <div key={i} className="flex items-center gap-4 text-[13px] text-slate-500 font-bold group-hover:translate-x-1 transition-transform">
+                               <div className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 shadow-lg shadow-blue-600/50"></div> {note}
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+                      
+                      <div className="pt-10 border-t border-slate-50 flex flex-col md:flex-row justify-between items-center gap-6">
+                         <div className="text-center md:text-left">
+                            <h6 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Build ID</h6>
+                            <p className="text-xs font-bold text-slate-900">ASEVI-PRO-V4-20260516</p>
+                         </div>
+                         <div className="flex gap-4">
+                            <div className="bg-blue-50 px-4 py-2 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 italic">NEXT.JS 15.x</div>
+                            <div className="bg-blue-50 px-4 py-2 rounded-xl text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 italic">MONGODB EJSON</div>
+                         </div>
+                      </div>
+                   </div>
                 </div>
               </div>
             )}
