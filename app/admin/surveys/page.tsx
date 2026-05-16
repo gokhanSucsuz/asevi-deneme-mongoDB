@@ -43,6 +43,8 @@ export default function SurveysPage() {
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
+  const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<'route' | 'name' | 'address'>('route');
@@ -380,21 +382,41 @@ export default function SurveysPage() {
     if (!households) return [];
     return households.map(h => {
       let routeName = 'Rotasız / Teslimat Dışı';
-      if (routeTemplateStops && routeTemplates && drivers) {
-        const hStop = routeTemplateStops.find(ts => ts.householdId === h.id);
-        if (hStop) {
-          const rTemplate = routeTemplates.find(rt => rt.id === hStop.templateId);
-          if (rTemplate) {
-            const driver = drivers.find(d => d.id === rTemplate.driverId);
-            if (driver) {
-              routeName = driver.name;
-            }
+      
+      if (h.isSelfService) {
+        routeName = 'Vakıftan Alıyor';
+      } else {
+        let driverId: string | null = null;
+        
+        // Önce günlük rotalardaki kayıtlara bakalım (routeStops)
+        if (routeStops && routes) {
+          const hStops = routeStops.filter((ts: any) => ts.householdId === h.id);
+          if (hStops.length > 0) {
+            // En son kaydı alıyoruz
+            const latestStop = hStops[hStops.length - 1];
+            const route = routes.find((r: any) => r.id === latestStop.routeId);
+            if (route) driverId = route.driverId;
           }
         }
+        
+        // Günlük rotada bulamadıysak şablon (template) kaydına bakalım
+        if (!driverId && routeTemplateStops && routeTemplates) {
+          const hStop = routeTemplateStops.find((ts: any) => ts.householdId === h.id);
+          if (hStop) {
+            const rTemplate = routeTemplates.find((rt: any) => rt.id === hStop.templateId);
+            if (rTemplate) driverId = rTemplate.driverId;
+          }
+        }
+        
+        if (driverId && drivers) {
+          const driver = drivers.find((d: any) => d.id === driverId);
+          if (driver) routeName = driver.name;
+        }
       }
+      
       return { ...h, driverRouteName: routeName };
     });
-  }, [households, routeTemplateStops, routeTemplates, drivers]);
+  }, [households, routeStops, routes, routeTemplateStops, routeTemplates, drivers]);
 
   const filteredApplyHouseholds = useMemo(() => {
     if (!applyHouseholdsWithDrivers) return [];
