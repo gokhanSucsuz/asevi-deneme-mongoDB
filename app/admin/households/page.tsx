@@ -49,6 +49,8 @@ export default function HouseholdsPage() {
   const allDrivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const activeRouteTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const activeRouteTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
+  const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
+  const routeStops = useAppQuery(() => db.routeStops.toArray(), [], 'route_stops');
   const [isLastWorkingDay, setIsLastWorkingDay] = useState(false);
 
   React.useEffect(() => {
@@ -61,6 +63,48 @@ export default function HouseholdsPage() {
   }, []);
 
   const personnelName = personnel?.name || 'Bilinmeyen Personel';
+
+  const householdDriverMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    if (!allHouseholds || !allDrivers) return map;
+
+    allHouseholds.forEach(h => {
+      let routeName = '';
+      
+      if (!h.isSelfService) {
+        let driverId: string | null = null;
+        
+        // Önce günlük rotalardaki kayıtlara bakalım (routeStops)
+        if (routeStops && routes) {
+          const hStops = routeStops.filter((ts: any) => ts.householdId === h.id);
+          if (hStops.length > 0) {
+            const latestStop = hStops[hStops.length - 1];
+            const route = routes.find((r: any) => r.id === latestStop.routeId);
+            if (route) driverId = route.driverId;
+          }
+        }
+        
+        // Günlük rotada bulamadıysak şablon (template) kaydına bakalım
+        if (!driverId && activeRouteTemplateStops && activeRouteTemplates) {
+          const hStop = activeRouteTemplateStops.find((ts: any) => ts.householdId === h.id);
+          if (hStop) {
+            const rTemplate = activeRouteTemplates.find((rt: any) => rt.id === hStop.templateId);
+            if (rTemplate) driverId = rTemplate.driverId;
+          }
+        }
+        
+        if (driverId && allDrivers) {
+          const driver = allDrivers.find((d: any) => d.id === driverId);
+          if (driver) routeName = driver.name;
+        }
+      }
+      
+      if (routeName) {
+        map.set(h.id!, routeName);
+      }
+    });
+    return map;
+  }, [allHouseholds, allDrivers, routes, routeStops, activeRouteTemplates, activeRouteTemplateStops]);
 
   // Summary Stats
   const stats = React.useMemo(() => {
@@ -1096,8 +1140,13 @@ export default function HouseholdsPage() {
                 </td>
                 <td className="px-3 py-4 whitespace-normal break-words text-sm font-medium text-gray-900">
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs">{household.headName}</span>
+                      {householdDriverMap.get(household.id!) && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-50 text-blue-600 uppercase tracking-tighter border border-blue-100">
+                          {householdDriverMap.get(household.id!)}
+                        </span>
+                      )}
                       {household.isRetired && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-teal-100 text-teal-700 uppercase tracking-tighter">
                           Emekli
