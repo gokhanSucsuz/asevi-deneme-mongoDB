@@ -62,50 +62,59 @@ export default function GuidePage() {
         
         {/* Navigation Sidebar */}
         <div className="lg:col-span-3">
-          <div className="sticky top-6 space-y-4">
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-6 px-2">
-                <h3 className="font-bold text-gray-900 uppercase tracking-wider text-sm flex items-center gap-2">
-                  <Menu size={18} className="text-blue-600" />
-                  Kılavuz Menüsü
+          <div className="sticky top-6 space-y-6">
+            <div className="bg-white/80 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-white/50 relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors"></div>
+              
+              <div className="flex items-center justify-between mb-8 px-2 relative z-10">
+                <h3 className="font-black text-slate-900 uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
+                  Navigasyon
                 </h3>
                 <button 
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                  className="lg:hidden p-2 hover:bg-slate-100 rounded-xl transition-colors"
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
               </div>
 
-              <nav className={`space-y-1 ${isMenuOpen ? 'block' : 'hidden lg:block'}`}>
+              <nav className={`space-y-1 relative z-10 ${isMenuOpen ? 'block' : 'hidden lg:block'}`}>
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button 
                       key={item.id} 
                       onClick={() => handleTabChange(item.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-semibold text-sm ${
+                      className={`w-full flex items-center gap-4 px-5 py-4 rounded-[1.25rem] transition-all duration-300 group/item ${
                         activeTab === item.id 
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
-                          : 'text-gray-500 hover:bg-blue-50 hover:text-blue-600'
+                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-300' 
+                          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                     >
-                      <Icon size={18} className={activeTab === item.id ? 'text-white' : 'text-gray-400'} />
-                      {item.name}
+                      <div className={`p-2 rounded-xl transition-colors ${
+                        activeTab === item.id ? 'bg-white/10' : 'bg-slate-100 group-hover/item:bg-white shadow-sm'
+                      }`}>
+                        <Icon size={18} className={activeTab === item.id ? 'text-blue-400' : 'text-slate-500'} />
+                      </div>
+                      <span className="text-[13px] font-bold tracking-tight">{item.name}</span>
                     </button>
                   );
                 })}
               </nav>
             </div>
 
-            <div className="bg-slate-900 p-6 rounded-3xl text-white shadow-lg hidden lg:block">
-              <div className="flex items-center gap-2 mb-3 text-amber-400">
-                <ShieldCheck size={20} />
-                <span className="font-bold text-sm">Zırhlı Altyapı</span>
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-200 relative overflow-hidden group hidden lg:block">
+              <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+              <div className="relative z-10">
+                <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md">
+                  <ShieldCheck size={24} className="text-white" />
+                </div>
+                <h4 className="text-lg font-black leading-tight mb-2 uppercase tracking-tighter">Hızlı Yardım <br/> & Destek</h4>
+                <p className="text-blue-100 text-xs font-medium leading-relaxed opacity-80">
+                  Operasyonel sorunlar için sistem yöneticisi ile iletişime geçin.
+                </p>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed italic">
-                Sistemimiz askeri düzey AES-256 GCM şifreleme ve gelişmiş oturum koruması ile donatılmıştır.
-              </p>
             </div>
           </div>
         </div>
@@ -114,37 +123,64 @@ export default function GuidePage() {
         <div className="lg:col-span-9 animate-in fade-in slide-in-from-right-4 duration-500">
           
           {activeTab === 'guvenlik' && (
-            <div className="space-y-8">
-              <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
-                <div className="bg-red-500/10 p-4 rounded-2xl">
-                  <Lock className="text-red-600" size={36} />
+            <div className="space-y-10">
+              <div className="flex items-center gap-6 border-b border-slate-100 pb-10">
+                <div className="bg-red-50 p-5 rounded-[2rem] shadow-inner">
+                  <Lock className="text-red-600" size={40} />
                 </div>
                 <div>
-                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Güvenlik ve Erişim</h2>
-                  <p className="text-gray-500 font-medium">Kurumsal erişim denetimi ve kimlik doğrulama</p>
+                  <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Güvenlik ve Erişim</h2>
+                  <p className="text-slate-500 font-bold text-sm tracking-widest mt-1">KURUMSAL ERİŞİM DENETİMİ V4.0</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-200">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                    <ShieldCheck className="text-blue-600" size={28} />
+                <div className="bg-white p-10 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-white relative overflow-hidden group">
+                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-50 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-8 shadow-sm">
+                      <ShieldCheck className="text-blue-600" size={32} />
+                    </div>
+                    <h4 className="font-black text-slate-900 text-2xl mb-4 tracking-tighter">İki Kademeli Onay</h4>
+                    <p className="text-slate-600 leading-relaxed text-[15px] font-medium opacity-80">
+                      Yeni personel kayıtları sistemde varsayılan olarak &quot;Pasif&quot; başlar. Tam erişim için yönetici onayı şarttır. 
+                      Şifreler sistem tarafında tek yönlü hashing yöntemiyle saklanır.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-gray-900 text-xl mb-3">İki Kademeli Onay</h4>
-                  <p className="text-gray-600 leading-relaxed text-sm">
-                    Yeni personel kayıtları sistemde varsayılan olarak &quot;Pasif&quot; başlar. Tam erişim için yönetici onayı şarttır. 
-                    Şifreler sistem tarafında tek yönlü hashing (kırılmaz) yöntemiyle saklanır.
-                  </p>
                 </div>
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-200">
-                  <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
-                    <History className="text-indigo-600" size={28} />
+
+                <div className="bg-white p-10 rounded-[3rem] shadow-xl shadow-slate-200/50 border border-white relative overflow-hidden group">
+                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-indigo-50 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-8 shadow-sm">
+                      <History className="text-indigo-600" size={32} />
+                    </div>
+                    <h4 className="font-black text-slate-900 text-2xl mb-4 tracking-tighter">Rol Bazlı Yetki</h4>
+                    <p className="text-slate-600 leading-relaxed text-[15px] font-medium opacity-80">
+                      <strong>Admin:</strong> Tam yetki, veri silme, yedekleme ve personel onaylama yetkileri. <br/>
+                      <strong className="text-indigo-600">Personel:</strong> Hane yönetimi, rapor alma ve anket girişi yetkileri ile sınırlandırılmıştır.
+                    </p>
                   </div>
-                  <h4 className="font-bold text-gray-900 text-xl mb-3">Rol Bazlı Yetki</h4>
-                  <p className="text-gray-600 leading-relaxed text-sm">
-                    <strong>Admin:</strong> Tam yetki, veri silme, yedekleme ve personel onaylama. <br/>
-                    <strong>Personel:</strong> Hane yönetimi, rapor alma ve anket girişi yetkileri mevcuttur.
-                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-blue-600/20 to-transparent"></div>
+                <div className="relative z-10 flex flex-col md:flex-row gap-10 items-center">
+                  <div className="bg-white/10 p-6 rounded-[2.5rem] backdrop-blur-xl border border-white/10 shrink-0">
+                    <ShieldAlert size={48} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="bg-blue-500 text-[10px] font-black px-3 py-1 rounded-full tracking-widest uppercase">Zırhlı Altyapı</span>
+                      <span className="text-blue-400 font-bold text-[10px] tracking-widest uppercase">Askeri Düzey</span>
+                    </div>
+                    <h3 className="text-3xl font-black mb-4 tracking-tight">AES-256 GCM Şifreleme</h3>
+                    <p className="text-slate-400 leading-relaxed text-lg font-medium italic">
+                      &quot;Sistemimiz askeri düzey AES-256 GCM şifreleme ve gelişmiş oturum koruması ile donatılmıştır. 
+                      TC Kimlik No ve hassas hane verileri hiçbir zaman şifresiz olarak depolanmaz.&quot;
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -482,18 +518,25 @@ export default function GuidePage() {
       </div>
 
       {/* Footer Branding */}
-      <div className="mt-10 py-12 bg-white border-t border-gray-100 text-center">
-        <div className="flex justify-center gap-3 mb-6">
-          <div className="w-10 h-1 bg-red-600 rounded-full"></div>
-          <div className="w-10 h-1 bg-blue-600 rounded-full"></div>
-          <div className="w-10 h-1 bg-red-600 rounded-full"></div>
+      <div className="mt-20 py-20 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-blue-900/10"></div>
+        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
+          <div className="flex justify-center gap-4 mb-10">
+            <div className="w-12 h-1.5 bg-red-600 rounded-full shadow-lg shadow-red-600/20"></div>
+            <div className="w-12 h-1.5 bg-blue-600 rounded-full shadow-lg shadow-blue-600/20"></div>
+            <div className="w-12 h-1.5 bg-red-600 rounded-full shadow-lg shadow-red-600/20"></div>
+          </div>
+          <p className="text-white font-black uppercase tracking-[0.4em] text-xs mb-4">
+            T.C. EDİRNE MERKEZ SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKIF BAŞKANLIĞI
+          </p>
+          <div className="flex items-center justify-center gap-4 text-slate-500 text-[11px] font-bold uppercase tracking-widest">
+            <span>Aşevi Otomasyon Belgeleme</span>
+            <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+            <span className="text-blue-400">v4.0.0</span>
+            <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+            <span>© 2026 Tüm Hakları Saklıdır.</span>
+          </div>
         </div>
-        <p className="text-gray-900 font-black uppercase tracking-widest text-[10px] mb-2 px-4">
-          T.C. EDİRNE MERKEZ SOSYAL YARDIMLAŞMA VE DAYANIŞMA VAKIF BAŞKANLIĞI
-        </p>
-        <p className="text-gray-400 text-[10px] font-medium tracking-tight">
-          Aşevi Otomasyon Belgeleme v4.0.0 | © 2026 Tüm Hakları Saklıdır.
-        </p>
       </div>
 
     </div>
