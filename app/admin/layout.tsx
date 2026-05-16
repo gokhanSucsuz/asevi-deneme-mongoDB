@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Users, Truck, Map, FileText, Home, BarChart, UserCog, HelpCircle, LogOut, Calendar, Menu, X as CloseIcon, Database, Clock, ClipboardList } from 'lucide-react';
+import { Users, Truck, Map, FileText, Home, BarChart, UserCog, HelpCircle, LogOut, Calendar, Menu, X as CloseIcon, Database, Clock, ClipboardList, UserX } from 'lucide-react';
 import { clsx } from 'clsx';
 import { db } from '@/lib/db';
 import { RouteStop } from '@/lib/db';
@@ -21,6 +21,7 @@ import { addSystemLog } from '@/lib/logger';
 const navigation = [
   { name: 'Kontrol Paneli', href: '/admin', icon: Home },
   { name: 'Haneler', href: '/admin/households', icon: Users },
+  { name: 'Pasif Kayıtlar', href: '/admin/passive-households', icon: UserX },
   { name: 'Şoförler ve Araçlar', href: '/admin/drivers', icon: Truck },
   { name: 'Rotalar', href: '/admin/routes', icon: Map },
   { name: 'Ekmek Takip', href: '/admin/bread-tracking', icon: FileText },
