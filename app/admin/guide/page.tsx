@@ -336,6 +336,61 @@ export default function GuidePage() {
             </div>
           )}
 
+          {activeTab === 'anket' && (
+            <div className="space-y-8">
+              <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
+                <div className="bg-teal-500/10 p-4 rounded-2xl">
+                  <Plus className="text-teal-600" size={36} />
+                </div>
+                <div>
+                  <h2 className="text-4xl font-black text-gray-900 tracking-tight">Anket & Memnuniyet</h2>
+                  <p className="text-gray-500 font-medium">Kalite ölçümü ve dinamik eşleştirme sistemi</p>
+                </div>
+              </div>
+
+              <div className="bg-white p-10 rounded-[3rem] border border-gray-200 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <h5 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                       <Zap className="text-teal-600" size={20} />
+                       Akıllı Rota Eşleştirme
+                    </h5>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Anket modülü, haneleri şoförlerle eşleştirirken hibrit bir algoritma kullanır:
+                      <br/>1. Öncelikle <strong>günlük aktif rotadaki</strong> duraklar kontrol edilir.
+                      <br/>2. Eğer aktif rota yoksa <strong>ana rota şablonundaki</strong> eşleşmeler esas alınır.
+                      <br/>Bu sayede vekil şoförlerin veya rota değişikliklerinin anket istatistiklerine doğru yansıması sağlanır.
+                    </p>
+                  </div>
+                  <div className="bg-teal-50 p-8 rounded-3xl border border-teal-100">
+                    <h5 className="font-bold text-teal-900 mb-3 text-xs uppercase tracking-widest">Saha Analiz Kriterleri</h5>
+                    <div className="space-y-3">
+                       {['Yemek Lezzeti ve Sıcaklığı', 'Ekmek Dağıtım Düzeni', 'Şoför Nezaketi', 'Hijyen Standartları'].map(t => (
+                         <div key={t} className="flex items-center gap-2 text-[11px] font-bold text-teal-800 uppercase">
+                           <div className="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
+                           {t}
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 flex items-start gap-4">
+                  <div className="bg-white p-3 rounded-2xl shadow-sm text-teal-600">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900 uppercase mb-1">Doğrulama Protokolü</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Anketler sadece teslimat anında veya teslimat sonrası 24 saat içinde girilebilir. 
+                      &quot;Vakıftan Alıyor&quot; (Self-Servis) işaretli haneler için anketler merkezi sistem üzerinden personel tarafından doldurulur.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'sifreleme' && (
             <div className="space-y-8">
               <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
