@@ -109,7 +109,7 @@ export default function PassiveHouseholdsPage() {
     const deletedStops = [];
     for (const r of todayRoutes) {
       const stops = await db.routeStops.where('routeId').equals(r.id!).toArray();
-      const hStops = stops.filter(s => s.householdId === householdId && s.status === 'pending');
+      const hStops = stops.filter((s: any) => s.householdId === householdId && s.status === 'pending');
       for (const hs of hStops) {
         deletedStops.push(hs);
         await db.routeStops.delete(hs.id!);
