@@ -32,7 +32,7 @@ export default function PassiveHouseholdsPage() {
   };
 
   const filteredHouseholds = React.useMemo(() => {
-    if (!allHouseholds) return { passive: [], active: [] };
+    if (!allHouseholds) return { passive: [], active: [], passivePeople: 0, activePeople: 0 };
 
     const search = normalizeTurkish(searchTerm);
     let allFiltered = allHouseholds.filter((h: Household) => {
@@ -46,10 +46,13 @@ export default function PassiveHouseholdsPage() {
     const passive = allFiltered.filter(h => !h.isActive && h.pausedUntil !== '9999-12-31');
     const active = allFiltered.filter(h => h.isActive);
 
+    const passivePeople = passive.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+    const activePeople = active.reduce((sum, h) => sum + (h.memberCount || 0), 0);
+
     passive.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     active.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-    return { passive, active };
+    return { passive, active, passivePeople, activePeople };
   }, [allHouseholds, searchTerm]);
 
   const canUndo = (h: any) => {
@@ -70,7 +73,7 @@ export default function PassiveHouseholdsPage() {
         pausedUntil: previousState.pausedUntil,
         effectiveDate: previousState.effectiveDate,
         lastOperation: null
-      });
+      } as any);
 
       if (type === 'reactivate' && addedRouteStopId) {
         await db.routeStops.delete(addedRouteStopId);
@@ -402,9 +405,14 @@ export default function PassiveHouseholdsPage() {
               <AlertCircle className="w-5 h-5 text-amber-500" />
               Şu An Pasif Olanlar
             </h2>
-            <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              {filteredHouseholds.passive.length} Kayıt
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {filteredHouseholds.passive.length} Kayıt
+              </span>
+              <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {filteredHouseholds.passivePeople} Kişi
+              </span>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {filteredHouseholds.passive.length === 0 ? (
@@ -476,9 +484,14 @@ export default function PassiveHouseholdsPage() {
               <CheckCircle className="w-5 h-5 text-green-500" />
               Aktif Haneler
             </h2>
-            <span className="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              {filteredHouseholds.active.length} Kayıt
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {filteredHouseholds.active.length} Kayıt
+              </span>
+              <span className="bg-blue-100 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {filteredHouseholds.activePeople} Kişi
+              </span>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {filteredHouseholds.active.length === 0 ? (
