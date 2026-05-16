@@ -709,6 +709,70 @@ export default function SurveysPage() {
         </div>
       )}
 
+      {activeTab === 'apply' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="İsim, T.C. No veya Adres ile hane ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+              />
+            </div>
+            <div className="flex gap-2 w-full md:w-auto">
+              <select
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value as any)}
+                className="w-full md:w-48 rounded-xl border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-3"
+              >
+                <option value="route">Şoför Rotasına Göre</option>
+                <option value="name">İsme Göre (A-Z)</option>
+                <option value="address">Adrese Göre (A-Z)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredApplyHouseholds.map(household => (
+              <div key={household.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-gray-900 text-lg">{household.headName}</h3>
+                    <div className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold uppercase">
+                      {household.driverRouteName}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-4 line-clamp-2">{household.address}</p>
+                </div>
+                <div className="pt-4 border-t border-gray-50 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setSelectedHouseholdForSurvey(household);
+                      setSurveyApplyModalOpen(true);
+                      setSurveyAnswers({});
+                      setActiveSurveyToApply(null);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors text-sm font-bold"
+                  >
+                    <ClipboardList size={16} />
+                    Anket Uygula
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filteredApplyHouseholds.length === 0 && (
+              <div className="col-span-full py-12 text-center bg-white rounded-2xl border-2 border-dashed border-gray-200">
+                <p className="text-gray-500">Arama kriterlerine uygun hane bulunamadı.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
       {/* Survey Creation/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
