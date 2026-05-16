@@ -152,16 +152,29 @@ export default function DriversPage() {
   const onSubmit = async (data: Driver) => {
     const loadingToast = toast.loading('Kaydediliyor...');
     try {
-      if (data.tcNo && !isValidTcNo(data.tcNo)) {
+      // Aktif yapılıyorsa TC zorunlu ve geçerli olmalı
+      if (data.isActive) {
+        if (!data.tcNo || data.tcNo.trim() === '') {
+          toast.error('Aktif şoför için TC Kimlik No zorunludur.', { id: loadingToast });
+          return;
+        }
+        if (!isValidTcNo(data.tcNo)) {
+          toast.error('Geçersiz TC Kimlik Numarası.', { id: loadingToast });
+          return;
+        }
+      } else if (data.tcNo && data.tcNo.trim() !== '' && !isValidTcNo(data.tcNo)) {
+        // Pasif olsa bile TC girilmişse format kontrolü yap
         toast.error('Geçersiz TC Kimlik Numarası.', { id: loadingToast });
         return;
       }
 
-      // Uniqueness check for tcNo
-      const duplicate = drivers?.find(d => d.tcNo === data.tcNo && d.id !== editingId);
-      if (duplicate) {
-        toast.error('Bu TC Kimlik No ile kayıtlı başka bir şoför var.', { id: loadingToast });
-        return;
+      // Benzersizlik kontrolü (sadece TC girilmişse)
+      if (data.tcNo && data.tcNo.trim() !== '') {
+        const duplicate = drivers?.find(d => d.tcNo === data.tcNo && d.id !== editingId);
+        if (duplicate) {
+          toast.error('Bu TC Kimlik No ile kayıtlı başka bir şoför var.', { id: loadingToast });
+          return;
+        }
       }
 
       if (editingId) {
@@ -867,10 +880,13 @@ export default function DriversPage() {
             </div>
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">TC Kimlik No</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  TC Kimlik No
+                  <span className="ml-1 text-xs text-gray-400 font-normal">(Aktif şoförler için zorunlu)</span>
+                </label>
                 <input
                   type="text"
-                  {...register('tcNo', { required: true })}
+                  {...register('tcNo')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                   placeholder="11 haneli TC No"
                 />
