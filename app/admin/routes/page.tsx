@@ -1714,7 +1714,7 @@ export default function RoutesPage() {
                 </button>
                 <button
                   onClick={handleGenerateVakifPickupRoute}
-                  className="flex-1 lg:flex-none bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 flex items-center justify-center shadow-sm text-sm"
+                  className="flex-1 lg:flex-none bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700 flex items-center justify-center shadow-sm text-sm"
                 >
                   <Plus size={20} className="mr-2" />
                   Vakıf Listesi
@@ -1812,13 +1812,13 @@ export default function RoutesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
-                          route.status === 'approved' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          route.status === 'approved' ? 'bg-teal-50 text-teal-700 border-teal-200' :
                           route.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
                           route.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                           'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                            route.status === 'approved' ? 'bg-purple-600' :
+                            route.status === 'approved' ? 'bg-teal-600' :
                             route.status === 'completed' ? 'bg-green-600' :
                             route.status === 'in_progress' ? 'bg-blue-600 animate-pulse' :
                             'bg-amber-600 animate-pulse'
@@ -1851,7 +1851,7 @@ export default function RoutesPage() {
                         {route.status === 'completed' && (
                           <button
                             onClick={() => handleApproveRoute(route)}
-                            className="text-purple-600 hover:text-purple-900 flex items-center gap-1 bg-purple-50 px-2 py-1 rounded border border-purple-200"
+                            className="text-teal-600 hover:text-teal-900 flex items-center gap-1 bg-teal-50 px-2 py-1 rounded border border-teal-200"
                             title="Listeyi Onayla ve Raporu İndir"
                           >
                             <CheckCircle size={16} />

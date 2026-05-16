@@ -175,7 +175,7 @@ export default function StatisticsPage() {
     { name: 'Vakıf Kabı', value: totalVakifContainers },
   ].filter(d => d.value > 0);
 
-  const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#0D9488'];
 
   const exportToPDF = async () => {
     const loadingToast = toast.loading('İstatistik raporu hazırlanıyor...');

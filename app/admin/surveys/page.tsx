@@ -3,12 +3,13 @@
 import React, { useState, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Survey, SurveyQuestion, SurveyResponse } from '@/lib/db';
-import { Plus, Trash2, Edit2, Save, X, ClipboardList, BarChart3, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Users, PieChart as PieChartIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, ClipboardList, BarChart3, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, Users, PieChart as PieChartIcon, Search, CheckCircle, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
 import { addSystemLog } from '@/lib/logger';
+import { normalizeTurkish } from '@/lib/utils';
 import { 
   BarChart, 
   Bar, 
@@ -33,12 +34,23 @@ export default function SurveysPage() {
   const isDemo = role === 'demo';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
-  const [activeTab, setActiveTab] = useState<'list' | 'stats'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'stats' | 'apply'>('list');
   const [selectedSurveyForStats, setSelectedSurveyForStats] = useState<string | null>(null);
 
   const surveys = useAppQuery(() => db.surveys.toArray(), [], 'surveys');
   const responses = useAppQuery(() => db.surveyResponses.toArray(), [], 'survey_responses');
   const households = useAppQuery(() => db.households.toArray(), [], 'households');
+  const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
+  const routeTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
+  const routeTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<'route' | 'name' | 'address'>('route');
+
+  const [surveyApplyModalOpen, setSurveyApplyModalOpen] = useState(false);
+  const [selectedHouseholdForSurvey, setSelectedHouseholdForSurvey] = useState<any>(null);
+  const [activeSurveyToApply, setActiveSurveyToApply] = useState<any>(null);
+  const [surveyAnswers, setSurveyAnswers] = useState<Record<string, any>>({});
 
   const [newSurvey, setNewSurvey] = useState<Partial<Survey>>({
     title: '',
@@ -329,6 +341,87 @@ export default function SurveysPage() {
     }
   };
 
+  const handleSaveSurveyResponse = async () => {
+    if (!activeSurveyToApply || !selectedHouseholdForSurvey) return;
+
+    const loadingToast = toast.loading('Cevaplar kaydediliyor...');
+    try {
+      const existingResponse = responses?.find((r: SurveyResponse) => r.surveyId === activeSurveyToApply.id && r.householdId === selectedHouseholdForSurvey.id);
+
+      const responseData = {
+        surveyId: activeSurveyToApply.id!,
+        householdId: selectedHouseholdForSurvey.id!,
+        answers: Object.entries(surveyAnswers).map(([qId, val]) => ({
+          questionId: qId,
+          value: val
+        })),
+        submittedAt: new Date(),
+        submittedBy: user?.email || 'unknown'
+      };
+
+      if (existingResponse && existingResponse.id) {
+        await db.surveyResponses.update(existingResponse.id, responseData);
+      } else {
+        await db.surveyResponses.add(responseData as SurveyResponse);
+      }
+      
+      toast.success('Anket cevapları başarıyla kaydedildi', { id: loadingToast });
+      setSurveyApplyModalOpen(false);
+      setSelectedHouseholdForSurvey(null);
+      setActiveSurveyToApply(null);
+      setSurveyAnswers({});
+    } catch (error) {
+      console.error(error);
+      toast.error('Cevaplar kaydedilirken bir hata oluştu', { id: loadingToast });
+    }
+  };
+
+  const applyHouseholdsWithDrivers = useMemo(() => {
+    if (!households) return [];
+    return households.map(h => {
+      let routeName = 'Rotasız / Teslimat Dışı';
+      if (routeTemplateStops && routeTemplates && drivers) {
+        const hStop = routeTemplateStops.find(ts => ts.householdId === h.id);
+        if (hStop) {
+          const rTemplate = routeTemplates.find(rt => rt.id === hStop.templateId);
+          if (rTemplate) {
+            const driver = drivers.find(d => d.id === rTemplate.driverId);
+            if (driver) {
+              routeName = driver.name;
+            }
+          }
+        }
+      }
+      return { ...h, driverRouteName: routeName };
+    });
+  }, [households, routeTemplateStops, routeTemplates, drivers]);
+
+  const filteredApplyHouseholds = useMemo(() => {
+    if (!applyHouseholdsWithDrivers) return [];
+    
+    let filtered = applyHouseholdsWithDrivers.filter(h => !h.headName?.toLowerCase().includes('deneme'));
+
+    if (searchTerm) {
+      const search = normalizeTurkish(searchTerm);
+      filtered = filtered.filter(h => 
+        normalizeTurkish(h.headName).includes(search) || 
+        normalizeTurkish(h.address).includes(search) ||
+        (h.tcNo && h.tcNo.includes(searchTerm))
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      if (sortField === 'route') {
+        return a.driverRouteName.localeCompare(b.driverRouteName, 'tr');
+      } else if (sortField === 'name') {
+        return normalizeTurkish(a.headName).localeCompare(normalizeTurkish(b.headName), 'tr');
+      } else if (sortField === 'address') {
+        return normalizeTurkish(a.address).localeCompare(normalizeTurkish(b.address), 'tr');
+      }
+      return 0;
+    });
+  }, [applyHouseholdsWithDrivers, searchTerm, sortField]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -374,9 +467,16 @@ export default function SurveysPage() {
           İstatistikler ve Analiz
           {activeTab === 'stats' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
         </button>
+        <button
+          onClick={() => setActiveTab('apply')}
+          className={`px-6 py-3 text-sm font-medium transition-colors relative ${activeTab === 'apply' ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          Hane Seçimi / Anket Uygula
+          {activeTab === 'apply' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+        </button>
       </div>
 
-      {activeTab === 'list' ? (
+      {activeTab === 'list' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {surveys?.map((survey: Survey) => {
             const surveyResponses = responses?.filter((r: SurveyResponse) => r.surveyId === survey.id) || [];
@@ -452,7 +552,9 @@ export default function SurveysPage() {
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'stats' && (
         <div className="space-y-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <label className="block text-sm font-bold text-gray-700 mb-3">Analiz Edilecek Anketi Seçin</label>
@@ -748,6 +850,150 @@ export default function SurveysPage() {
                 <Save size={18} />
                 {editingSurvey ? 'Güncelle' : 'Anketi Kaydet'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Survey Application Modal */}
+      {surveyApplyModalOpen && selectedHouseholdForSurvey && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200">
+            <div className="flex justify-between items-center p-8 border-b border-gray-100">
+              <div>
+                <h3 className="text-xl font-black text-gray-900">Anket Uygula</h3>
+                <p className="text-sm text-gray-500">{selectedHouseholdForSurvey.headName} hanesi için anket girişi.</p>
+              </div>
+              <button onClick={() => setSurveyApplyModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-8 flex-1 overflow-y-auto space-y-8">
+              {!activeSurveyToApply ? (
+                <div className="space-y-4">
+                  <label className="text-sm font-bold text-gray-700">Uygulanacak Anketi Seçin</label>
+                  <div className="grid grid-cols-1 gap-3">
+                    {surveys?.filter(s => s.isActive).map(survey => {
+                      const isCompleted = responses?.some((r: SurveyResponse) => r.surveyId === survey.id && r.householdId === selectedHouseholdForSurvey.id);
+                      return (
+                        <button
+                          key={survey.id}
+                          onClick={() => {
+                            setActiveSurveyToApply(survey);
+                            if (isCompleted) {
+                              const existingResponse = responses?.find((r: SurveyResponse) => r.surveyId === survey.id && r.householdId === selectedHouseholdForSurvey.id);
+                              if (existingResponse) {
+                                const answersObj: Record<string, any> = {};
+                                existingResponse.answers.forEach((a: any) => {
+                                  answersObj[a.questionId] = a.value;
+                                });
+                                setSurveyAnswers(answersObj);
+                              }
+                            } else {
+                              setSurveyAnswers({});
+                            }
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group ${isCompleted ? 'border-green-200 bg-green-50 hover:border-green-400' : 'border-gray-100 hover:border-indigo-600 hover:bg-indigo-50'}`}
+                        >
+                          <div>
+                            <p className={`font-bold ${isCompleted ? 'text-green-800' : 'text-gray-900 group-hover:text-indigo-700'}`}>
+                              {survey.title}
+                            </p>
+                            <p className={`text-xs ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
+                              {survey.questions.length} Soru {isCompleted && '• Tamamlandı'}
+                            </p>
+                          </div>
+                          {isCompleted ? (
+                            <CheckCircle size={20} className="text-green-500" />
+                          ) : (
+                            <Plus size={20} className="text-gray-300 group-hover:text-indigo-600" />
+                          )}
+                        </button>
+                      );
+                    })}
+                    {surveys?.filter(s => s.isActive).length === 0 && (
+                      <p className="text-center py-8 text-gray-500 italic">Şu an aktif bir anket bulunmamaktadır.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                    <h4 className="font-bold text-indigo-900 mb-1">{activeSurveyToApply.title}</h4>
+                    <p className="text-xs text-indigo-700">{activeSurveyToApply.description}</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {activeSurveyToApply.questions.map((q: any, idx: number) => (
+                      <div key={q.id} className="space-y-3">
+                        <label className="block text-sm font-bold text-gray-900">
+                          {idx + 1}. {q.text} {q.required && <span className="text-red-500">*</span>}
+                        </label>
+                        
+                        {q.type === 'rating' && (
+                          <div className="flex gap-4">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                onClick={() => setSurveyAnswers(prev => ({ ...prev, [q.id]: star }))}
+                                className={`p-3 rounded-xl border transition-all ${surveyAnswers[q.id] === star ? 'bg-yellow-50 border-yellow-400 text-yellow-600' : 'bg-white border-gray-100 text-gray-300 hover:border-yellow-200'}`}
+                              >
+                                <Star size={24} fill={surveyAnswers[q.id] >= star ? 'currentColor' : 'none'} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {q.type === 'text' && (
+                          <textarea
+                            value={surveyAnswers[q.id] || ''}
+                            onChange={(e) => setSurveyAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                            className="w-full rounded-xl border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-3 text-sm"
+                            placeholder="Cevabınızı yazın..."
+                            rows={2}
+                          />
+                        )}
+
+                        {(q.type === 'select' || q.type === 'radio') && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {q.options?.map((opt: string) => (
+                              <button
+                                key={opt}
+                                onClick={() => setSurveyAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                                className={`p-3 rounded-xl border text-sm font-medium transition-all text-left ${surveyAnswers[q.id] === opt ? 'bg-indigo-50 border-indigo-400 text-indigo-700' : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'}`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-8 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-3xl">
+              <button
+                onClick={() => {
+                  if (activeSurveyToApply) setActiveSurveyToApply(null);
+                  else setSurveyApplyModalOpen(false);
+                }}
+                className="px-6 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
+              >
+                {activeSurveyToApply ? 'Geri' : 'Kapat'}
+              </button>
+              {activeSurveyToApply && (
+                <button
+                  onClick={handleSaveSurveyResponse}
+                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 text-sm font-bold transition-all flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  Cevapları Kaydet
+                </button>
+              )}
             </div>
           </div>
         </div>

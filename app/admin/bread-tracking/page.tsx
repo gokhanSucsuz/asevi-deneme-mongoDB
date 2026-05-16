@@ -546,7 +546,7 @@ export default function BreadTrackingPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setIsTenderModalOpen(true)}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 transition-colors shadow-sm"
+            className="bg-teal-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-teal-700 transition-colors shadow-sm"
           >
             <Gavel size={18} />
             Yeni İhale Tanımla
@@ -565,7 +565,7 @@ export default function BreadTrackingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white shadow-sm rounded-xl p-6 border border-gray-200">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
+            <div className="p-2 bg-teal-100 rounded-lg text-teal-600">
               <Gavel size={24} />
             </div>
             <h3 className="text-lg font-bold text-gray-900">Aktif İhale Bilgileri</h3>
@@ -601,11 +601,11 @@ export default function BreadTrackingPage() {
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <div className="flex justify-between items-end mb-2">
                     <span className="text-sm text-gray-500">Kalan Ekmek Kapasitesi</span>
-                    <span className="text-2xl font-black text-purple-600">{activeTender.remainingMaxBreadCount}</span>
+                    <span className="text-2xl font-black text-teal-600">{activeTender.remainingMaxBreadCount}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div 
-                      className={`h-2.5 rounded-full ${activeTender.remainingMaxBreadCount < activeTender.maxBreadCount * 0.2 ? 'bg-red-600' : 'bg-purple-600'}`}
+                      className={`h-2.5 rounded-full ${activeTender.remainingMaxBreadCount < activeTender.maxBreadCount * 0.2 ? 'bg-red-600' : 'bg-teal-600'}`}
                       style={{ width: `${(activeTender.remainingMaxBreadCount / activeTender.maxBreadCount) * 100}%` }}
                     ></div>
                   </div>
@@ -751,7 +751,7 @@ export default function BreadTrackingPage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{b.leftoverAmount}</span>
                           {b.manualLeftoverAmount ? (
-                            <span className={`text-[10px] font-bold ${b.manualLeftoverAmount > 0 ? 'text-orange-600' : 'text-purple-600'}`}>
+                            <span className={`text-[10px] font-bold ${b.manualLeftoverAmount > 0 ? 'text-orange-600' : 'text-teal-600'}`}>
                               ({b.manualLeftoverAmount > 0 ? '+' : ''}{b.manualLeftoverAmount})
                             </span>
                           ) : null}
@@ -760,7 +760,7 @@ export default function BreadTrackingPage() {
                       <td className="px-3 py-3 text-xs font-black text-blue-600">{b.finalOrderAmount}</td>
                       <td className="px-3 py-3 text-xs text-gray-500 hidden md:table-cell">
                         <div className="flex flex-col gap-1">
-                           <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Vakıf: {b.containerCount ?? '-'}</span>
+                           <span className="bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Vakıf: {b.containerCount ?? '-'}</span>
                            <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded text-[10px] font-bold w-fit">Kendi: {b.ownContainerCount ?? '-'}</span>
                         </div>
                       </td>
@@ -911,7 +911,7 @@ export default function BreadTrackingPage() {
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{safeFormat(new Date(t.date), 'dd.MM.yyyy')}</td>
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{safeFormat(new Date(t.endDate), 'dd.MM.yyyy')}</td>
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{t.maxBreadCount}</td>
-                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-bold text-purple-600">{t.remainingMaxBreadCount}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-bold text-teal-600">{t.remainingMaxBreadCount}</td>
                   <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm">
                     <span className={`px-2 inline-flex text-[10px] leading-5 font-bold rounded-full uppercase ${
                       t.remainingMaxBreadCount > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -935,7 +935,7 @@ export default function BreadTrackingPage() {
       {isTenderModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-purple-600 text-white">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-teal-600 text-white">
               <h3 className="text-xl font-bold">Yeni İhale Tanımla</h3>
               <button onClick={() => setIsTenderModalOpen(false)} className="text-white/80 hover:text-white">
                 <X size={24} />
@@ -949,7 +949,7 @@ export default function BreadTrackingPage() {
                     type="text"
                     value={tenderForm.name}
                     onChange={(e) => setTenderForm({ ...tenderForm, name: e.target.value })}
-                    className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-purple-500 border p-2"
+                    className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-teal-500 border p-2"
                     placeholder="Örn: 2026 Yılı Ekmek Alım İhalesi"
                   />
                 </div>
@@ -1002,7 +1002,7 @@ export default function BreadTrackingPage() {
               </button>
               <button
                 onClick={handleAddTender}
-                className="px-6 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-lg shadow-purple-200"
+                className="px-6 py-2 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-lg shadow-teal-200"
               >
                 İhaleyi Kaydet
               </button>
@@ -1070,22 +1070,22 @@ export default function BreadTrackingPage() {
                   </div>
                 </div>
 
-                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 italic transition-transform hover:scale-[1.02] sm:col-span-2">
-                  <label className="block text-[10px] font-black uppercase tracking-tighter text-purple-800 mb-2">Kap Sayısı Düzeltme (+/-)</label>
+                <div className="bg-teal-50 p-4 rounded-xl border border-teal-100 italic transition-transform hover:scale-[1.02] sm:col-span-2">
+                  <label className="block text-[10px] font-black uppercase tracking-tighter text-teal-800 mb-2">Kap Sayısı Düzeltme (+/-)</label>
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => setManualContainerAdjustment(prev => prev - 1)}
-                      className="bg-white text-purple-600 border border-purple-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-purple-100 flex-shrink-0"
+                      className="bg-white text-teal-600 border border-teal-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-teal-100 flex-shrink-0"
                     >-</button>
                     <input
                       type="number"
                       value={manualContainerAdjustment}
                       onChange={(e) => setManualContainerAdjustment(parseInt(e.target.value) || 0)}
-                      className="flex-1 rounded-lg border-purple-200 shadow-sm focus:ring-purple-500 border p-2 text-xl font-black text-center bg-white min-w-0"
+                      className="flex-1 rounded-lg border-teal-200 shadow-sm focus:ring-teal-500 border p-2 text-xl font-black text-center bg-white min-w-0"
                     />
                     <button 
                       onClick={() => setManualContainerAdjustment(prev => prev + 1)}
-                      className="bg-white text-purple-600 border border-purple-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-purple-100 flex-shrink-0"
+                      className="bg-white text-teal-600 border border-teal-200 w-8 h-8 rounded-full font-black flex items-center justify-center hover:bg-teal-100 flex-shrink-0"
                     >+</button>
                   </div>
                 </div>

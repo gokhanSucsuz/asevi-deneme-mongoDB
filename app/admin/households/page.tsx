@@ -41,15 +41,11 @@ export default function HouseholdsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [sortField, setSortField] = useState<keyof Household>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [surveyModalOpen, setSurveyModalOpen] = useState(false);
-  const [selectedHouseholdForSurvey, setSelectedHouseholdForSurvey] = useState<Household | null>(null);
-  const [activeSurvey, setActiveSurvey] = useState<any>(null);
-  const [surveyAnswers, setSurveyAnswers] = useState<Record<string, any>>({});
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const allHouseholds = useAppQuery(() => db.households.toArray(), [], 'households');
-  const surveys = useAppQuery(() => db.surveys.toArray(), [], 'surveys');
-  const surveyResponses = useAppQuery(() => db.surveyResponses.toArray(), [], 'survey_responses');
+
   const allDrivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const activeRouteTemplates = useAppQuery(() => db.routeTemplates.toArray(), [], 'route_templates');
   const activeRouteTemplateStops = useAppQuery(() => db.routeTemplateStops.toArray(), [], 'route_template_stops');
@@ -450,47 +446,7 @@ export default function HouseholdsPage() {
     addLog('Hane Raporu Hazırlanıyor', `${household.headName} hanesi için rapor ekranı açıldı.`);
   };
 
-  const handleOpenSurvey = (household: Household) => {
-    setSelectedHouseholdForSurvey(household);
-    setSurveyModalOpen(true);
-    setSurveyAnswers({});
-    setActiveSurvey(null);
-  };
 
-  const handleSaveSurveyResponse = async () => {
-    if (!activeSurvey || !selectedHouseholdForSurvey) return;
-
-    const loadingToast = toast.loading('Cevaplar kaydediliyor...');
-    try {
-      const existingResponse = surveyResponses?.find((r: SurveyResponse) => r.surveyId === activeSurvey.id && r.householdId === selectedHouseholdForSurvey.id);
-
-      const responseData = {
-        surveyId: activeSurvey.id!,
-        householdId: selectedHouseholdForSurvey.id!,
-        answers: Object.entries(surveyAnswers).map(([qId, val]) => ({
-          questionId: qId,
-          value: val
-        })),
-        submittedAt: new Date(),
-        submittedBy: user?.email || 'unknown'
-      };
-
-      if (existingResponse && existingResponse.id) {
-        await db.surveyResponses.update(existingResponse.id, responseData);
-      } else {
-        await db.surveyResponses.add(responseData as SurveyResponse);
-      }
-      
-      toast.success('Anket cevapları başarıyla kaydedildi', { id: loadingToast });
-      setSurveyModalOpen(false);
-      setSelectedHouseholdForSurvey(null);
-      setActiveSurvey(null);
-      setSurveyAnswers({});
-    } catch (error) {
-      console.error(error);
-      toast.error('Kayıt sırasında hata oluştu', { id: loadingToast });
-    }
-  };
 
   const exportHouseholdReportPDF = async () => {
     if (!householdToReport) return;
@@ -942,8 +898,8 @@ export default function HouseholdsPage() {
             </p>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-purple-100 flex items-center gap-4">
-          <div className="p-3 rounded-full bg-purple-50 text-purple-600">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-teal-100 flex items-center gap-4">
+          <div className="p-3 rounded-full bg-teal-50 text-teal-600">
             <Building2 size={24} />
           </div>
           <div>
@@ -1143,7 +1099,7 @@ export default function HouseholdsPage() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs">{household.headName}</span>
                       {household.isRetired && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-purple-100 text-purple-700 uppercase tracking-tighter">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-teal-100 text-teal-700 uppercase tracking-tighter">
                           Emekli
                         </span>
                       )}
@@ -1185,7 +1141,7 @@ export default function HouseholdsPage() {
                       {household.isActive ? 'Aktif' : household.pausedUntil === '9999-12-31' ? 'SİLİNMİŞ' : 'Pasif'}
                     </span>
                     {household.isSelfService && (
-                      <span className="px-1.5 py-0.5 inline-flex text-[8px] font-bold rounded-full bg-purple-100 text-purple-800 uppercase">
+                      <span className="px-1.5 py-0.5 inline-flex text-[8px] font-bold rounded-full bg-teal-100 text-teal-800 uppercase">
                         Vakıftan Alıyor
                       </span>
                     )}
@@ -1193,11 +1149,7 @@ export default function HouseholdsPage() {
                 </td>
                 <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end gap-1.5">
-                    {!isDemo && (
-                      <button onClick={() => handleOpenSurvey(household)} className="text-indigo-600 hover:text-indigo-900 p-1" title="Anket">
-                        <ClipboardList size={14} />
-                      </button>
-                    )}
+
                     <button onClick={() => handleOpenReport(household)} className="text-green-600 hover:text-green-900 p-1" title="Rapor">
                       <FileText size={14} />
                     </button>
@@ -1549,18 +1501,18 @@ export default function HouseholdsPage() {
                   </div>
                 </div>
 
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 space-y-3">
+                <div className="bg-teal-50 p-4 rounded-lg border border-teal-100 space-y-3">
                   <div className="flex items-center">
                     <input
                       type="checkbox"
                       {...register('isSelfService')}
-                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                     />
-                    <label className="ml-2 block text-sm font-bold text-purple-900">
+                    <label className="ml-2 block text-sm font-bold text-teal-900">
                       Vakıf&apos;tan Kendi İmkanları İle Yemek Alan {householdType === 'institution' ? 'Kurum' : 'Hane'}
                     </label>
                   </div>
-                  <p className="text-xs text-purple-700">
+                  <p className="text-xs text-teal-700">
                     Bu seçenek işaretlendiğinde {householdType === 'institution' ? 'kurum' : 'hane'} şoför rotalarına <strong>dahil edilmez</strong>. Vakıf&apos;tan kendi imkanlarıyla yemek alanlar olarak raporlanır ve yönetici tarafından toplu onaylanır.
                   </p>
                 </div>
@@ -1603,13 +1555,13 @@ export default function HouseholdsPage() {
                         type="checkbox"
                         {...register('isRetired')}
                         id="isRetired"
-                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                        className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                       />
-                      <label htmlFor="isRetired" className="ml-2 block text-sm font-bold text-purple-900">
+                      <label htmlFor="isRetired" className="ml-2 block text-sm font-bold text-teal-900">
                         Emekli Hanesi
                       </label>
                     </div>
-                    <p className="text-xs text-purple-700 mt-1">
+                    <p className="text-xs text-teal-700 mt-1">
                       Emekli olarak işaretlenen haneler, listede özel etiketle gösterilir.
                     </p>
                   </div>
@@ -1706,148 +1658,7 @@ export default function HouseholdsPage() {
           </div>
         </div>
       )}
-      {surveyModalOpen && selectedHouseholdForSurvey && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200">
-            <div className="flex justify-between items-center p-8 border-b border-gray-100">
-              <div>
-                <h3 className="text-xl font-black text-gray-900">Anket Uygula</h3>
-                <p className="text-sm text-gray-500">{selectedHouseholdForSurvey.headName} hanesi için anket girişi.</p>
-              </div>
-              <button onClick={() => setSurveyModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="p-8 flex-1 overflow-y-auto space-y-8">
-              {!activeSurvey ? (
-                <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700">Uygulanacak Anketi Seçin</label>
-                  <div className="grid grid-cols-1 gap-3">
-                    {surveys?.filter(s => s.isActive).map(survey => {
-                      const isCompleted = surveyResponses?.some(r => r.surveyId === survey.id && r.householdId === selectedHouseholdForSurvey.id);
-                      return (
-                        <button
-                          key={survey.id}
-                          onClick={() => {
-                            setActiveSurvey(survey);
-                            if (isCompleted) {
-                              const existingResponse = surveyResponses?.find(r => r.surveyId === survey.id && r.householdId === selectedHouseholdForSurvey.id);
-                              if (existingResponse) {
-                                const answersObj: Record<string, any> = {};
-                                existingResponse.answers.forEach((a: any) => {
-                                  answersObj[a.questionId] = a.value;
-                                });
-                                setSurveyAnswers(answersObj);
-                              }
-                            } else {
-                              setSurveyAnswers({});
-                            }
-                          }}
-                          className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left group ${isCompleted ? 'border-green-200 bg-green-50 hover:border-green-400' : 'border-gray-100 hover:border-indigo-600 hover:bg-indigo-50'}`}
-                        >
-                          <div>
-                            <p className={`font-bold ${isCompleted ? 'text-green-800' : 'text-gray-900 group-hover:text-indigo-700'}`}>
-                              {survey.title}
-                            </p>
-                            <p className={`text-xs ${isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
-                              {survey.questions.length} Soru {isCompleted && '• Tamamlandı'}
-                            </p>
-                          </div>
-                          {isCompleted ? (
-                            <CheckCircle size={20} className="text-green-500" />
-                          ) : (
-                            <Plus size={20} className="text-gray-300 group-hover:text-indigo-600" />
-                          )}
-                        </button>
-                      );
-                    })}
-                    {surveys?.filter(s => s.isActive).length === 0 && (
-                      <p className="text-center py-8 text-gray-500 italic">Şu an aktif bir anket bulunmamaktadır.</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                    <h4 className="font-bold text-indigo-900 mb-1">{activeSurvey.title}</h4>
-                    <p className="text-xs text-indigo-700">{activeSurvey.description}</p>
-                  </div>
 
-                  <div className="space-y-6">
-                    {activeSurvey.questions.map((q: any, idx: number) => (
-                      <div key={q.id} className="space-y-3">
-                        <label className="block text-sm font-bold text-gray-900">
-                          {idx + 1}. {q.text} {q.required && <span className="text-red-500">*</span>}
-                        </label>
-                        
-                        {q.type === 'rating' && (
-                          <div className="flex gap-4">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                onClick={() => setSurveyAnswers(prev => ({ ...prev, [q.id]: star }))}
-                                className={`p-3 rounded-xl border transition-all ${surveyAnswers[q.id] === star ? 'bg-yellow-50 border-yellow-400 text-yellow-600' : 'bg-white border-gray-100 text-gray-300 hover:border-yellow-200'}`}
-                              >
-                                <Star size={24} fill={surveyAnswers[q.id] >= star ? 'currentColor' : 'none'} />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {q.type === 'text' && (
-                          <textarea
-                            value={surveyAnswers[q.id] || ''}
-                            onChange={(e) => setSurveyAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
-                            className="w-full rounded-xl border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 border p-3 text-sm"
-                            placeholder="Cevabınızı yazın..."
-                            rows={2}
-                          />
-                        )}
-
-                        {(q.type === 'select' || q.type === 'radio') && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {q.options?.map((opt: string) => (
-                              <button
-                                key={opt}
-                                onClick={() => setSurveyAnswers(prev => ({ ...prev, [q.id]: opt }))}
-                                className={`p-3 rounded-xl border text-sm font-medium transition-all text-left ${surveyAnswers[q.id] === opt ? 'bg-indigo-50 border-indigo-400 text-indigo-700' : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'}`}
-                              >
-                                {opt}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="p-8 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-3xl">
-              <button
-                onClick={() => {
-                  if (activeSurvey) setActiveSurvey(null);
-                  else setSurveyModalOpen(false);
-                }}
-                className="px-6 py-2.5 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"
-              >
-                {activeSurvey ? 'Geri' : 'Kapat'}
-              </button>
-              {activeSurvey && (
-                <button
-                  onClick={handleSaveSurveyResponse}
-                  className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 text-sm font-bold transition-all flex items-center gap-2"
-                >
-                  <Save size={18} />
-                  Cevapları Kaydet
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

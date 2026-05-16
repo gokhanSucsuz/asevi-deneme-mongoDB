@@ -306,8 +306,8 @@ export default function GuidePage() {
           {activeTab === 'anket' && (
             <div className="space-y-8">
               <div className="flex items-center gap-4 border-b border-gray-100 pb-6">
-                <div className="bg-purple-500/10 p-4 rounded-2xl">
-                  <Plus className="text-purple-600" size={36} />
+                <div className="bg-teal-500/10 p-4 rounded-2xl">
+                  <Plus className="text-teal-600" size={36} />
                 </div>
                 <div>
                   <h2 className="text-4xl font-black text-gray-900 tracking-tight">Anket ve Memnuniyet</h2>
@@ -324,11 +324,11 @@ export default function GuidePage() {
                       Yemek lezzeti, hijyen and şoför davranışı gerçek verilerle ölçülür.
                     </p>
                   </div>
-                  <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100">
-                    <h5 className="font-bold text-purple-900 mb-3 text-xs uppercase tracking-widest">Soru Tipleri</h5>
+                  <div className="bg-teal-50 p-6 rounded-3xl border border-teal-100">
+                    <h5 className="font-bold text-teal-900 mb-3 text-xs uppercase tracking-widest">Soru Tipleri</h5>
                     <div className="flex flex-wrap gap-2">
                       {['Yıldız Puan', 'Çoktan Seçmeli', 'Video Onay', 'Açık Uçlu'].map(t => (
-                        <span key={t} className="bg-white text-purple-700 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-purple-200">{t}</span>
+                        <span key={t} className="bg-white text-teal-700 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-teal-200">{t}</span>
                       ))}
                     </div>
                   </div>

@@ -19,7 +19,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line
 } from 'recharts';
 
-const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#0d9488', '#ec4899'];
 
 export default function ReportsPage() {
   const { user, personnel } = useAuth();
@@ -602,7 +602,7 @@ export default function ReportsPage() {
             </div>
             
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
-              <div className="p-3 rounded-full bg-purple-50 text-purple-600">
+              <div className="p-3 rounded-full bg-teal-50 text-teal-600">
                 <ShoppingBasket size={24} />
               </div>
               <div>
