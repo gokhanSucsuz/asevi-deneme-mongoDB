@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Household } from '@/lib/db';
-import { Search, UserX, CheckCircle, Clock, Trash2, ShieldAlert, AlertCircle, Calendar } from 'lucide-react';
+import { Search, UserX, CheckCircle, Clock, ShieldAlert, AlertCircle, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
@@ -13,11 +13,17 @@ import { normalizeTurkish } from '@/lib/utils';
 export default function PassiveHouseholdsPage() {
   const { user, personnel } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
-  const [householdToPause, setHouseholdToPause] = useState<Household | null>(null);
+  const [reactivateModalOpen, setReactivateModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  
+  const [householdToAction, setHouseholdToAction] = useState<Household | null>(null);
+  
   const [pauseDate, setPauseDate] = useState('');
   const [actionReason, setActionReason] = useState('');
   const [isIndefinite, setIsIndefinite] = useState(false);
+  const [applyToToday, setApplyToToday] = useState(false);
 
   const allHouseholds = useAppQuery(() => db.households.toArray(), [], 'households');
 
@@ -25,7 +31,6 @@ export default function PassiveHouseholdsPage() {
     await addSystemLog(user, personnel, action, details, 'household');
   };
 
-  // Filter passive and active records based on search
   const filteredHouseholds = React.useMemo(() => {
     if (!allHouseholds) return { passive: [], active: [] };
 
@@ -41,48 +46,112 @@ export default function PassiveHouseholdsPage() {
     const passive = allFiltered.filter(h => !h.isActive && h.pausedUntil !== '9999-12-31');
     const active = allFiltered.filter(h => h.isActive);
 
-    // Sort descending by created date
     passive.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     active.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     return { passive, active };
   }, [allHouseholds, searchTerm]);
 
-  const handleReactivate = async (household: Household) => {
-    if (confirm(`${household.headName} hanesini tekrar aktifleştirmek istediğinize emin misiniz?`)) {
-      const loadingToast = toast.loading('Aktifleştiriliyor...');
-      try {
-        const history = household.history || [];
-        history.push({
-          action: 'activated',
-          timestamp: new Date(),
-          note: 'Pasif hane tekrar aktifleştirildi.'
-        });
-
-        await db.households.update(household.id!, {
-          isActive: true,
-          pausedUntil: '',
-          history
-        });
-        notifyDbChange('households');
-        await addLog('Hane Aktifleştirildi', `${household.headName} hanesi tekrar aktifleştirildi.`);
-        toast.success('Hane başarıyla aktifleştirildi', { id: loadingToast });
-      } catch (error) {
-        console.error(error);
-        toast.error('İşlem sırasında bir hata oluştu', { id: loadingToast });
+  // Remove from today's route
+  const removeFromTodaysRoute = async (householdId: string) => {
+    const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+    const todayRoutes = await db.routes.where('date').equals(todayStr).toArray();
+    for (const r of todayRoutes) {
+      const stops = await db.routeStops.where('routeId').equals(r.id!).toArray();
+      const hStops = stops.filter(s => s.householdId === householdId && s.status === 'pending');
+      for (const hs of hStops) {
+        await db.routeStops.delete(hs.id!);
       }
     }
   };
 
+  // Add to today's route
+  const addToTodaysRoute = async (householdId: string) => {
+    const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+    const templateStops = await db.routeTemplateStops.where('householdId').equals(householdId).toArray();
+    if (templateStops.length > 0) {
+      const templateId = templateStops[0].templateId;
+      const template = await db.routeTemplates.get(templateId);
+      if (template) {
+         const todayRoutes = await db.routes.where('date').equals(todayStr).toArray();
+         const routeForDriver = todayRoutes.find(r => r.driverId === template.driverId);
+         if (routeForDriver) {
+           const household = await db.households.get(householdId);
+           if (household) {
+             await db.routeStops.add({
+               routeId: routeForDriver.id!,
+               householdId: household.id!,
+               status: 'pending',
+               order: templateStops[0].order,
+               householdSnapshotName: household.headName,
+               householdSnapshotAddress: household.address,
+               householdSnapshotPhone: household.phone,
+               householdSnapshotMemberCount: household.memberCount,
+               householdSnapshotBreadCount: household.breadCount
+             });
+           }
+         }
+      }
+    }
+  };
+
+  const handleOpenReactivateModal = (household: Household) => {
+    setHouseholdToAction(household);
+    setApplyToToday(false);
+    setReactivateModalOpen(true);
+  };
+
+  const handleReactivateSubmit = async () => {
+    if (!householdToAction) return;
+    const loadingToast = toast.loading('Aktifleştiriliyor...');
+    try {
+      const existing = await db.households.get(householdToAction.id!);
+      const history = existing?.history || [];
+      history.push({
+        action: 'activated',
+        timestamp: new Date(),
+        note: `Pasif hane tekrar aktifleştirildi. ${applyToToday ? '(Bugünkü rotaya eklendi)' : '(Bir sonraki iş gününde eklenecek)'}`
+      });
+
+      const { getNextWorkingDay } = await import('@/lib/route-utils');
+      const nextDay = await getNextWorkingDay(new Date());
+      const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+
+      await db.households.update(householdToAction.id!, {
+        isActive: true,
+        pausedUntil: '',
+        effectiveDate: applyToToday ? todayStr : nextDayStr,
+        history
+      });
+
+      if (applyToToday) {
+        await addToTodaysRoute(householdToAction.id!);
+      }
+
+      notifyDbChange('households');
+      notifyDbChange('route_stops');
+      
+      await addLog('Hane Aktifleştirildi', `${householdToAction.headName} hanesi tekrar aktifleştirildi.`);
+      toast.success('Hane başarıyla aktifleştirildi', { id: loadingToast });
+      setReactivateModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('İşlem sırasında bir hata oluştu', { id: loadingToast });
+    }
+  };
+
   const handleOpenPauseModal = (household: Household) => {
-    setHouseholdToPause(household);
+    setHouseholdToAction(household);
     setPauseDate('');
     setActionReason('');
     setIsIndefinite(false);
+    setApplyToToday(false);
     setPauseModalOpen(true);
   };
 
   const handlePauseSubmit = async () => {
+    if (!householdToAction) return;
     if (!isIndefinite && !pauseDate) {
       toast.error('Lütfen bir tarih seçin veya süresiz seçeneğini işaretleyin.');
       return;
@@ -93,43 +162,99 @@ export default function PassiveHouseholdsPage() {
     }
 
     const finalPauseDate = isIndefinite ? '2099-12-31' : pauseDate;
-    const msg = isIndefinite 
-      ? 'Haneyi süresiz olarak pasife almak istediğinize emin misiniz?' 
-      : `Haneyi ${pauseDate} tarihine kadar pasife almak istediğinize emin misiniz?`;
+    const loadingToast = toast.loading('Pasife alınıyor...');
+    try {
+      const existing = await db.households.get(householdToAction.id!);
+      const history = existing?.history || [];
+      history.push({
+        action: 'paused',
+        timestamp: new Date(),
+        note: `${isIndefinite ? 'Süresiz' : pauseDate + ' tarihine kadar'} pasife alındı. Sebep: ${actionReason} ${applyToToday ? '(Bugünkü rotadan çıkarıldı)' : '(Bir sonraki iş gününde uygulanacak)'}`
+      });
 
-    if (confirm(msg)) {
-      const loadingToast = toast.loading('Pasife alınıyor...');
-      try {
-        const existing = await db.households.get(householdToPause!.id!);
-        const history = existing?.history || [];
+      const { getNextWorkingDay } = await import('@/lib/route-utils');
+      const nextDay = await getNextWorkingDay(new Date());
+      const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+      const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+
+      await db.households.update(householdToAction.id!, {
+        isActive: false,
+        pausedUntil: finalPauseDate,
+        effectiveDate: applyToToday ? todayStr : nextDayStr,
+        history
+      });
+
+      if (applyToToday) {
+        await removeFromTodaysRoute(householdToAction.id!);
+      }
+
+      notifyDbChange('households');
+      notifyDbChange('route_stops');
+      
+      await addLog(
+        'Hane Pasife Alındı',
+        `${householdToAction.headName} hanesi ${isIndefinite ? 'süresiz' : pauseDate + ' tarihine kadar'} pasife alındı.`
+      );
+
+      toast.success(`Hane başarıyla pasife alındı.`, { id: loadingToast });
+      setPauseModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('Pasife alma işlemi sırasında bir hata oluştu', { id: loadingToast });
+    }
+  };
+
+  const handleOpenDeleteModal = (household: Household) => {
+    setHouseholdToAction(household);
+    setActionReason('');
+    setApplyToToday(false);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteSubmit = async () => {
+    if (!householdToAction) return;
+    if (!actionReason.trim()) {
+      toast.error('Lütfen silme sebebini giriniz.');
+      return;
+    }
+    
+    const loadingToast = toast.loading('Siliniyor...');
+    try {
+      const existing = await db.households.get(householdToAction.id!);
+      if (existing) {
+        const history = existing.history || [];
         history.push({
-          action: 'paused',
+          action: 'deleted',
           timestamp: new Date(),
-          note: `${isIndefinite ? 'Süresiz' : pauseDate + ' tarihine kadar'} pasife alındı. Sebep: ${actionReason}`
+          note: `Hane tamamen silindi. Sebep: ${actionReason} ${applyToToday && existing.isActive ? '(Bugünkü rotadan çıkarıldı)' : ''}`
         });
 
         const { getNextWorkingDay } = await import('@/lib/route-utils');
         const nextDay = await getNextWorkingDay(new Date());
         const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
+        const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
 
-        await db.households.update(householdToPause!.id!, {
+        await db.households.update(existing.id!, {
           isActive: false,
-          pausedUntil: finalPauseDate,
-          effectiveDate: nextDayStr,
+          pausedUntil: '9999-12-31',
+          effectiveDate: applyToToday ? todayStr : nextDayStr,
           history
         });
-        notifyDbChange('households');
-        await addLog(
-          'Hane Pasife Alındı',
-          `${householdToPause!.headName} hanesi ${isIndefinite ? 'süresiz' : pauseDate + ' tarihine kadar'} pasife alındı.`
-        );
 
-        toast.success(`Hane pasife alındı.`, { id: loadingToast });
-        setPauseModalOpen(false);
-      } catch (error) {
-        console.error(error);
-        toast.error('Pasife alma işlemi sırasında bir hata oluştu', { id: loadingToast });
+        if (applyToToday && existing.isActive) {
+          await removeFromTodaysRoute(existing.id!);
+        }
+
+        notifyDbChange('households');
+        notifyDbChange('route_stops');
+
+        await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Sebep: ${actionReason}`);
+        toast.success(`Hane başarıyla silindi.`, { id: loadingToast });
       }
+      setDeleteModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('Silme işlemi sırasında bir hata oluştu', { id: loadingToast });
     }
   };
 
@@ -140,10 +265,10 @@ export default function PassiveHouseholdsPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <UserX className="w-8 h-8 text-red-500" />
-              Pasif Kayıt Yönetimi
+              Kayıt Durumu Yönetimi
             </h1>
             <p className="text-gray-500 mt-1">
-              Pasife alınmış haneleri yönetin veya aktif haneleri pasife alın (Süreli / Süresiz).
+              Pasife alma, aktifleştirme ve silme işlemlerini buradan yönetin. İşlemlerin anında bugünkü rotaya yansımasını seçebilirsiniz.
             </p>
           </div>
           <div className="w-full md:w-72">
@@ -193,13 +318,23 @@ export default function PassiveHouseholdsPage() {
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleReactivate(h)}
-                      className="p-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                      title="Tekrar Aktifleştir"
-                    >
-                      <CheckCircle className="w-5 h-5" />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenReactivateModal(h)}
+                        className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+                        title="Tekrar Aktifleştir"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Aktifleştir
+                      </button>
+                      <button
+                        onClick={() => handleOpenDeleteModal(h)}
+                        className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                        title="Tamamen Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -207,12 +342,12 @@ export default function PassiveHouseholdsPage() {
           </div>
         </div>
 
-        {/* Active Records to Pause */}
+        {/* Active Records to Pause/Delete */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[600px]">
           <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              Aktif Haneler (Pasife Al)
+              Aktif Haneler
             </h2>
             <span className="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-0.5 rounded-full">
               {filteredHouseholds.active.length} Kayıt
@@ -232,12 +367,21 @@ export default function PassiveHouseholdsPage() {
                       <h3 className="font-medium text-gray-900">{h.headName}</h3>
                       <p className="text-xs text-gray-500 mt-1">TC: {h.tcNo || '-'} | Hane No: {h.householdNo || '-'}</p>
                     </div>
-                    <button
-                      onClick={() => handleOpenPauseModal(h)}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                    >
-                      Pasife Al
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenPauseModal(h)}
+                        className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-1"
+                      >
+                        Pasife Al
+                      </button>
+                      <button
+                        onClick={() => handleOpenDeleteModal(h)}
+                        className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                        title="Tamamen Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -246,54 +390,87 @@ export default function PassiveHouseholdsPage() {
         </div>
       </div>
 
-      {/* Pause Modal */}
-      {pauseModalOpen && householdToPause && (
+      {/* Reactivate Modal */}
+      {reactivateModalOpen && householdToAction && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                <UserX className="w-6 h-6 text-red-500" />
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-green-50/30">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                Haneyi Aktifleştir
+              </h2>
+              <button onClick={() => setReactivateModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-gray-700">
+                <strong>{householdToAction.headName}</strong> isimli haneyi tekrar aktif hale getirmek üzeresiniz.
+              </p>
+              <label className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={applyToToday} 
+                  onChange={(e) => setApplyToToday(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-blue-600 rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-blue-900">Hemen bugünkü rotaya eklensin mi?</span>
+                  <span className="text-xs text-blue-700 mt-1">İşaretlenmezse, sistemin varsayılan işleyişi gereği bir sonraki iş günü itibarıyla rotalara dahil edilir.</span>
+                </div>
+              </label>
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button onClick={() => setReactivateModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+                İptal
+              </button>
+              <button onClick={handleReactivateSubmit} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-xl hover:bg-green-700">
+                Aktifleştir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pause Modal */}
+      {pauseModalOpen && householdToAction && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-amber-50/30">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <UserX className="w-5 h-5 text-amber-600" />
                 Haneyi Pasife Al
               </h2>
+              <button onClick={() => setPauseModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
-            <div className="p-6 space-y-4 bg-gray-50/50">
-              <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-800 text-sm">
-                <strong>{householdToPause.headName}</strong> isimli haneyi pasife almak üzeresiniz.
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">
+                <strong>{householdToAction.headName}</strong> isimli haneyi pasife almak üzeresiniz.
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pasife Alma Süresi</label>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors">
-                    <input 
-                      type="radio" 
-                      checked={!isIndefinite} 
-                      onChange={() => setIsIndefinite(false)}
-                      className="text-blue-600 w-4 h-4"
-                    />
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pasife Alma Süresi</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" checked={!isIndefinite} onChange={() => setIsIndefinite(false)} className="text-blue-600 w-4 h-4"/>
                     <span className="text-sm font-medium text-gray-700">Tarihe Kadar (Süreli)</span>
                   </label>
-                  
                   {!isIndefinite && (
-                    <div className="pl-6">
+                    <div className="pl-6 pb-2">
                       <input
                         type="date"
                         min={safeFormat(new Date(), 'yyyy-MM-dd')}
                         value={pauseDate}
                         onChange={(e) => setPauseDate(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                       />
                     </div>
                   )}
-
-                  <label className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-blue-500 transition-colors">
-                    <input 
-                      type="radio" 
-                      checked={isIndefinite} 
-                      onChange={() => setIsIndefinite(true)}
-                      className="text-blue-600 w-4 h-4"
-                    />
+                  <label className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input type="radio" checked={isIndefinite} onChange={() => setIsIndefinite(true)} className="text-blue-600 w-4 h-4"/>
                     <span className="text-sm font-medium text-gray-700">Süresiz (İptal edilene kadar)</span>
                   </label>
                 </div>
@@ -305,25 +482,89 @@ export default function PassiveHouseholdsPage() {
                   value={actionReason}
                   onChange={(e) => setActionReason(e.target.value)}
                   placeholder="Pasife alma sebebini detaylıca yazınız..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none h-24 text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20 text-sm"
                   required
                 />
               </div>
-            </div>
 
-            <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-white">
-              <button
-                onClick={() => setPauseModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
-              >
+              <label className="flex items-start gap-3 p-3 mt-4 bg-blue-50 border border-blue-100 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={applyToToday} 
+                  onChange={(e) => setApplyToToday(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-blue-600 rounded"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-blue-900">Hemen bugünkü rotadan çıkarılsın mı?</span>
+                  <span className="text-xs text-blue-700 mt-1">İşaretlenmezse yarına kadar yemek almaya devam eder.</span>
+                </div>
+              </label>
+
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button onClick={() => setPauseModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
                 İptal
               </button>
-              <button
-                onClick={handlePauseSubmit}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors flex items-center gap-2"
-              >
-                <UserX className="w-4 h-4" />
+              <button onClick={handlePauseSubmit} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700">
                 Pasife Al
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteModalOpen && householdToAction && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-red-50/30">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-red-600" />
+                Haneyi Tamamen Sil
+              </h2>
+              <button onClick={() => setDeleteModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-800 text-sm">
+                <strong>{householdToAction.headName}</strong> isimli haneyi tamamen silmek üzeresiniz. Bu işlem geri alınamaz (Sadece geçmiş raporlarda ismi görünür).
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Silme Sebebi (Zorunlu)</label>
+                <textarea
+                  value={actionReason}
+                  onChange={(e) => setActionReason(e.target.value)}
+                  placeholder="Lütfen neden sildiğinizi açıklayın..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none h-20 text-sm"
+                  required
+                />
+              </div>
+
+              {householdToAction.isActive && (
+                <label className="flex items-start gap-3 p-3 mt-4 bg-red-50 border border-red-100 rounded-xl cursor-pointer hover:bg-red-100/50 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={applyToToday} 
+                    onChange={(e) => setApplyToToday(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-red-600 rounded border-gray-300"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-red-900">Hemen bugünkü rotadan da silinsin mi?</span>
+                    <span className="text-xs text-red-700 mt-1">İşaretlenmezse, silme işlemi yarından itibaren geçerli olur.</span>
+                  </div>
+                </label>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button onClick={() => setDeleteModalOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50">
+                İptal
+              </button>
+              <button onClick={handleDeleteSubmit} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700">
+                Haneyi Sil
               </button>
             </div>
           </div>

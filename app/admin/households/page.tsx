@@ -568,98 +568,7 @@ export default function HouseholdsPage() {
     }
   };
 
-  const handleDeleteClick = (household: Household) => {
-    setHouseholdToDelete(household);
-    setPauseDate('');
-    setActionReason('');
-    setDeleteModalOpen(true);
-  };
 
-  const handleHardDelete = async () => {
-    if (!actionReason.trim()) {
-      toast.error('Lütfen silme sebebini giriniz.');
-      return;
-    }
-    if (confirm('Bu haneyi tamamen silmek istediğinize emin misiniz? (Geçmiş istatistiklerde hane adı görünmeye devam edecektir)')) {
-      const loadingToast = toast.loading('Siliniyor...');
-      try {
-        const existing = await db.households.get(householdToDelete!.id!);
-        if (existing) {
-          const history = existing.history || [];
-          history.push({
-            action: 'deleted',
-            timestamp: new Date(),
-            note: `Hane tamamen silindi. Sebep: ${actionReason}`
-          });
-          // effectiveDate = bir sonraki iş günü (silme etkin tarihi)
-          const { getNextWorkingDay } = await import('@/lib/route-utils');
-          const nextDay = await getNextWorkingDay(new Date());
-          const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
-
-          await db.households.update(existing.id!, {
-            isActive: false,
-            pausedUntil: '9999-12-31',
-            effectiveDate: nextDayStr,
-            history
-          });
-          notifyDbChange('households');
-
-          await addLog('Hane Silindi', `${existing.headName} hanesi silindi. Rotalar ve istatistiklere ${nextDayStr} tarihinden itibaren yansımayacak. Sebep: ${actionReason}`);
-          toast.success(`Hane silindi. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`, { id: loadingToast });
-        }
-        setDeleteModalOpen(false);
-      } catch (error) {
-        console.error(error);
-        toast.error('Silme işlemi sırasında bir hata oluştu', { id: loadingToast });
-      }
-    }
-  };
-
-  const handlePause = async () => {
-    if (!pauseDate) {
-      toast.error('Lütfen bir tarih seçin.');
-      return;
-    }
-    if (!actionReason.trim()) {
-      toast.error('Lütfen pasife alma sebebini giriniz.');
-      return;
-    }
-    if (confirm(`Haneyi ${pauseDate} tarihine kadar pasife almak istediğinize emin misiniz?`)) {
-      const loadingToast = toast.loading('Pasife alınıyor...');
-      try {
-        const existing = await db.households.get(householdToDelete!.id!);
-        const history = existing?.history || [];
-        history.push({
-          action: 'paused',
-          timestamp: new Date(),
-          note: `${pauseDate} tarihine kadar pasife alındı. Sebep: ${actionReason}`
-        });
-
-        // effectiveDate = bir sonraki iş günü (pasife alma etkin tarihi)
-        const { getNextWorkingDay } = await import('@/lib/route-utils');
-        const nextDay = await getNextWorkingDay(new Date());
-        const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
-
-        await db.households.update(householdToDelete!.id!, {
-          isActive: false,
-          pausedUntil: pauseDate,
-          effectiveDate: nextDayStr,
-          history
-        });
-        notifyDbChange('households');
-        await addLog(
-          'Hane Pasife Alındı',
-          `${householdToDelete!.headName} hanesi ${pauseDate} tarihine kadar pasife alındı. Rotalar/istatistikler ${nextDayStr} tarihinden itibaren etkilenecek. Sebep: ${actionReason}`
-        );
-
-        toast.success(`Hane pasife alındı. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`, { id: loadingToast });
-        setDeleteModalOpen(false);
-      } catch (error) {
-        console.error(error);
-        toast.error('Pasife alma işlemi sırasında bir hata oluştu', { id: loadingToast });
-      }
-    }
-  };
 
   const downloadExcelTemplate = () => {
     const templateData = [
@@ -1329,9 +1238,6 @@ export default function HouseholdsPage() {
                         <button onClick={() => openModal(household)} className="text-blue-600 hover:text-blue-900 p-1" title="Düzenle">
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => handleDeleteClick(household)} className="text-red-600 hover:text-red-900 p-1" title="Sil">
-                          <Trash2 size={14} />
-                        </button>
                       </>
                     )}
                   </div>
@@ -1797,74 +1703,6 @@ export default function HouseholdsPage() {
               </div>
             </form>
             )}
-          </div>
-        </div>
-      )}
-      {deleteModalOpen && householdToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Hane İşlemleri - {householdToDelete.headName}</h3>
-              <button onClick={() => setDeleteModalOpen(false)} className="text-gray-400 hover:text-gray-500">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <p className="text-sm text-gray-600 mb-4">
-              Haneyi tamamen silebilir veya belirli bir tarihe kadar pasife alabilirsiniz. Pasife alınan haneler rotalara eklenmez.
-            </p>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">İşlem Sebebi (Zorunlu)</label>
-              <textarea
-                value={actionReason}
-                onChange={(e) => setActionReason(e.target.value)}
-                placeholder="Lütfen bu haneyi neden sildiğinizi veya pasife aldığınızı açıklayın..."
-                className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                rows={3}
-                required
-              />
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Geçici Olarak Pasife Al</h4>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={pauseDate}
-                    onChange={(e) => setPauseDate(e.target.value)}
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                  />
-                  <button
-                    onClick={handlePause}
-                    className="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 text-sm font-medium whitespace-nowrap"
-                  >
-                    Pasife Al
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-red-50 p-4 rounded-md border border-red-100">
-                <h4 className="text-sm font-medium text-red-900 mb-2">Tamamen Sil</h4>
-                <p className="text-xs text-red-700 mb-3">Bu işlem geri alınamaz. Hane aktif listelerden tamamen çıkarılır.</p>
-                <button
-                  onClick={handleHardDelete}
-                  className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm font-medium"
-                >
-                  Haneyi Sil
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setDeleteModalOpen(false)}
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                İptal
-              </button>
-            </div>
           </div>
         </div>
       )}
