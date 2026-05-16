@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useAppQuery } from '@/lib/hooks';
 import { db, Driver, Route, RouteStop } from '@/lib/db';
-import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart as BarChartIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, FileText, Download, Calendar, Eye, EyeOff, BarChart as BarChartIcon, BriefcaseBusiness, CalendarOff, UserCheck, AlertCircle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { format, subMonths, subWeeks, subDays, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -28,6 +28,11 @@ export default function DriversPage() {
   const [customEndDate, setCustomEndDate] = useState(safeFormat(new Date(), 'yyyy-MM-dd'));
   const [showSensitive, setShowSensitive] = useState<Record<string, boolean>>({});
   const chartRef = useRef<HTMLDivElement>(null);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [leaveDriverId, setLeaveDriverId] = useState<string | null>(null);
+  const [leaveStartDate, setLeaveStartDate] = useState('');
+  const [leaveEndDate, setLeaveEndDate] = useState('');
+  const [substituteDriverId, setSubstituteDriverId] = useState('');
   
   const drivers = useAppQuery(() => db.drivers.toArray(), [], 'drivers');
   const routes = useAppQuery(() => db.routes.toArray(), [], 'routes');
@@ -61,10 +66,78 @@ export default function DriversPage() {
         phone: '',
         googleEmail: '',
         vehiclePlate: '',
-        isActive: true,
+        startDate: '',
+        isActive: false,
       });
     }
     setIsModalOpen(true);
+  };
+
+  const openLeaveModal = (driver: Driver) => {
+    setLeaveDriverId(driver.id!);
+    setLeaveStartDate(driver.leaveStartDate || '');
+    setLeaveEndDate(driver.leaveEndDate || '');
+    setSubstituteDriverId(driver.substituteDriverId || '');
+    setLeaveModalOpen(true);
+  };
+
+  const handleSaveLeave = async () => {
+    if (!leaveDriverId) return;
+    const driver = drivers?.find(d => d.id === leaveDriverId);
+    if (!driver) return;
+    if (!leaveStartDate || !leaveEndDate) {
+      toast.error('Lütfen izin başlangıç ve bitiş tarihlerini seçin.');
+      return;
+    }
+    const loadingToast = toast.loading('İzin kaydediliyor...');
+    try {
+      // Vekil varsa geçici aktif yap
+      if (substituteDriverId) {
+        await db.drivers.put({ ...(drivers!.find(d => d.id === substituteDriverId)!), isActive: true });
+      }
+      await db.drivers.put({
+        ...driver,
+        leaveStartDate,
+        leaveEndDate,
+        substituteDriverId: substituteDriverId || undefined,
+        isActive: false,
+      });
+      await addLog('İzin Kaydı', `${driver.name} için ${leaveStartDate} - ${leaveEndDate} izin kaydedildi.`);
+      toast.success('İzin başarıyla kaydedildi.', { id: loadingToast });
+      setLeaveModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      toast.error('Hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const handleEndLeave = async (driver: Driver) => {
+    const loadingToast = toast.loading('İzin sonlandırılıyor...');
+    try {
+      // Vekili tekrar pasif yap
+      if (driver.substituteDriverId) {
+        const sub = drivers?.find(d => d.id === driver.substituteDriverId);
+        if (sub) await db.drivers.put({ ...sub, isActive: false });
+      }
+      await db.drivers.put({
+        ...driver,
+        leaveStartDate: undefined,
+        leaveEndDate: undefined,
+        substituteDriverId: undefined,
+        isActive: true,
+      });
+      await addLog('İzin Sona Erdi', `${driver.name} izinden döndü.`);
+      toast.success('İzin sonlandırıldı.', { id: loadingToast });
+    } catch (e) {
+      console.error(e);
+      toast.error('Hata oluştu.', { id: loadingToast });
+    }
+  };
+
+  const isOnLeave = (driver: Driver) => {
+    if (!driver.leaveStartDate || !driver.leaveEndDate) return false;
+    const today = new Date().toISOString().slice(0, 10);
+    return driver.leaveStartDate <= today && today <= driver.leaveEndDate;
   };
 
   const closeModal = () => {
@@ -384,45 +457,76 @@ export default function DriversPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {drivers?.map((driver) => (
-              <tr key={driver.id}>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    {showSensitive[driver.id!] ? driver.tcNo : maskSensitive(driver.tcNo)}
-                    {driver.tcNo && (
-                      <button onClick={() => toggleSensitive(driver.id!)} className="text-gray-400 hover:text-blue-600">
-                        {showSensitive[driver.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
+            {drivers?.map((driver) => {
+              const onLeave = isOnLeave(driver);
+              const sub = driver.substituteDriverId ? drivers?.find(d => d.id === driver.substituteDriverId) : null;
+              return (
+                <tr key={driver.id} className={onLeave ? 'bg-orange-50' : ''}>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      {showSensitive[driver.id!] ? driver.tcNo : maskSensitive(driver.tcNo)}
+                      {driver.tcNo && (
+                        <button onClick={() => toggleSensitive(driver.id!)} className="text-gray-400 hover:text-blue-600">
+                          {showSensitive[driver.id!] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      )}
+                    </div>
+                    {driver.startDate && <p className="text-[10px] text-gray-400 mt-0.5">İşe Başlama: {driver.startDate}</p>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[160px] text-sm font-medium text-gray-900">
+                    <div>{driver.name}</div>
+                    {onLeave && sub && (
+                      <div className="flex items-center gap-1 mt-1 text-[11px] text-orange-700 bg-orange-100 rounded px-1.5 py-0.5 w-fit">
+                        <UserCheck size={11} />
+                        Vekil: {sub.name}
+                      </div>
                     )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm font-medium text-gray-900">{driver.name}</td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  {showSensitive[driver.id!] ? driver.phone : maskSensitive(driver.phone, 4)}
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{driver.vehiclePlate}</td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${driver.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {driver.isActive ? 'Aktif' : 'Pasif'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-right text-sm font-medium">
-                  <button onClick={() => openReportModal(driver)} className="text-gray-600 hover:text-gray-900 mr-4" title="Rapor">
-                    <FileText size={18} />
-                  </button>
-                  {!isDemo && (
-                    <>
-                      <button onClick={() => openModal(driver)} className="text-blue-600 hover:text-blue-900 mr-4" title="Düzenle">
-                        <Edit2 size={18} />
-                      </button>
-                      <button onClick={() => deleteDriver(driver.id!)} className="text-red-600 hover:text-red-900" title="Sil">
-                        <Trash2 size={18} />
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">
+                    {showSensitive[driver.id!] ? driver.phone : maskSensitive(driver.phone, 4)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[120px] text-sm text-gray-500">{driver.vehiclePlate}</td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[140px] text-sm text-gray-500">
+                    {onLeave ? (
+                      <div className="space-y-1">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                          İzinde
+                        </span>
+                        <p className="text-[10px] text-gray-400">{driver.leaveStartDate} → {driver.leaveEndDate}</p>
+                      </div>
+                    ) : (
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${driver.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {driver.isActive ? 'Aktif' : 'Pasif'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-normal break-words min-w-[160px] text-right text-sm font-medium">
+                    <button onClick={() => openReportModal(driver)} className="text-gray-600 hover:text-gray-900 mr-3" title="Rapor">
+                      <FileText size={18} />
+                    </button>
+                    {!isDemo && (
+                      <>
+                        <button onClick={() => openModal(driver)} className="text-blue-600 hover:text-blue-900 mr-3" title="Düzenle">
+                          <Edit2 size={18} />
+                        </button>
+                        {onLeave ? (
+                          <button onClick={() => handleEndLeave(driver)} className="text-green-600 hover:text-green-900 mr-3" title="İzni Sonlandır">
+                            <UserCheck size={18} />
+                          </button>
+                        ) : (
+                          <button onClick={() => openLeaveModal(driver)} className="text-orange-500 hover:text-orange-700 mr-3" title="İzin Tanımla">
+                            <CalendarOff size={18} />
+                          </button>
+                        )}
+                        <button onClick={() => deleteDriver(driver.id!)} className="text-red-600 hover:text-red-900" title="Sil">
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
             {drivers?.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
@@ -433,6 +537,62 @@ export default function DriversPage() {
           </tbody>
         </table>
       </div>
+
+      {/* İzin Yönetimi Paneli */}
+      {drivers?.some(d => d.leaveStartDate) && (
+        <div className="mt-6 bg-white rounded-xl border border-orange-200 shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-orange-100 bg-orange-50">
+            <BriefcaseBusiness size={20} className="text-orange-600" />
+            <h3 className="font-bold text-orange-900 text-base">İzin Yönetimi — Kayıtlı İzinler</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Şoför</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">İşe Başlama</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">İzin Başlangıç</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">İzin Bitiş</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Vekil Personel</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Durum</th>
+                  {!isDemo && <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">İşlem</th>}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {drivers?.filter(d => d.leaveStartDate).map(driver => {
+                  const onLeave = isOnLeave(driver);
+                  const sub = driver.substituteDriverId ? drivers?.find(d => d.id === driver.substituteDriverId) : null;
+                  return (
+                    <tr key={driver.id} className={onLeave ? 'bg-orange-50' : ''}>
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">{driver.name}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{driver.startDate || '-'}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{driver.leaveStartDate}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">{driver.leaveEndDate}</td>
+                      <td className="px-6 py-3 text-sm text-gray-500">
+                        {sub ? <span className="flex items-center gap-1"><UserCheck size={14} className="text-green-600" />{sub.name}</span> : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-6 py-3">
+                        <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${onLeave ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-600'}`}>
+                          {onLeave ? 'Aktif İzin' : 'Geçmiş İzin'}
+                        </span>
+                      </td>
+                      {!isDemo && (
+                        <td className="px-6 py-3 text-right">
+                          {onLeave && (
+                            <button onClick={() => handleEndLeave(driver)} className="text-sm text-green-600 hover:text-green-800 font-medium flex items-center gap-1 ml-auto">
+                              <UserCheck size={14} /> İzni Bitir
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {reportModalOpen && driverToReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -748,14 +908,24 @@ export default function DriversPage() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                 />
               </div>
-              <div className="flex items-center">
+              <div>
+                <label htmlFor="driver-startDate" className="block text-sm font-medium text-gray-700">İşe Başlama Tarihi</label>
                 <input
+                  id="driver-startDate"
+                  type="date"
+                  {...register('startDate')}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                />
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <input
+                  id="driver-isActive"
                   type="checkbox"
                   {...register('isActive')}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label className="ml-2 block text-sm text-gray-900">
-                  Aktif
+                <label htmlFor="driver-isActive" className="text-sm font-medium text-gray-900">
+                  Aktif Olarak Ekle <span className="text-xs text-gray-500 font-normal">(işaretlenmezse pasif kaydedilir)</span>
                 </label>
               </div>
 
@@ -778,6 +948,73 @@ export default function DriversPage() {
           </div>
         </div>
       )}
+
+      {/* İzin Tanımlama Modalı */}
+      {leaveModalOpen && leaveDriverId && (() => {
+        const driver = drivers?.find(d => d.id === leaveDriverId);
+        const passiveDrivers = drivers?.filter(d => !d.isActive && d.id !== leaveDriverId) || [];
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
+              <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <CalendarOff size={20} className="text-orange-500" /> İzin Tanımla
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-0.5">{driver?.name}</p>
+                </div>
+                <button onClick={() => setLeaveModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">İzin Başlangıç</label>
+                    <input type="date" value={leaveStartDate} onChange={e => setLeaveStartDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-400 focus:ring-orange-400" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">İzin Bitiş</label>
+                    <input type="date" value={leaveEndDate} onChange={e => setLeaveEndDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-400 focus:ring-orange-400" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vekil Personel (Pasif Şoförlerden Seçin)</label>
+                  <select value={substituteDriverId} onChange={e => setSubstituteDriverId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-400 focus:ring-orange-400">
+                    <option value="">— Vekil Seçilmedi —</option>
+                    {passiveDrivers.map(d => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.vehiclePlate || 'Araç Yok'})</option>
+                    ))}
+                  </select>
+                  {passiveDrivers.length === 0 && (
+                    <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} /> Pasif şoför bulunmuyor. Önce pasif şoför ekleyin.
+                    </p>
+                  )}
+                </div>
+                {substituteDriverId && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
+                    Vekil personel izin süresince <strong>geçici olarak aktif</strong> yapılacak. İzin bitince tekrar pasife alınacak.
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                <button onClick={() => setLeaveModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
+                  İptal
+                </button>
+                <button onClick={handleSaveLeave}
+                  className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 flex items-center gap-2">
+                  <Calendar size={16} /> İzni Kaydet
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

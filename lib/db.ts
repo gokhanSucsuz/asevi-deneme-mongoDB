@@ -59,6 +59,10 @@ export interface Driver {
   isActive: boolean;
   locationPermissionStatus?: 'granted' | 'denied' | 'prompt' | 'unknown';
   locationPermissionRequestPending?: boolean;
+  startDate?: string;         // İşe başlama tarihi (yyyy-MM-dd)
+  leaveStartDate?: string;    // İzin başlama tarihi (yyyy-MM-dd)
+  leaveEndDate?: string;      // İzin bitiş tarihi (yyyy-MM-dd)
+  substituteDriverId?: string; // İzin süresince vekil şoför ID
 }
 
 export interface RouteHistory {
