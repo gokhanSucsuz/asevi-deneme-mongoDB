@@ -123,7 +123,8 @@ export default function PassiveHouseholdsPage() {
     const templateStops = await db.routeTemplateStops.where('householdId').equals(householdId).toArray();
     if (templateStops.length > 0) {
       const templateId = templateStops[0].templateId;
-      const template = await db.routeTemplates.get(templateId);
+      const allTemplates = await db.routeTemplates.toArray();
+      const template = allTemplates.find(t => t.id === templateId);
       if (template) {
          const todayRoutes = await db.routes.where('date').equals(todayStr).toArray();
          const routeForDriver = todayRoutes.find(r => r.driverId === template.driverId);
