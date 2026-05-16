@@ -16,11 +16,13 @@ export default function GuidePage() {
   const navItems = [
     { name: 'Güvenlik Protokolü', id: 'guvenlik', icon: Lock, color: 'text-red-500', bg: 'bg-red-50' },
     { name: 'Hane & Kurum', id: 'hane', icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { name: 'Rota & Dağıtım', id: 'rota', icon: Map, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { name: 'İzin & Vekil', id: 'truck', icon: Truck, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    { name: 'Şoför Yönetimi', id: 'truck_mgmt', icon: Truck, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    { name: 'Rota Algoritması', id: 'rota_algo', icon: Map, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { name: 'Ekmek & Lojistik', id: 'ekmek', icon: Info, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { name: 'Çalışma Takvimi', id: 'takvim', icon: Calendar, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { name: 'Şoför Saha Paneli', id: 'saha_paneli', icon: Smartphone, color: 'text-blue-600', bg: 'bg-blue-50' },
     { name: 'Anket & Analiz', id: 'anket', icon: Plus, color: 'text-teal-500', bg: 'bg-teal-50' },
-    { name: 'Görsel Sözlük', id: 'gosterge', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { name: 'Raporlama', id: 'rapor', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { name: 'Raporlama & Veri', id: 'rapor', icon: ClipboardList, color: 'text-purple-500', bg: 'bg-purple-50' },
     { name: 'KVKK & Şifre', id: 'sifreleme', icon: ShieldCheck, color: 'text-blue-600', bg: 'bg-blue-50' },
     { name: 'Sistem Bakımı', id: 'bakim', icon: Database, color: 'text-slate-600', bg: 'bg-slate-50' },
     { name: 'Sürüm Notları', id: 'notlar', icon: FileText, color: 'text-blue-700', bg: 'bg-blue-50' }
@@ -110,7 +112,7 @@ export default function GuidePage() {
                     <Lock className="text-white" size={32} />
                   </div>
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Güvenlik ve Erişim</h2>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Güvenlik Protokolü</h2>
                     <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Kurumsal Kimlik Doğrulama & Yetkilendirme</p>
                   </div>
                 </div>
@@ -120,7 +122,7 @@ export default function GuidePage() {
                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <ShieldCheck className="text-blue-600" size={28} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">Kimlik Doğrulama</h3>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter uppercase">Kimlik Doğrulama</h3>
                     <ul className="text-sm text-slate-500 space-y-3 font-medium">
                       <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> <strong>Firebase Auth:</strong> Google tabanlı ve kurumsal email/şifre altyapısı.</li>
                       <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> <strong>Onay Sistemi:</strong> Yeni kayıtlar yönetici onaylayana kadar &quot;Pasif&quot; kalır.</li>
@@ -131,7 +133,7 @@ export default function GuidePage() {
                     <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                       <History className="text-indigo-600" size={28} />
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter">Yetki Seviyeleri</h3>
+                    <h3 className="text-xl font-black text-slate-900 mb-3 tracking-tighter uppercase">Yetki Seviyeleri</h3>
                     <div className="space-y-4">
                       <div>
                         <span className="bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest mb-1 inline-block">ADMIN</span>
@@ -218,103 +220,178 @@ export default function GuidePage() {
               </div>
             )}
 
-            {activeTab === 'rota' && (
-              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-start gap-6">
-                  <div className="bg-orange-500 p-4 rounded-3xl shadow-xl shadow-orange-100 shrink-0">
-                    <Map className="text-white" size={32} />
-                  </div>
-                  <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Rota & Lojistik</h2>
-                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Saha Operasyonları ve Akıllı Planlama</p>
-                  </div>
-                </div>
-
-                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-slate-50 pb-10">
-                      <div>
-                        <div className="w-16 h-16 bg-orange-50 rounded-3xl flex items-center justify-center mb-6 text-orange-600 shadow-inner">
-                          <Zap size={32} />
-                        </div>
-                        <h4 className="text-xl font-black text-slate-900 mb-3 tracking-tighter uppercase">Dinamik Rota Şablonları</h4>
-                        <p className="text-[14px] text-slate-500 leading-relaxed font-medium italic">Sistem &quot;Ana Rota&quot; mantığıyla çalışır. Her şoför için tanımlanan şablon, her iş günü sonunda sistem tarafından otomatik olarak bir sonraki güne kopyalanır.</p>
-                      </div>
-                      <div className="space-y-4">
-                        <h5 className="font-black text-slate-900 uppercase text-[10px] tracking-[0.2em]">Otomasyon Kuralları</h5>
-                        <ul className="text-sm text-slate-500 space-y-2 font-medium">
-                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Şablondaki tüm duraklar sırasıyla kopyalanır.</li>
-                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Pasif/Durdurulmuş haneler 0 yemekle işlenir.</li>
-                          <li className="flex items-center gap-2"><CheckCircle size={14} className="text-orange-500" /> Önceki günden kalan yemek miktarları sıfırlanır.</li>
-                        </ul>
-                      </div>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Durum Takibi</h5>
-                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Şoförler teslimatları <strong>Teslim Edildi / Evde Yok / Hatalı</strong> olarak işaretler. Bu veriler anlık olarak merkeze duser.</p>
-                      </div>
-                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Km & Yakıt Kontrolü</h5>
-                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Günlük rotalarda başlangıç ve bitiş Km bilgileri, kalan yemek ve ekmek adetleri zorunlu olarak girilmektedir.</p>
-                      </div>
-                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
-                        <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-3">Km Log Kaydı</h5>
-                        <p className="text-xs text-slate-500 leading-relaxed font-medium">Yapılan her rota değişikliği (durak ekleme/çıkarma) sistem günlüğüne personel ismiyle kaydedilir.</p>
-                      </div>
-                   </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'truck' && (
+            {activeTab === 'truck_mgmt' && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-start gap-6">
                   <div className="bg-indigo-600 p-4 rounded-3xl shadow-xl shadow-indigo-100 shrink-0">
                     <Truck className="text-white" size={32} />
                   </div>
                   <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">İzin & Vekil Yönetimi</h2>
-                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Personel Devamlılığı ve Yedekleme Sistemi</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Şoför Yönetimi</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Personel Kaydı, İzin ve Vekil Protokolü</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between group">
-                    <div>
-                      <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-8 shadow-inner group-hover:scale-110 transition-transform">
-                        <CalendarOff className="text-orange-500" size={32} />
-                      </div>
-                      <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase">İzin Planlama</h4>
-                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium mb-6">Şoförler için başlangıç ve bitiş tarihli izinler girilir. İzinli süresi boyunca sistem şoförü otomatik olarak pasife alır.</p>
-                      <ul className="text-xs text-slate-400 space-y-2 font-bold uppercase tracking-wider">
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Otomatik Pasif Statü</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Turuncu Vurgulu Listeleme</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> İstatistikten Muafiyet</li>
-                      </ul>
+                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6 group">
+                    <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
+                      <UserCheck className="text-indigo-600" size={32} />
                     </div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Kayıt ve Aktivasyon</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                      Yeni şoförler &quot;Pasif&quot; olarak eklenebilir (TC No zorunlu değildir). Ancak bir şoförün rotaya atanabilmesi ve &quot;Aktif&quot; yapılması için <strong>geçerli 11 haneli TC Kimlik No</strong> girişi sistem tarafından zorunlu tutulur.
+                    </p>
                   </div>
-                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm flex flex-col justify-between group">
-                    <div>
-                      <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-8 shadow-inner group-hover:scale-110 transition-transform">
-                        <UserCheck className="text-green-600" size={32} />
-                      </div>
-                      <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Vekil (Proxy) Atama</h4>
-                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium mb-6">İzinli şoförün yerine geçici olarak görev yapacak personel veya pasif şoför seçilir. Bu seçim günlük rotaların sürekliliğini sağlar.</p>
-                      <ul className="text-xs text-slate-400 space-y-2 font-bold uppercase tracking-wider">
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Geçici Yetkilendirme</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Şoför/Personel Seçimi</li>
-                        <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-green-500"></div> Otomatik İade Sistemi</li>
-                      </ul>
+                  <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-6 group">
+                    <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
+                      <CalendarOff className="text-orange-500" size={32} />
                     </div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase">İzin ve Vekalet</h3>
+                    <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                      İzin tanımlanan şoförler sistemde <strong>turuncu</strong> ile işaretlenir. İzin süresince yerine &quot;Vekil&quot; (başka bir personel veya şoför) atanmalıdır. İzin bitiminde şoför otomatik aktif olmaz; yöneticinin manuel onayı gerekir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'rota_algo' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-start gap-6">
+                  <div className="bg-orange-500 p-4 rounded-3xl shadow-xl shadow-orange-100 shrink-0">
+                    <Map className="text-white" size={32} />
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Rota Algoritması</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Sistem İşleyiş Mantığı ve Kurallar</p>
                   </div>
                 </div>
 
-                <div className="bg-indigo-50 p-10 rounded-[3.5rem] border border-indigo-100">
-                  <h4 className="font-black text-indigo-900 uppercase text-xs tracking-[0.2em] mb-6">İzin Bitiş Mantığı</h4>
-                  <p className="text-sm text-indigo-700 leading-relaxed font-medium">
-                    İzin süresi dolduğunda şoför otomatik olarak &quot;Aktif&quot; yapılmaz. Güvenlik gereği yöneticinin manuel onayı (TC doğrulamasıyla beraber) gerekir. Ancak vekil olarak atanan personellerin geçici yetkileri sistem tarafından otomatik olarak temizlenir.
-                  </p>
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8">
+                  <div className="bg-slate-900 p-10 rounded-[2.5rem] text-white">
+                    <h4 className="text-sm font-black uppercase tracking-[0.3em] mb-6 text-orange-400">Günlük Rota Oluşturma Algoritması</h4>
+                    <div className="space-y-4 text-xs font-medium text-slate-400 leading-relaxed">
+                      <p>1. <strong>Tetikleme:</strong> Her iş günü sonunda (veya manuel) sistem &quot;Ana Rota Şablonlarını&quot; tarar.</p>
+                      <p>2. <strong>Kopyalama:</strong> Aktif şablonlardaki haneler, belirlenen &quot;Sıralama (Order)&quot; değerine göre yeni güne kopyalanır.</p>
+                      <p>3. <strong>Durum Analizi:</strong> Eğer bir hane &quot;Pasif&quot; veya &quot;Durdurulmuş&quot; ise, rota listesinde görünür ancak yemek/ekmek miktarı <strong>otomatik olarak 0</strong> set edilir.</p>
+                      <p>4. <strong>Kişi Sayısı Senkronizasyonu:</strong> Hane kartındaki güncel üye sayısı ve ekmek sayısı, kopyalama anında &quot;Snapshot&quot; (anlık görüntü) olarak rotaya işlenir.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100">
+                      <h5 className="font-black text-orange-900 text-[10px] uppercase tracking-widest mb-4">Transfer Kuralları</h5>
+                      <p className="text-xs text-orange-700 leading-relaxed font-bold">
+                        Bir şoförün rotası başka bir şoföre aktarıldığında, o güne ait tüm &quot;Teslimat Durumları&quot; ve &quot;Km Bilgileri&quot; yeni şoförün üzerine loglanarak devam eder. Veri bütünlüğü bozulmaz.
+                      </p>
+                    </div>
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                      <h5 className="font-black text-slate-900 text-[10px] uppercase tracking-widest mb-4">Km ve Yakıt Doğrulaması</h5>
+                      <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                        Rotalar kapatılmadan önce (Finish) başlangıç Km ile bitiş Km farkı kontrol edilir. Negatif değerler sistem tarafından engellenir.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'ekmek' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-start gap-6">
+                  <div className="bg-amber-600 p-4 rounded-3xl shadow-xl shadow-amber-100 shrink-0">
+                    <Info className="text-white" size={32} />
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Ekmek Takip Sistemi</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Lojistik Planlama ve İhale Yönetimi</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-6">
+                       <h4 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Hesaplama Mantığı</h4>
+                       <p className="text-sm text-slate-500 leading-relaxed font-medium">Sistem, aktif tüm rotalardaki hanelerin &quot;Günlük Ekmek Sayısı&quot; toplamını alır. Bu toplam, fırına verilecek &quot;Kesin Sipariş&quot; miktarını oluşturur.</p>
+                       <div className="p-6 bg-amber-50 rounded-[2rem] border border-amber-100">
+                         <span className="text-[10px] font-black text-amber-800 uppercase tracking-widest mb-2 block">İhale Kontrolü</span>
+                         <p className="text-[11px] text-amber-700 font-bold">Mevcut ihale limitleri (Max Ekmek Sayısı) her siparişte kontrol edilir. Limit aşımı durumunda sistem uyarı verir.</p>
+                       </div>
+                    </div>
+                    <div className="space-y-6">
+                       <h4 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Artan (Zayi) Yönetimi</h4>
+                       <p className="text-sm text-slate-500 leading-relaxed font-medium">Gün sonunda dağıtılamayan veya fırına iade edilen ekmekler sisteme &quot;Artan Ekmek&quot; olarak girilir. Bu veri, bir sonraki günün sipariş miktarından otomatik düşülür.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'takvim' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-start gap-6">
+                  <div className="bg-teal-600 p-4 rounded-3xl shadow-xl shadow-teal-100 shrink-0">
+                    <Calendar className="text-white" size={32} />
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Çalışma Takvimi</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Dağıtım Günleri ve Tatil Yönetimi</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm">
+                  <div className="flex flex-col md:flex-row gap-10 items-center">
+                    <div className="p-8 bg-teal-50 rounded-[2.5rem] border border-teal-100 shrink-0">
+                      <Clock size={48} className="text-teal-600" />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Haftalık Dağıtım Planı</h4>
+                      <p className="text-[15px] text-slate-500 leading-relaxed font-medium">Sistemde hangi günlerin &quot;Dağıtım Günü&quot; (Çalışma Günü) olduğu belirlenir. Tatil veya pazar günü olarak işaretlenen tarihlerde <strong>Otomatik Rota Oluşturma</strong> algoritması çalışmaz ve fırın siparişi üretilmez.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'saha_paneli' && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-start gap-6">
+                  <div className="bg-blue-600 p-4 rounded-3xl shadow-xl shadow-blue-100 shrink-0">
+                    <Smartphone className="text-white" size={32} />
+                  </div>
+                  <div>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none mb-2">Şoför Saha Paneli</h2>
+                    <p className="text-slate-400 font-bold text-xs tracking-[0.2em] uppercase">Mobil Yemek Dağıtım Arayüzü</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b border-slate-50 pb-10">
+                    <div className="space-y-6">
+                      <h4 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Dağıtım Akışı</h4>
+                      <ul className="text-sm text-slate-500 space-y-4 font-medium">
+                        <li className="flex gap-4"><div className="w-6 h-6 bg-blue-600 text-white text-[10px] flex items-center justify-center rounded-full font-black shrink-0">1</div> Şoför sabah Km bilgisini girerek rotayı başlatır.</li>
+                        <li className="flex gap-4"><div className="w-6 h-6 bg-blue-600 text-white text-[10px] flex items-center justify-center rounded-full font-black shrink-0">2</div> Durak listesinden haneyi seçer ve &quot;Teslim Et&quot; butonuna basar.</li>
+                        <li className="flex gap-4"><div className="w-6 h-6 bg-blue-600 text-white text-[10px] flex items-center justify-center rounded-full font-black shrink-0">3</div> Evde kimse yoksa &quot;Evde Yok&quot; butonuna basarak not ekler.</li>
+                      </ul>
+                    </div>
+                    <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
+                      <h5 className="text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-blue-400">Görsel Bildirimler</h5>
+                      <div className="space-y-3">
+                         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-orange-500 rounded-full"></div> <span className="text-[11px] font-bold uppercase">Turuncu: İzinli Şoför</span></div>
+                         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-blue-500 rounded-full"></div> <span className="text-[11px] font-bold uppercase">Mavi Rozet: Rota Bağlantısı</span></div>
+                         <div className="flex items-center gap-3"><div className="w-3 h-3 bg-teal-500 rounded-full"></div> <span className="text-[11px] font-bold uppercase">Teal: Vakıftan Alıyor</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-10 items-center">
+                    <div className="p-6 bg-blue-50 rounded-2xl text-blue-600 shrink-0 shadow-inner"><Map size={32} /></div>
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 mb-2 tracking-tighter uppercase">Navigasyon Entegrasyonu</h4>
+                      <p className="text-sm text-slate-500 leading-relaxed font-medium italic">Şoförler, hane adresinin yanındaki ikona tıklayarak Google Haritalar üzerinden doğrudan yol tarifi alabilirler.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
