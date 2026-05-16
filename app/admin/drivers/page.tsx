@@ -136,16 +136,18 @@ export default function DriversPage() {
         const sub = drivers?.find(d => d.id === driver.substituteDriverId);
         if (sub) await db.drivers.put({ ...sub, isActive: false });
       }
+      // Sadece izin alanlarını temizle — isActive değiştirilmez.
+      // Şoförü aktif hale getirmek için kullanıcı ayrıca "Düzenle" modalını kullanmalı.
       await db.drivers.put({
         ...driver,
         leaveStartDate: undefined,
         leaveEndDate: undefined,
         substituteDriverId: undefined,
         substitutePersonnelId: undefined,
-        isActive: true,
+        // isActive kasıtlı olarak DEĞİŞTİRİLMİYOR
       });
-      await addLog('İzin Sona Erdi', `${driver.name} izinden döndü.`);
-      toast.success('İzin sonlandırıldı.', { id: loadingToast });
+      await addLog('İzin Kapatıldı', `${driver.name} izin kaydı temizlendi. Şoför pasif durumda kaldı, aktifleştirmek için düzenleme gerekir.`);
+      toast.success('İzin kapatıldı. Şoförü aktifleştirmek için "Düzenle" butonunu kullanın.', { id: loadingToast, duration: 5000 });
     } catch (e) {
       console.error(e);
       toast.error('Hata oluştu.', { id: loadingToast });
