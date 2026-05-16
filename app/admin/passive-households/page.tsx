@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAppQuery, notifyDbChange } from '@/lib/hooks';
 import { db, Household } from '@/lib/db';
-import { Search, UserX, CheckCircle, Clock, ShieldAlert, AlertCircle, Trash2, X } from 'lucide-react';
+import { Search, UserX, CheckCircle, Clock, ShieldAlert, AlertCircle, Trash2, X, Undo2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthProvider';
 import { safeFormat } from '@/lib/date-utils';
@@ -52,20 +52,69 @@ export default function PassiveHouseholdsPage() {
     return { passive, active };
   }, [allHouseholds, searchTerm]);
 
-  // Remove from today's route
+  const canUndo = (h: any) => {
+    if (!h.lastOperation) return false;
+    const opTime = new Date(h.lastOperation.timestamp);
+    const diffHours = (new Date().getTime() - opTime.getTime()) / (1000 * 60 * 60);
+    return diffHours <= 4;
+  };
+
+  const handleUndo = async (household: any) => {
+    if (!household.lastOperation) return;
+    const { type, previousState, affectedRouteStops, addedRouteStopId } = household.lastOperation;
+    
+    const loadingToast = toast.loading('İşlem geri alınıyor...');
+    try {
+      await db.households.update(household.id!, {
+        isActive: previousState.isActive,
+        pausedUntil: previousState.pausedUntil,
+        effectiveDate: previousState.effectiveDate,
+        lastOperation: null
+      });
+
+      if (type === 'reactivate' && addedRouteStopId) {
+        await db.routeStops.delete(addedRouteStopId);
+      } else if ((type === 'pause' || type === 'delete') && affectedRouteStops && affectedRouteStops.length > 0) {
+        for (const stop of affectedRouteStops) {
+          const { id, ...stopData } = stop;
+          await db.routeStops.add(stopData as any);
+        }
+      }
+      
+      const history = household.history || [];
+      history.push({
+        action: 'undo',
+        timestamp: new Date(),
+        note: `Kullanıcı hatası nedeniyle yapılan son '${type === 'delete' ? 'Silme' : type === 'pause' ? 'Pasife Alma' : 'Aktifleştirme'}' işlemi geri alındı.`
+      });
+      await db.households.update(household.id!, { history });
+
+      notifyDbChange('households');
+      notifyDbChange('route_stops');
+      
+      await addLog('İşlem Geri Alındı', `${household.headName} hanesi için yapılan son işlem (Kullanıcı Hatası Kurtarma) geri alındı.`);
+      toast.success('İşlem başarıyla geri alındı', { id: loadingToast });
+    } catch (error) {
+      console.error(error);
+      toast.error('Geri alma sırasında hata oluştu', { id: loadingToast });
+    }
+  };
+
   const removeFromTodaysRoute = async (householdId: string) => {
     const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
     const todayRoutes = await db.routes.where('date').equals(todayStr).toArray();
+    const deletedStops = [];
     for (const r of todayRoutes) {
       const stops = await db.routeStops.where('routeId').equals(r.id!).toArray();
       const hStops = stops.filter(s => s.householdId === householdId && s.status === 'pending');
       for (const hs of hStops) {
+        deletedStops.push(hs);
         await db.routeStops.delete(hs.id!);
       }
     }
+    return deletedStops;
   };
 
-  // Add to today's route
   const addToTodaysRoute = async (householdId: string) => {
     const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
     const templateStops = await db.routeTemplateStops.where('householdId').equals(householdId).toArray();
@@ -78,7 +127,7 @@ export default function PassiveHouseholdsPage() {
          if (routeForDriver) {
            const household = await db.households.get(householdId);
            if (household) {
-             await db.routeStops.add({
+             const newId = await db.routeStops.add({
                routeId: routeForDriver.id!,
                householdId: household.id!,
                status: 'pending',
@@ -88,11 +137,13 @@ export default function PassiveHouseholdsPage() {
                householdSnapshotPhone: household.phone,
                householdSnapshotMemberCount: household.memberCount,
                householdSnapshotBreadCount: household.breadCount
-             });
+             } as any);
+             return newId;
            }
          }
       }
     }
+    return null;
   };
 
   const handleOpenReactivateModal = (household: Household) => {
@@ -106,7 +157,15 @@ export default function PassiveHouseholdsPage() {
     const loadingToast = toast.loading('Aktifleştiriliyor...');
     try {
       const existing = await db.households.get(householdToAction.id!);
-      const history = existing?.history || [];
+      if (!existing) return;
+      
+      const previousState = {
+        isActive: existing.isActive,
+        pausedUntil: existing.pausedUntil,
+        effectiveDate: existing.effectiveDate
+      };
+
+      const history = existing.history || [];
       history.push({
         action: 'activated',
         timestamp: new Date(),
@@ -118,21 +177,28 @@ export default function PassiveHouseholdsPage() {
       const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
       const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
 
-      await db.households.update(householdToAction.id!, {
+      let addedRouteStopId = null;
+      if (applyToToday) {
+        addedRouteStopId = await addToTodaysRoute(existing.id!);
+      }
+
+      await db.households.update(existing.id!, {
         isActive: true,
         pausedUntil: '',
         effectiveDate: applyToToday ? todayStr : nextDayStr,
-        history
-      });
-
-      if (applyToToday) {
-        await addToTodaysRoute(householdToAction.id!);
-      }
+        history,
+        lastOperation: {
+          type: 'reactivate',
+          timestamp: new Date().toISOString(),
+          previousState,
+          addedRouteStopId
+        }
+      } as any);
 
       notifyDbChange('households');
       notifyDbChange('route_stops');
       
-      await addLog('Hane Aktifleştirildi', `${householdToAction.headName} hanesi tekrar aktifleştirildi.`);
+      await addLog('Hane Aktifleştirildi', `${existing.headName} hanesi tekrar aktifleştirildi.`);
       toast.success('Hane başarıyla aktifleştirildi', { id: loadingToast });
       setReactivateModalOpen(false);
     } catch (error) {
@@ -146,6 +212,20 @@ export default function PassiveHouseholdsPage() {
     setPauseDate('');
     setActionReason('');
     setIsIndefinite(false);
+    setApplyToToday(false);
+    setPauseModalOpen(true);
+  };
+
+  const handleOpenEditPauseModal = (household: Household) => {
+    setHouseholdToAction(household);
+    if (household.pausedUntil === '9999-12-31' || household.pausedUntil === '2099-12-31') {
+      setIsIndefinite(true);
+      setPauseDate('');
+    } else {
+      setIsIndefinite(false);
+      setPauseDate(household.pausedUntil || '');
+    }
+    setActionReason('Süre güncellemesi');
     setApplyToToday(false);
     setPauseModalOpen(true);
   };
@@ -165,11 +245,19 @@ export default function PassiveHouseholdsPage() {
     const loadingToast = toast.loading('Pasife alınıyor...');
     try {
       const existing = await db.households.get(householdToAction.id!);
-      const history = existing?.history || [];
+      if (!existing) return;
+      
+      const previousState = {
+        isActive: existing.isActive,
+        pausedUntil: existing.pausedUntil,
+        effectiveDate: existing.effectiveDate
+      };
+
+      const history = existing.history || [];
       history.push({
         action: 'paused',
         timestamp: new Date(),
-        note: `${isIndefinite ? 'Süresiz' : pauseDate + ' tarihine kadar'} pasife alındı. Sebep: ${actionReason} ${applyToToday ? '(Bugünkü rotadan çıkarıldı)' : '(Bir sonraki iş gününde uygulanacak)'}`
+        note: `${isIndefinite ? 'Süresiz' : pauseDate + ' tarihine kadar'} pasife ${existing.isActive ? 'alındı' : 'alma süresi güncellendi'}. Sebep: ${actionReason} ${applyToToday ? '(Bugünkü rotadan çıkarıldı)' : existing.isActive ? '(Bir sonraki iş gününde uygulanacak)' : ''}`
       });
 
       const { getNextWorkingDay } = await import('@/lib/route-utils');
@@ -177,26 +265,33 @@ export default function PassiveHouseholdsPage() {
       const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
       const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
 
-      await db.households.update(householdToAction.id!, {
+      let affectedRouteStops: any[] = [];
+      if (applyToToday) {
+        affectedRouteStops = await removeFromTodaysRoute(existing.id!);
+      }
+
+      await db.households.update(existing.id!, {
         isActive: false,
         pausedUntil: finalPauseDate,
         effectiveDate: applyToToday ? todayStr : nextDayStr,
-        history
-      });
-
-      if (applyToToday) {
-        await removeFromTodaysRoute(householdToAction.id!);
-      }
+        history,
+        lastOperation: {
+          type: 'pause',
+          timestamp: new Date().toISOString(),
+          previousState,
+          affectedRouteStops
+        }
+      } as any);
 
       notifyDbChange('households');
       notifyDbChange('route_stops');
       
       await addLog(
-        'Hane Pasife Alındı',
-        `${householdToAction.headName} hanesi ${isIndefinite ? 'süresiz' : pauseDate + ' tarihine kadar'} pasife alındı.`
+        existing.isActive ? 'Hane Pasife Alındı' : 'Hane Pasiflik Süresi Güncellendi',
+        `${existing.headName} hanesi ${isIndefinite ? 'süresiz' : pauseDate + ' tarihine kadar'} pasife ${existing.isActive ? 'alındı' : 'alma süresi güncellendi'}.`
       );
 
-      toast.success(`Hane başarıyla pasife alındı.`, { id: loadingToast });
+      toast.success(existing.isActive ? `Hane başarıyla pasife alındı.` : `Hane pasiflik süresi güncellendi.`, { id: loadingToast });
       setPauseModalOpen(false);
     } catch (error) {
       console.error(error);
@@ -222,6 +317,12 @@ export default function PassiveHouseholdsPage() {
     try {
       const existing = await db.households.get(householdToAction.id!);
       if (existing) {
+        const previousState = {
+          isActive: existing.isActive,
+          pausedUntil: existing.pausedUntil,
+          effectiveDate: existing.effectiveDate
+        };
+
         const history = existing.history || [];
         history.push({
           action: 'deleted',
@@ -234,16 +335,23 @@ export default function PassiveHouseholdsPage() {
         const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
         const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
 
+        let affectedRouteStops: any[] = [];
+        if (applyToToday && existing.isActive) {
+          affectedRouteStops = await removeFromTodaysRoute(existing.id!);
+        }
+
         await db.households.update(existing.id!, {
           isActive: false,
           pausedUntil: '9999-12-31',
           effectiveDate: applyToToday ? todayStr : nextDayStr,
-          history
-        });
-
-        if (applyToToday && existing.isActive) {
-          await removeFromTodaysRoute(existing.id!);
-        }
+          history,
+          lastOperation: {
+            type: 'delete',
+            timestamp: new Date().toISOString(),
+            previousState,
+            affectedRouteStops
+          }
+        } as any);
 
         notifyDbChange('households');
         notifyDbChange('route_stops');
@@ -318,22 +426,41 @@ export default function PassiveHouseholdsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpenReactivateModal(h)}
-                        className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
-                        title="Tekrar Aktifleştir"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        Aktifleştir
-                      </button>
-                      <button
-                        onClick={() => handleOpenDeleteModal(h)}
-                        className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
-                        title="Tamamen Sil"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex gap-2">
+                        {canUndo(h) && (
+                          <button
+                            onClick={() => handleUndo(h)}
+                            className="px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                            title="Son işlemi geri al (4 Saat İçinde)"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                            Geri Al
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenEditPauseModal(h)}
+                          className="p-1.5 text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                          title="Süreyi Güncelle"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenReactivateModal(h)}
+                          className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+                          title="Tekrar Aktifleştir"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Aktifleştir
+                        </button>
+                        <button
+                          onClick={() => handleOpenDeleteModal(h)}
+                          className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                          title="Tamamen Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -367,20 +494,32 @@ export default function PassiveHouseholdsPage() {
                       <h3 className="font-medium text-gray-900">{h.headName}</h3>
                       <p className="text-xs text-gray-500 mt-1">TC: {h.tcNo || '-'} | Hane No: {h.householdNo || '-'}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpenPauseModal(h)}
-                        className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-1"
-                      >
-                        Pasife Al
-                      </button>
-                      <button
-                        onClick={() => handleOpenDeleteModal(h)}
-                        className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
-                        title="Tamamen Sil"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="flex gap-2">
+                        {canUndo(h) && (
+                          <button
+                            onClick={() => handleUndo(h)}
+                            className="px-2 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                            title="Son işlemi geri al (4 Saat İçinde)"
+                          >
+                            <Undo2 className="w-4 h-4" />
+                            Geri Al
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenPauseModal(h)}
+                          className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-1"
+                        >
+                          Pasife Al
+                        </button>
+                        <button
+                          onClick={() => handleOpenDeleteModal(h)}
+                          className="p-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                          title="Tamamen Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -439,7 +578,7 @@ export default function PassiveHouseholdsPage() {
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-amber-50/30">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <UserX className="w-5 h-5 text-amber-600" />
-                Haneyi Pasife Al
+                {householdToAction.isActive ? 'Haneyi Pasife Al' : 'Pasiflik Süresini Güncelle'}
               </h2>
               <button onClick={() => setPauseModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
@@ -448,7 +587,7 @@ export default function PassiveHouseholdsPage() {
             
             <div className="p-6 space-y-4">
               <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800 text-sm">
-                <strong>{householdToAction.headName}</strong> isimli haneyi pasife almak üzeresiniz.
+                <strong>{householdToAction.headName}</strong> isimli hanenin {householdToAction.isActive ? 'pasife alınma işlemini yapıyorsunuz.' : 'pasiflik süresini güncelliyorsunuz.'}
               </div>
 
               <div>
@@ -487,18 +626,20 @@ export default function PassiveHouseholdsPage() {
                 />
               </div>
 
-              <label className="flex items-start gap-3 p-3 mt-4 bg-blue-50 border border-blue-100 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors">
-                <input 
-                  type="checkbox" 
-                  checked={applyToToday} 
-                  onChange={(e) => setApplyToToday(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 text-blue-600 rounded"
-                />
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-blue-900">Hemen bugünkü rotadan çıkarılsın mı?</span>
-                  <span className="text-xs text-blue-700 mt-1">İşaretlenmezse yarına kadar yemek almaya devam eder.</span>
-                </div>
-              </label>
+              {householdToAction.isActive && (
+                <label className="flex items-start gap-3 p-3 mt-4 bg-blue-50 border border-blue-100 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={applyToToday} 
+                    onChange={(e) => setApplyToToday(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-blue-600 rounded"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-blue-900">Hemen bugünkü rotadan çıkarılsın mı?</span>
+                    <span className="text-xs text-blue-700 mt-1">İşaretlenmezse yarına kadar yemek almaya devam eder.</span>
+                  </div>
+                </label>
+              )}
 
             </div>
             <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
@@ -506,7 +647,7 @@ export default function PassiveHouseholdsPage() {
                 İptal
               </button>
               <button onClick={handlePauseSubmit} className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-xl hover:bg-amber-700">
-                Pasife Al
+                {householdToAction.isActive ? 'Pasife Al' : 'Süreyi Güncelle'}
               </button>
             </div>
           </div>
