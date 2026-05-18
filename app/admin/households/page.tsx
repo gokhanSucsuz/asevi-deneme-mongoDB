@@ -455,18 +455,27 @@ export default function HouseholdsPage() {
         toast.success('Başarıyla eklendi', { id: loadingToast });
       }
 
-      // Yeni kayıt ise effectiveDate = bir sonraki iş günü
+      // Yeni kayıt ise effectiveDate = bir sonraki iş günü veya bugün
       if (!editingId) {
         const { getNextWorkingDay } = await import('@/lib/route-utils');
-        const nextDay = await getNextWorkingDay(new Date());
-        const nextDayStr = safeFormat(nextDay, 'yyyy-MM-dd');
-        await db.households.update(data.id!, { effectiveDate: nextDayStr });
+        const todayStr = safeFormat(new Date(), 'yyyy-MM-dd');
+        const addToToday = window.confirm("Yeni haneyi bugünün günlük rotalarına da eklemek ister misiniz?\n\nTamam derseniz hane bugünden itibaren aktif olur ve bugünün rotalarına manuel olarak ekleyebilirsiniz.\nİptal derseniz bir sonraki iş gününden itibaren rotalara yansır.");
+        
+        let effectiveDateStr;
+        if (addToToday) {
+            effectiveDateStr = todayStr;
+        } else {
+            const nextDay = await getNextWorkingDay(new Date());
+            effectiveDateStr = safeFormat(nextDay, 'yyyy-MM-dd');
+        }
+
+        await db.households.update(data.id!, { effectiveDate: effectiveDateStr });
         await addLog(
           'Kayıt Eklendi',
-          `${data.headName} hanesi sisteme eklendi. Rotalar ve istatistiklere ${nextDayStr} tarihinden itibaren yansıyacak.`
+          `${data.headName} hanesi sisteme eklendi. Rotalar ve istatistiklere ${effectiveDateStr} tarihinden itibaren yansıyacak.`
         );
         toast.info(
-          `${data.headName} için kayıt oluşturuldu. Değişiklikler ${nextDayStr} tarihinden itibaren rotalara yansıyacak.`,
+          `${data.headName} için kayıt oluşturuldu. Değişiklikler ${effectiveDateStr} tarihinden itibaren rotalara yansıyacak.`,
           { duration: 6000 }
         );
       }
