@@ -398,10 +398,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </button>
       </div>
 
+      {/* Mobile Close Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div className={clsx(
-        "fixed inset-0 z-50 lg:sticky lg:top-0 lg:h-screen lg:z-0 lg:flex lg:w-64 bg-white border-r border-gray-200 flex-col transition-transform duration-300 ease-in-out",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:z-0 lg:flex lg:translate-x-0",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-20 hidden lg:flex flex-col items-center justify-center px-6 border-b border-gray-200 py-2">
           <Image 
@@ -415,15 +423,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <h1 className="text-xs font-bold text-gray-900">Yönetim Paneli</h1>
         </div>
         
-        {/* Mobile Close Overlay */}
-        {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 lg:hidden" 
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+           <div className="flex items-center gap-2">
+             <Image 
+               src="https://pbs.twimg.com/profile_images/1456143975845404674/xGjOJe4S_400x400.jpg" 
+               alt="Vakıf Logosu" 
+               width={32} 
+               height={32} 
+               className="rounded-full"
+               referrerPolicy="no-referrer"
+             />
+             <h1 className="text-sm font-bold text-gray-900">Menü</h1>
+           </div>
+           <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-500 hover:text-gray-700">
+             <CloseIcon size={24} />
+           </button>
+        </div>
 
-        <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-hidden bg-white relative z-50">
+        <nav className="flex-1 px-4 py-2 space-y-0.5 overflow-y-auto bg-white relative z-50">
           {navigation.map((item) => {
             const isActive = pathname === item.href;
             return (
